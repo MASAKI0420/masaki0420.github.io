@@ -221,15 +221,20 @@
         
         /* ★★★ リザルト画面のスタイルここから ★★★ */
         #results-menu {
-            /* この一行でリザルト画面全体を小さくします */
             transform: scale(0.8);
             transition: transform 0.2s;
         }
         #results-menu #results-song-title { font-size: 1.2em; color: #a0a8c0; margin-top: -20px; margin-bottom: 25px;}
-        #results-menu .results-main-stats { display: flex; justify-content: space-around; gap: 30px; margin-bottom: 30px; }
+        #results-menu .results-main-stats { display: flex; justify-content: space-around; align-items: center; gap: 20px; margin-bottom: 30px; width: 450px; }
         #results-menu .results-item { text-align: center; }
         .results-item span:first-child { display: block; font-size: 1em; color: #a0a8c0; margin-bottom: 5px;}
         .results-item span:last-child { font-size: 2em; font-weight: 600;}
+        #results-rank-value { font-size: 3em; font-weight: bold; }
+        .rank-s { color: gold; }
+        .rank-a { color: #e5e4e2; }
+        .rank-b { color: #cd7f32; }
+        .rank-c { color: #87ceeb; }
+        .rank-d { color: #dda0dd; }
         #results-menu .results-judgments { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px; margin-bottom: 30px; text-align: center; }
         .judgment-item span:first-child { font-size: 1.2em; font-weight: bold;}
         #results-ryo { color: gold; }
@@ -362,6 +367,18 @@
             display: none;
         }
 
+        #judgment-config-inputs { 
+            display: grid; 
+            grid-template-columns: 1fr 1fr 1fr; 
+            gap: 10px; 
+        }
+        .judgment-config-item > label {
+            font-size: 0.8em;
+            margin-bottom: 4px;
+            text-align: center;
+        }
+
+
         @media (orientation: portrait) {
             #app-container, #game-container {
                 display: none !important;
@@ -399,6 +416,24 @@
             <div class="offset-control">
                 <label for="offset-input">譜面オフセット (ms)</label>
                 <input type="number" id="offset-input" value="0" step="5">
+            </div>
+            
+            <div class="grid-item-full">
+                <label>判定タイミング (ms)</label>
+                <div id="judgment-config-inputs">
+                     <div class="judgment-config-item">
+                        <label for="hit-window-perfect-input">良 (PERFECT)</label>
+                        <input type="number" id="hit-window-perfect-input" step="1">
+                    </div>
+                     <div class="judgment-config-item">
+                        <label for="hit-window-good-input">可 (GREAT)</label>
+                        <input type="number" id="hit-window-good-input" step="1">
+                    </div>
+                     <div class="judgment-config-item">
+                        <label for="hit-window-bad-input">不可 (MISS)</label>
+                        <input type="number" id="hit-window-bad-input" step="1">
+                    </div>
+                </div>
             </div>
             
             <div class="grid-item-full">
@@ -468,6 +503,10 @@
                     <input type="file" id="katsu-sound-file" accept="audio/*">
                 </div>
             </div>
+            <div class="grid-item-full" style="display: flex; flex-direction: column; gap: 5px; margin-top: 10px;">
+                 <button id="save-settings-button" class="control-button">設定を保存</button>
+                 <p id="settings-status" style="text-align: center; font-size: 0.8em; color: #a0a8c0; margin: 0; min-height: 1em;"></p>
+            </div>
             <button id="start-button" class="grid-item-full" disabled>ゲーム開始</button>
             <p class="grid-item-full">※ ESCキーでポーズ</p>
         </div>
@@ -521,6 +560,10 @@
                 <div class="results-item">
                     <span>SCORE</span>
                     <span id="results-score-value">0</span>
+                </div>
+                <div class="results-item">
+                    <span>RANK</span>
+                    <span id="results-rank-value"></span>
                 </div>
                 <div class="results-item">
                     <span>MAX COMBO</span>
@@ -592,6 +635,7 @@
         resultsOverlay: document.getElementById('results-overlay'),
         resultsSongTitle: document.getElementById('results-song-title'),
         resultsScoreValue: document.getElementById('results-score-value'),
+        resultsRankValue: document.getElementById('results-rank-value'),
         resultsMaxComboValue: document.getElementById('results-max-combo-value'),
         resultsRyoValue: document.getElementById('results-ryo-value'),
         resultsKaValue: document.getElementById('results-ka-value'),
@@ -613,14 +657,18 @@
         touchDrumYOffsetLabel: document.getElementById('touch-drum-y-offset-label'),
         drumDisplay: document.getElementById('drum-display'),
         rollCounter: document.getElementById('roll-counter'),
+        saveSettingsButton: document.getElementById('save-settings-button'),
+        settingsStatus: document.getElementById('settings-status'),
+        hitWindowPerfectInput: document.getElementById('hit-window-perfect-input'),
+        hitWindowGoodInput: document.getElementById('hit-window-good-input'),
+        hitWindowBadInput: document.getElementById('hit-window-bad-input'),
     };
 
     let KEYS = { don_left: 'D', don_right: 'K', katsu_left: 'S', katsu_right: 'L' };
     const BASE_SCROLL_SPEED = 6;
     let uiScrollSpeed = BASE_SCROLL_SPEED;
     
-    // ★★★ 判定の数値をここを修正 ★★★
-    const HIT_WINDOW_PERFECT = 25, HIT_WINDOW_GOOD = 75, HIT_WINDOW_BAD = 100;
+    let HIT_WINDOW_PERFECT = 25, HIT_WINDOW_GOOD = 75, HIT_WINDOW_BAD = 100;
     
     const JUDGE_POINT_X = 220;
     const taikoSizeMultiplier = 1.0; 
@@ -789,11 +837,29 @@
         }
     }
 
+    function handleSoundFile(e, soundType) {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = (event) => {
+            const dataUrl = event.target.result;
+            if (soundType === 'don') {
+                donSoundSrc = dataUrl;
+                if (donSound) donSound.src = donSoundSrc;
+            } else if (soundType === 'katsu') {
+                katsuSoundSrc = dataUrl;
+                if (katsuSound) katsuSound.src = katsuSoundSrc;
+            }
+        };
+        reader.readAsDataURL(file);
+    }
+    
     function setupFileListeners() {
         dom.oszFileInput.addEventListener('change', handleOszFile);
         dom.beatmapSelector.addEventListener('change', handleBeatmapSelection);
-        dom.donSoundFileInput.addEventListener('change', e => { if (e.target.files[0]) { donSoundSrc = URL.createObjectURL(e.target.files[0]); if(donSound) donSound.src = donSoundSrc;} });
-        dom.katsuSoundFileInput.addEventListener('change', e => { if (e.target.files[0]) { katsuSoundSrc = URL.createObjectURL(e.target.files[0]); if(katsuSound) katsuSound.src = katsuSoundSrc; } });
+        dom.donSoundFileInput.addEventListener('change', e => handleSoundFile(e, 'don'));
+        dom.katsuSoundFileInput.addEventListener('change', e => handleSoundFile(e, 'katsu'));
     }
     async function handleOszFile(e) {
         const file = e.target.files[0]; if (!file) return;
@@ -948,6 +1014,23 @@
         const drumContainer = dom.gameContainer.querySelector('#touch-drum-visual');
         drumContainer.style.setProperty('--touch-drum-y-offset-vh', `${value}vh`);
     }
+
+    function updateJudgmentWindows() {
+        let perfect = parseInt(dom.hitWindowPerfectInput.value, 10);
+        let good = parseInt(dom.hitWindowGoodInput.value, 10);
+        let bad = parseInt(dom.hitWindowBadInput.value, 10);
+        if (isNaN(perfect) || isNaN(good) || isNaN(bad)) return;
+        if (perfect < 1) perfect = 1;
+        if (good < perfect) good = perfect;
+        if (bad < good) bad = good;
+        HIT_WINDOW_PERFECT = perfect;
+        HIT_WINDOW_GOOD = good;
+        HIT_WINDOW_BAD = bad;
+        dom.hitWindowPerfectInput.value = HIT_WINDOW_PERFECT;
+        dom.hitWindowGoodInput.value = HIT_WINDOW_GOOD;
+        dom.hitWindowBadInput.value = HIT_WINDOW_BAD;
+    }
+
     function initKeyConfig() {
         dom.keyConfigInputs.querySelectorAll('.key-config-input').forEach(keyInput => {
             keyInput.addEventListener('click', e => {
@@ -976,6 +1059,75 @@
                 KEYS[keyId] = newKey;
                 keyDiv.blur();
             });
+        });
+    }
+    function saveSettings() {
+        try {
+            updateJudgmentWindows(); // Ensure latest values are captured before saving
+            const settings = {
+                scrollSpeed: dom.speedSlider.value,
+                offset: dom.offsetInput.value,
+                laneCoverType: dom.laneCoverType.value,
+                laneCoverValue: dom.laneCoverSlider.value,
+                touchDrumSize: dom.touchDrumSizeSlider.value,
+                touchDrumYOffset: dom.touchDrumYOffsetSlider.value,
+                autoPlay: dom.autoPlayCheckbox.checked,
+                singleHandBigNote: dom.singleHandBigNoteCheckbox.checked,
+                keys: KEYS,
+                donSoundDataUrl: donSoundSrc,
+                katsuSoundDataUrl: katsuSoundSrc,
+                hitWindowPerfect: HIT_WINDOW_PERFECT,
+                hitWindowGood: HIT_WINDOW_GOOD,
+                hitWindowBad: HIT_WINDOW_BAD,
+            };
+            localStorage.setItem('taikoPlayerSettings', JSON.stringify(settings));
+            dom.settingsStatus.textContent = '設定を保存しました！';
+            setTimeout(() => { dom.settingsStatus.textContent = ''; }, 3000);
+        } catch (e) {
+            console.error('Error saving settings:', e);
+            dom.settingsStatus.textContent = '設定の保存に失敗しました。';
+            setTimeout(() => { dom.settingsStatus.textContent = ''; }, 3000);
+        }
+    }
+    function loadSettings() {
+        const savedSettings = localStorage.getItem('taikoPlayerSettings');
+        if (savedSettings) {
+            try {
+                const settings = JSON.parse(savedSettings);
+
+                if (settings.scrollSpeed !== undefined) dom.speedSlider.value = settings.scrollSpeed;
+                if (settings.offset !== undefined) dom.offsetInput.value = settings.offset;
+                if (settings.laneCoverType !== undefined) dom.laneCoverType.value = settings.laneCoverType;
+                if (settings.laneCoverValue !== undefined) dom.laneCoverSlider.value = settings.laneCoverValue;
+                if (settings.touchDrumSize !== undefined) dom.touchDrumSizeSlider.value = settings.touchDrumSize;
+                if (settings.touchDrumYOffset !== undefined) dom.touchDrumYOffsetSlider.value = settings.touchDrumYOffset;
+                if (settings.autoPlay !== undefined) dom.autoPlayCheckbox.checked = settings.autoPlay;
+                if (settings.singleHandBigNote !== undefined) dom.singleHandBigNoteCheckbox.checked = settings.singleHandBigNote;
+                if (settings.keys) KEYS = settings.keys;
+                if (settings.donSoundDataUrl) donSoundSrc = settings.donSoundDataUrl;
+                if (settings.katsuSoundDataUrl) katsuSoundSrc = settings.katsuSoundDataUrl;
+                if (settings.hitWindowPerfect !== undefined) HIT_WINDOW_PERFECT = settings.hitWindowPerfect;
+                if (settings.hitWindowGood !== undefined) HIT_WINDOW_GOOD = settings.hitWindowGood;
+                if (settings.hitWindowBad !== undefined) HIT_WINDOW_BAD = settings.hitWindowBad;
+                
+            } catch (e) {
+                console.error('Error parsing saved settings:', e);
+                localStorage.removeItem('taikoPlayerSettings');
+            }
+        }
+        
+        // Update all UI elements and labels from the current values (either default or loaded)
+        updateSpeed();
+        updateLaneCover();
+        updateTouchDrumSize();
+        updateTouchDrumYOffset();
+        dom.hitWindowPerfectInput.value = HIT_WINDOW_PERFECT;
+        dom.hitWindowGoodInput.value = HIT_WINDOW_GOOD;
+        dom.hitWindowBadInput.value = HIT_WINDOW_BAD;
+        updateJudgmentWindows(); // To validate and sync variables
+        Object.keys(KEYS).forEach(keyId => {
+            const elId = `key-${keyId.replace('_', '-')}`;
+            document.getElementById(elId).textContent = KEYS[keyId];
         });
     }
     function initGameUI() {
@@ -1374,12 +1526,12 @@
             const accVal = (judgmentCounts.ryo * 300 + judgmentCounts.ka * 150) / (totalHits * 300);
             accuracy = accVal * 100;
         }
-        let rank = 'S';
-        if (accuracy < 100) rank = 'S';
-        if (accuracy < 95) rank = 'A';
-        if (accuracy < 90) rank = 'B';
-        if (accuracy < 80) rank = 'C';
-        if (accuracy < 70) rank = 'D';
+        let rank;
+        if (accuracy >= 95) rank = 'S';
+        else if (accuracy >= 90) rank = 'A';
+        else if (accuracy >= 80) rank = 'B';
+        else if (accuracy >= 70) rank = 'C';
+        else rank = 'D';
         dom.accuracyElement.textContent = `${rank} ${accuracy.toFixed(2)}%`;
     }
     function showJudgment(text) {
@@ -1453,12 +1605,28 @@
             document.exitFullscreen();
         }
         cancelAnimationFrame(animationFrameId);
+
+        // Populate basic info
         dom.resultsSongTitle.textContent = `${songInfo.title} - ${songInfo.version}`;
         dom.resultsScoreValue.textContent = Math.floor(score);
         dom.resultsMaxComboValue.textContent = maxCombo;
         dom.resultsRyoValue.textContent = judgmentCounts.ryo;
         dom.resultsKaValue.textContent = judgmentCounts.ka;
         dom.resultsFukaValue.textContent = judgmentCounts.fuka;
+
+        // Calculate and display rank
+        let rank;
+        if (accuracy >= 95) rank = 'S';
+        else if (accuracy >= 90) rank = 'A';
+        else if (accuracy >= 80) rank = 'B';
+        else if (accuracy >= 70) rank = 'C';
+        else rank = 'D';
+
+        const rankValueEl = dom.resultsRankValue;
+        rankValueEl.textContent = rank;
+        rankValueEl.className = ''; // Clear previous classes
+        rankValueEl.classList.add(`rank-${rank.toLowerCase()}`);
+        
         dom.resultsOverlay.style.display = 'flex';
         if (backgroundType === 'video') dom.backgroundVideo.pause();
     }
@@ -1493,17 +1661,19 @@
 
     // --- 初期化処理 ---
     initKeyConfig();
-    updateSpeed();
-    updateTouchDrumSize();
-    updateTouchDrumYOffset();
     setupFileListeners();
     setupTouchListeners();
+    loadSettings();
     dom.laneCoverType.addEventListener('change', updateLaneCover);
     dom.laneCoverSlider.addEventListener('input', updateLaneCover);
     dom.touchDrumSizeSlider.addEventListener('input', updateTouchDrumSize);
     dom.touchDrumYOffsetSlider.addEventListener('input', updateTouchDrumYOffset);
+    dom.saveSettingsButton.addEventListener('click', saveSettings);
     dom.startButton.addEventListener('click', startGame);
     dom.speedSlider.addEventListener('input', updateSpeed);
+    dom.hitWindowPerfectInput.addEventListener('change', updateJudgmentWindows);
+    dom.hitWindowGoodInput.addEventListener('change', updateJudgmentWindows);
+    dom.hitWindowBadInput.addEventListener('change', updateJudgmentWindows);
     dom.ingamePauseButton.addEventListener('click', togglePause);
     dom.resumeButton.addEventListener('click', togglePause);
     dom.retryButton.addEventListener('click', retryGame);
