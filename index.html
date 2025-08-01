@@ -4,11 +4,10 @@
     <meta charset="UTF-8">
     <title>Taiko Player</title>
 
-    <!-- ★★★ PWA対応ここから ★★★ -->
+    <!-- PWA対応 -->
     <meta name="theme-color" content="#d9534f">
     <link rel="manifest" id="manifest">
     <link rel="apple-touch-icon" id="apple-icon">
-    <!-- ★★★ PWA対応ここまで ★★★ -->
     
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
@@ -22,34 +21,26 @@
         }
         html, body {
             width: 100%;
-            /* height: 100%; */
-            /* overflow: hidden; */
             background-color: #0d0d1a;
         }
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-            /* display: flex; align-items: center; justify-content: center; */
             margin: 0;
             color: white;
         }
         #app-container {
             display: flex;
-            /* align-items: center; */
             justify-content: center;
             width: 100%;
-            /* height: 100%; */
             padding: 5vh 0;
             box-sizing: border-box;
         }
         
         #controls-panel {
             width: 95%; max-width: 520px;
-            /* max-height: 90vh; */
-            /* overflow-y: auto; */   
             background-color: var(--panel-bg);
             border: 1px solid var(--panel-border);
             padding: 25px;
-            /* padding-right: 15px; */
             border-radius: 12px;
             box-shadow: 0 10px 30px rgba(0,0,0,0.4);
             color: var(--panel-text);
@@ -57,17 +48,9 @@
             gap: 20px 15px;
             align-items: center;
         }
-        #controls-panel::-webkit-scrollbar {
-            width: 8px;
-        }
-        #controls-panel::-webkit-scrollbar-track {
-            background: rgba(0,0,0,0.2);
-            border-radius: 4px;
-        }
-        #controls-panel::-webkit-scrollbar-thumb {
-            background-color: var(--panel-border);
-            border-radius: 4px;
-        }
+        #controls-panel::-webkit-scrollbar { width: 8px; }
+        #controls-panel::-webkit-scrollbar-track { background: rgba(0,0,0,0.2); border-radius: 4px; }
+        #controls-panel::-webkit-scrollbar-thumb { background-color: var(--panel-border); border-radius: 4px; }
 
         #game-container {
             position: fixed; top: 0; left: 0;
@@ -91,17 +74,16 @@
         }
         
        #background-image {
-    position: absolute;
-    top: 50%; left: 50%;
-    /* ↓ ここの scale の値を変えることで、画像の大きさを自由に変更できます */
-    transform: translate(-50%, -50%) scale(0.45); /* 例：画像を1.5倍(150%)に拡大 */
-    min-width: 100%;
-    min-height: 100%;
-    width: auto;
-    height: auto;
-    object-fit: cover;
-    z-index: 1;
-    opacity: 0.5;
+        position: absolute;
+        top: 50%; left: 50%;
+        transform: translate(-50%, -50%) scale(0.45);
+        min-width: 100%;
+        min-height: 100%;
+        width: auto;
+        height: auto;
+        object-fit: cover;
+        z-index: 1;
+        opacity: 0.5;
         }
         #playfield {
             position: absolute;
@@ -236,6 +218,13 @@
         .overlay-button { display: block; width: 220px; padding: 15px; margin: 12px auto; font-size: 1.2em; color: white; border: 2px solid var(--panel-border); background-color: #394362; border-radius: 8px; cursor: pointer; transition: background-color 0.2s, transform 0.1s; }
         .overlay-button:hover { background-color: #4a5578; }
         .overlay-button:active { transform: scale(0.98); }
+        
+        /* ★★★ リザルト画面のスタイルここから ★★★ */
+        #results-menu {
+            /* この一行でリザルト画面全体を小さくします */
+            transform: scale(0.8);
+            transition: transform 0.2s;
+        }
         #results-menu #results-song-title { font-size: 1.2em; color: #a0a8c0; margin-top: -20px; margin-bottom: 25px;}
         #results-menu .results-main-stats { display: flex; justify-content: space-around; gap: 30px; margin-bottom: 30px; }
         #results-menu .results-item { text-align: center; }
@@ -246,6 +235,8 @@
         #results-ryo { color: gold; }
         #results-ka { color: white; }
         #results-fuka { color: #dda0dd; }
+        /* ★★★ リザルト画面のスタイルここまで ★★★ */
+
 
         #drum-display {
             position: absolute;
@@ -371,7 +362,6 @@
             display: none;
         }
 
-        /* 縦向きの時は警告を表示し、ゲーム画面を隠す */
         @media (orientation: portrait) {
             #app-container, #game-container {
                 display: none !important;
@@ -478,8 +468,6 @@
                     <input type="file" id="katsu-sound-file" accept="audio/*">
                 </div>
             </div>
-            <!-- ★★★ フルスクリーンボタンを削除 ★★★ -->
-            <!-- <button id="fullscreen-button" class="control-button grid-item-full">フルスクリーン</button> -->
             <button id="start-button" class="grid-item-full" disabled>ゲーム開始</button>
             <p class="grid-item-full">※ ESCキーでポーズ</p>
         </div>
@@ -585,7 +573,6 @@
         singleHandBigNoteCheckbox: document.getElementById('single-hand-big-note-checkbox'),
         keyConfigInputs: document.getElementById('key-config-inputs'),
         startButton: document.getElementById('start-button'),
-        // fullscreenButton: document.getElementById('fullscreen-button'), // ★★★ 削除
         backgroundVideo: document.getElementById('background-video'),
         backgroundImage: document.getElementById('background-image'),
         playfield: document.getElementById('playfield'),
@@ -631,30 +618,27 @@
     let KEYS = { don_left: 'D', don_right: 'K', katsu_left: 'S', katsu_right: 'L' };
     const BASE_SCROLL_SPEED = 6;
     let uiScrollSpeed = BASE_SCROLL_SPEED;
-    const HIT_WINDOW_PERFECT = 30, HIT_WINDOW_GOOD = 75, HIT_WINDOW_BAD = 105;
-    const JUDGE_POINT_X = 220;
     
+    // ★★★ 判定の数値をここを修正 ★★★
+    const HIT_WINDOW_PERFECT = 25, HIT_WINDOW_GOOD = 75, HIT_WINDOW_BAD = 100;
+    
+    const JUDGE_POINT_X = 220;
     const taikoSizeMultiplier = 1.0; 
     let laneCoverConfig = { type: 'none', value: 0 };
-
     let fileContent = null, audioSrc = null, donSoundSrc = null, katsuSoundSrc = null;
     let songInfo = { title: '', artist: '', version: '', audioFilename: '' };
     let hitObjects = [], barLines = [], goGoSections = [];
     let donSound, katsuSound;
     let audioLoaded = false, beatmapLoaded = false;
-    
     let isGameRunning = false, isPaused = false, isAutoPlay = false;
     let isSingleHandBigNoteEnabled = true;
-
     let score = 0, combo = 0, offset = 0, maxCombo = 0, accuracy = 100;
     let judgmentCounts = { ryo: 0, ka: 0, fuka: 0 };
     let animationFrameId = null;
     let lastNoteTime = 0;
-    
     let gameStartTime = 0;
     let pauseStartTime = 0;
     let totalPauseDuration = 0;
-
     let pressedKeys = new Set();
     let osz_zip = null;
     let osz_beatmaps = [];
@@ -666,53 +650,30 @@
     let isGoGoNow = false;
     let drumHitTimeouts = {};
 
-    // ★★★ フルスクリーン＆画面回転ハンドラここから ★★★
-    /**
-     * 現在の画面の向きをチェックし、フルスクリーン状態を制御する
-     */
     async function handleOrientationChange() {
-        // screen.orientation APIがサポートされていないブラウザでは何もしない
         if (!screen.orientation) return;
-
         try {
             const isLandscape = screen.orientation.type.includes('landscape');
-            
-            // 現在フルスクリーンかどうかを確認
             const isFullscreen = !!document.fullscreenElement;
-
             if (isLandscape && !isFullscreen) {
-                // 横向きで、かつフルスクリーンでない場合 → フルスクリーンを要求
-                // navigationUI: "hide" はAndroidでナビゲーションバーを隠すため
                 await document.documentElement.requestFullscreen({ navigationUI: "hide" });
             } else if (!isLandscape && isFullscreen) {
-                // 縦向きで、かつフルスクリーンである場合 → フルスクリーンを解除
                 await document.exitFullscreen();
             }
         } catch (err) {
-            // フルスクリーンの要求は失敗することがあるため、エラーはコンソールに出力するだけにする
             console.error(`自動フルスクリーンに失敗しました: ${err}`);
         }
     }
-
-    /**
-     * 画面の向きが変わったときのイベントリスナーをセットアップする
-     */
     function setupOrientationListener() {
         if (screen.orientation) {
             screen.orientation.addEventListener('change', handleOrientationChange);
         }
     }
-
-    /**
-     * イベントリスナーを解除する
-     */
     function removeOrientationListener() {
         if (screen.orientation) {
             screen.orientation.removeEventListener('change', handleOrientationChange);
         }
     }
-    // ★★★ フルスクリーン＆画面回転ハンドラここまで ★★★
-
 
     function parseOsuFile(content) {
         try {
@@ -724,7 +685,6 @@
             let section = '';
             let sliderMultiplier = 1.4;
             let foundTimingPoints = false;
-
             if (!Array.prototype.findLast) {
                 Array.prototype.findLast = function(predicate) {
                     for (let i = this.length - 1; i >= 0; i--) {
@@ -735,11 +695,9 @@
                     return undefined;
                 };
             }
-
             for (const line of lines) {
                 if (line.startsWith('[')) { section = line; continue; }
                 if (!section) continue;
-
                 if (section === '[General]' && line.toLowerCase().startsWith('audiofilename:')) songInfo.audioFilename = line.substring(line.indexOf(':') + 1).trim();
                 else if (section === '[Metadata]') {
                     if (line.toLowerCase().startsWith('title:')) songInfo.title = line.substring(line.indexOf(':') + 1).trim();
@@ -763,19 +721,16 @@
                     }
                 }
             }
-            
             if (uninheritedTimingPoints.length === 0) {
                  uninheritedTimingPoints.push({time: 0, beatLength: 500, meter: 4});
             }
             velocityChanges.sort((a,b) => a.time - b.time);
-
             const getScrollMultiplier = (time) => {
                 for (let i = velocityChanges.length - 1; i >= 0; i--) {
                     if (velocityChanges[i].time <= time) return velocityChanges[i].multiplier;
                 }
                 return 1.0;
             };
-            
             section = '';
             for (const line of lines) {
                 if (line.startsWith('[')) { section = line; continue; }
@@ -786,7 +741,6 @@
                 const isBig = (hitSound & 4) !== 0;
                 const scrollMultiplier = getScrollMultiplier(time);
                 const noteProps = { time, judged: false, scrollSpeed: scrollMultiplier };
-
                 if (type & 2) {
                     const parentTimingPoint = uninheritedTimingPoints.findLast(p => p.time <= time) || uninheritedTimingPoints[0];
                     const pixelLength = parseFloat(parts[7]);
@@ -803,7 +757,6 @@
                     hitObjects.push({ ...noteProps, type: noteType, isBig });
                 }
             }
-
             allTimingPoints.sort((a,b) => a.time - b.time);
             let kiaiActive = false, kiaiStartTime = 0;
             const currentLastNoteTime = hitObjects.reduce((max, note) => Math.max(max, note.endTime || note.time), 0);
@@ -815,7 +768,6 @@
                 }
             }
             if(kiaiActive) goGoSections.push({start: kiaiStartTime, end: currentLastNoteTime + 5000});
-
             if (uninheritedTimingPoints.length > 0 && hitObjects.length > 0) {
                 for (let i = 0; i < uninheritedTimingPoints.length; i++) {
                     const currentPoint = uninheritedTimingPoints[i];
@@ -843,13 +795,11 @@
         dom.donSoundFileInput.addEventListener('change', e => { if (e.target.files[0]) { donSoundSrc = URL.createObjectURL(e.target.files[0]); if(donSound) donSound.src = donSoundSrc;} });
         dom.katsuSoundFileInput.addEventListener('change', e => { if (e.target.files[0]) { katsuSoundSrc = URL.createObjectURL(e.target.files[0]); if(katsuSound) katsuSound.src = katsuSoundSrc; } });
     }
-
     async function handleOszFile(e) {
         const file = e.target.files[0]; if (!file) return;
         dom.fileName.textContent = file.name;
         resetGameAndFiles(false);
         dom.songTitleElement.textContent = '読み込み中...'; dom.songArtistElement.textContent = '';
-        
         if (file.name.toLowerCase().endsWith('.osu')) {
             const reader = new FileReader();
             reader.onload = e => {
@@ -859,16 +809,13 @@
             reader.readAsText(file, 'utf-8');
             return;
         }
-
         try {
             osz_zip = new JSZip();
             const zip = await osz_zip.loadAsync(file);
             const filePromises = [];
             osz_beatmaps = [];
-            
             const imageExtensions = ['.jpg', '.jpeg', '.png'];
             const videoExtensions = ['.mp4', '.avi', '.webm'];
-
             zip.forEach((relativePath, zipEntry) => {
                 const lowerCasePath = relativePath.toLowerCase();
                 if (lowerCasePath.endsWith('.osu')) {
@@ -893,9 +840,7 @@
                 }
             });
             await Promise.all(filePromises);
-
             if (osz_beatmaps.length === 0) { alert('.osuファイルが見つかりませんでした。'); resetGameAndFiles(); return; }
-            
             dom.beatmapSelector.innerHTML = '<option value="">-- 難易度を選択 --</option>';
             osz_beatmaps.forEach((osuFile, index) => {
                 const optionText = `${osuFile.info.version || osuFile.name}`;
@@ -903,28 +848,22 @@
                 dom.beatmapSelector.appendChild(option);
             });
             dom.beatmapSelectorContainer.style.display = 'block';
-            
             const firstBeatmap = osz_beatmaps[0];
             dom.songTitleElement.textContent = firstBeatmap.info.title || '譜面を選択してください';
             dom.songArtistElement.textContent = firstBeatmap.info.artist || '';
-
         } catch (err) { alert('ファイルの読み込みに失敗しました。'); console.error(err); resetGameAndFiles(); }
     }
-    
     async function handleBeatmapSelection() {
         const selectedIndex = dom.beatmapSelector.value;
         beatmapLoaded = false; audioLoaded = false;
         checkReadyState();
         if (selectedIndex === "") return;
-
         const selectedOsu = osz_beatmaps[parseInt(selectedIndex, 10)]; if (!selectedOsu) return;
-        
         fileContent = selectedOsu.content;
         if (parseOsuFile(fileContent)) {
             beatmapLoaded = true;
             dom.songTitleElement.textContent = songInfo.title || '（タイトル不明）';
             dom.songArtistElement.textContent = songInfo.artist || '（アーティスト不明）';
-
             if (osz_zip && songInfo.audioFilename) {
                  const targetAudioName = songInfo.audioFilename.replace(/\\/g, '/').toLowerCase();
                  const audioFileEntry = Object.values(osz_zip.files).find(file => 
@@ -947,7 +886,6 @@
         }
         checkReadyState();
     }
-    
     function processSingleOsuFile(content) {
         if (parseOsuFile(content)) {
             beatmapLoaded = true;
@@ -957,11 +895,9 @@
         }
         checkReadyState();
     }
-    
     function resetGameAndFiles(clearFileInput = true) {
         resetGame();
         if (backgroundUrl) { URL.revokeObjectURL(backgroundUrl); backgroundUrl = null; backgroundType = null; }
-        
         fileContent = null;
         osz_zip = null;
         osz_beatmaps = [];
@@ -985,40 +921,33 @@
         uiScrollSpeed = BASE_SCROLL_SPEED + val;
         if (uiScrollSpeed < 1) uiScrollSpeed = 1;
     }
-
     function updateLaneCover() {
         const type = dom.laneCoverType.value;
         const value = parseInt(dom.laneCoverSlider.value, 10);
         const sliderContainer = document.getElementById('lane-cover-slider-container');
-
         dom.laneCoverLabel.textContent = `カバー量 (${value}%)`;
         laneCoverConfig = { type, value };
-
         if (type === 'none') {
             sliderContainer.style.display = 'none';
         } else {
             sliderContainer.style.display = 'block';
         }
     }
-
     function updateTouchDrumSize() {
         const value = dom.touchDrumSizeSlider.value;
         dom.touchDrumSizeLabel.textContent = `タッチ太鼓の大きさ (${value}vh)`;
-
         const drumContainer = dom.gameContainer.querySelector('#touch-drum-visual');
         drumContainer.style.setProperty('--touch-drum-size-vh', `${value}vh`);
         drumContainer.style.setProperty('--touch-drum-container-height-vh', `${value / 2}vh`);
         const rimThickness = Math.max(2, value / 18);
         drumContainer.style.setProperty('--touch-drum-rim-thickness-vh', `${rimThickness}vh`);
     }
-
     function updateTouchDrumYOffset() {
         const value = dom.touchDrumYOffsetSlider.value;
         dom.touchDrumYOffsetLabel.textContent = `タッチ太鼓のY軸オフセット (${value}vh)`;
         const drumContainer = dom.gameContainer.querySelector('#touch-drum-visual');
         drumContainer.style.setProperty('--touch-drum-y-offset-vh', `${value}vh`);
     }
-
     function initKeyConfig() {
         dom.keyConfigInputs.querySelectorAll('.key-config-input').forEach(keyInput => {
             keyInput.addEventListener('click', e => {
@@ -1039,7 +968,6 @@
                 if (e.key === 'Escape') { keyDiv.blur(); return; }
                 const newKey = e.key.toUpperCase();
                 if (newKey.length > 1 && !['SPACE', 'BACKSPACE', 'ENTER'].includes(newKey) ) return;
-                
                 const keyId = keyDiv.dataset.keyId;
                 if (Object.values(KEYS).some((key, k_idx) => key === newKey && Object.keys(KEYS)[k_idx] !== keyId)) {
                     alert('そのキーは他のアクションで既に使用されています。');
@@ -1063,7 +991,6 @@
         dom.scoreElement.textContent = score;
         dom.accuracyElement.textContent = `S 100.00%`;
         updateComboDisplay();
-
         if(animationFrameId) cancelAnimationFrame(animationFrameId);
         hitObjects.forEach(note => note.judged = false);
         lastCheckedNoteIndex = 0;
@@ -1071,24 +998,18 @@
         rollCounterClearTime = 0;
         isGoGoNow = false;
         pressedKeys.clear();
-
         dom.resultsOverlay.style.display = 'none';
         isGameRunning = false; isPaused = false;
     }
-    
     function startGame() {
         if (isGameRunning || !beatmapLoaded || !audioLoaded) return;
         resetGame();
         dom.appContainer.style.display = 'none';
         dom.gameContainer.style.display = 'block';
         initGameUI();
-        
-        // ★★★ フルスクリーンハンドラをセットアップ ★★★
-        setupOrientationListener(); // 向きが変わった時のイベント監視を開始
-        handleOrientationChange(); // 現在の向きをチェックして即時フルスクリーン化を試みる
-        
+        setupOrientationListener();
+        handleOrientationChange();
         updateLaneCover();
-        
         dom.backgroundVideo.style.display = 'none';
         dom.backgroundImage.style.display = 'none';
         if (backgroundUrl) {
@@ -1102,28 +1023,22 @@
                 dom.backgroundImage.style.display = 'block';
             }
         }
-        
         isGameRunning = true; isPaused = false;
         isAutoPlay = dom.autoPlayCheckbox.checked;
         isSingleHandBigNoteEnabled = dom.singleHandBigNoteCheckbox.checked;
         offset = parseInt(dom.offsetInput.value, 10) || 0;
-        
         if (donSoundSrc) donSound = new Audio(donSoundSrc);
         if (katsuSoundSrc) katsuSound = new Audio(katsuSoundSrc);
-
         gameStartTime = performance.now() + 3000;
         totalPauseDuration = 0;
         dom.audioPlayer.currentTime = 0;
-        
         setTimeout(() => {
             if(isGameRunning && !isPaused) {
                 dom.audioPlayer.play();
             }
         }, 3000);
-
         animationFrameId = requestAnimationFrame(gameLoop);
     }
-    
     function getGameTime() {
         if(isPaused) return pauseStartTime - gameStartTime - totalPauseDuration;
         return performance.now() - gameStartTime - totalPauseDuration;
@@ -1132,19 +1047,15 @@
         if (!isGameRunning) return;
         animationFrameId = requestAnimationFrame(gameLoop);
         if (isPaused) return;
-
         const elapsedTime = getGameTime() - offset;
-        
         isGoGoNow = false;
         for (const section of goGoSections) {
             if (elapsedTime >= section.start && elapsedTime < section.end) {
                 isGoGoNow = true; break;
             }
         }
-
         dom.ctx.clearRect(0, 0, dom.canvas.width, dom.canvas.height);
         drawGameArea(isGoGoNow);
-        
         dom.ctx.save();
         if (laneCoverConfig.type === 'right' && laneCoverConfig.value > 0) {
             const clipX = dom.canvas.width * (1 - laneCoverConfig.value / 100);
@@ -1152,28 +1063,21 @@
             dom.ctx.rect(0, 0, clipX, dom.canvas.height);
             dom.ctx.clip();
         }
-        
         drawBarLines(elapsedTime);
         drawNotes(elapsedTime);
-        
         dom.ctx.restore();
-        
         drawRollCounter(elapsedTime);
-
         if (isAutoPlay) {
             autoPlayHandler(elapsedTime);
         } else {
             checkMisses(elapsedTime);
         }
-
         const progress = Math.min(1, elapsedTime / lastNoteTime);
         dom.progressBar.style.width = (progress * 100) + '%';
-        
         if (progress >= 1 && elapsedTime > lastNoteTime + 3000) {
             showResults();
         }
     }
-    
     function drawGameArea(isGoGo) {
         const y = dom.canvas.height / 2;
         if (isGoGo) {
@@ -1184,26 +1088,21 @@
              dom.ctx.fillStyle = fireGradient;
              dom.ctx.fillRect(0, 0, dom.canvas.width, dom.canvas.height);
         }
-        
         const baseRadius = dom.canvas.height * 0.45;
         const judgeCircleRadius = baseRadius * taikoSizeMultiplier;
-
         dom.ctx.fillStyle = '#ffc0cb';
         dom.ctx.beginPath();
         dom.ctx.arc(JUDGE_POINT_X, y, judgeCircleRadius, 0, Math.PI * 2);
         dom.ctx.fill();
-
         dom.ctx.fillStyle = '#d2b48c';
         dom.ctx.beginPath();
         dom.ctx.arc(JUDGE_POINT_X, y, judgeCircleRadius * 0.8, 0, Math.PI * 2);
         dom.ctx.fill();
-
         dom.ctx.strokeStyle = '#a0522d';
         dom.ctx.lineWidth = judgeCircleRadius * 0.15;
         dom.ctx.beginPath();
         dom.ctx.arc(JUDGE_POINT_X, y, judgeCircleRadius * 0.9, 0, Math.PI * 2);
         dom.ctx.stroke();
-
         dom.ctx.strokeStyle = '#fff'; dom.ctx.lineWidth = 2;
         dom.ctx.beginPath(); dom.ctx.arc(JUDGE_POINT_X, y, judgeCircleRadius * 0.5, 0, Math.PI * 2); dom.ctx.stroke();
     }
@@ -1221,19 +1120,14 @@
     function drawNotes(elapsedTime) {
         const y = dom.canvas.height / 2;
         const pixelMultiplier = uiScrollSpeed * 0.1;
-
         for (const note of hitObjects) {
             if (note.judged) continue;
-            
             const timeToJudge = note.time - elapsedTime;
             const startX = JUDGE_POINT_X + timeToJudge * note.scrollSpeed * pixelMultiplier;
-
             if (note.type === 'roll' || note.type === 'balloon') {
                 const timeToEnd = note.endTime - elapsedTime;
                 const endX = JUDGE_POINT_X + timeToEnd * note.scrollSpeed * pixelMultiplier;
-
                 if (endX < JUDGE_POINT_X - 50 || startX > dom.canvas.width + 50) continue;
-                
                 if (note.type === 'roll') {
                     const barHeight = note.isBig ? y * 1.1 : y * 0.8;
                     const radius = barHeight / 2;
@@ -1247,7 +1141,6 @@
                     let currentX = startX;
                     if (startX < JUDGE_POINT_X && endX > JUDGE_POINT_X) currentX = JUDGE_POINT_X;
                     if (currentX < -radius || currentX > dom.canvas.width + radius) continue;
-
                     dom.ctx.beginPath(); dom.ctx.fillStyle = "orange"; dom.ctx.strokeStyle = '#fff'; dom.ctx.lineWidth = 3;
                     dom.ctx.arc(currentX, y, radius, 0, Math.PI * 2); dom.ctx.fill(); dom.ctx.stroke();
                     const remainingHits = note.hitsRequired - note.hitsMade;
@@ -1265,20 +1158,16 @@
             }
         }
     }
-    
     function drawRollCounter(elapsedTime) {
         if (rollCounterClearTime > 0 && elapsedTime >= rollCounterClearTime) {
             activeRollHits = 0;
             rollCounterClearTime = 0;
         }
-
         if (activeRollHits > 0) {
             const drumRect = dom.drumDisplay.getBoundingClientRect();
             const gameRect = dom.gameContainer.getBoundingClientRect();
-
             const left = (drumRect.left - gameRect.left) + (drumRect.width / 2);
             const top = (drumRect.top - gameRect.top)  + 15;
-
             dom.rollCounter.style.left = `${left}px`;
             dom.rollCounter.style.top = `${top}px`;
             dom.rollCounter.textContent = activeRollHits;
@@ -1287,7 +1176,6 @@
             dom.rollCounter.style.display = 'none';
         }
     }
-
     function playHitSound(type) {
         const sound = (type === 'don') ? donSound : katsuSound;
         if (sound) {
@@ -1332,30 +1220,22 @@
             katsu_left: dom.drumKatsuLeft,
             katsu_right: dom.drumKatsuRight,
         };
-
         const element = hitMap[keyId];
         if (!element) return;
-
         if (drumHitTimeouts[keyId]) {
             clearTimeout(drumHitTimeouts[keyId]);
         }
-        
         element.classList.add('active');
-
         drumHitTimeouts[keyId] = setTimeout(() => {
             element.classList.remove('active');
         }, 100);
     }
-    
     function processPlayerHit(keyId) {
         if (!isGameRunning || isPaused || isAutoPlay) return;
-
         const elapsedTime = getGameTime() - offset;
         if (elapsedTime < -500) return;
-
         showDrumHit(keyId);
         const keyType = keyId.startsWith('don') ? 'don' : 'katsu';
-
         let isLongNoteHit = false;
         for (let i = lastCheckedNoteIndex; i < hitObjects.length; i++) {
                 const note = hitObjects[i];
@@ -1384,7 +1264,6 @@
                 if (note.time > elapsedTime + 200) break; 
         }
         if (isLongNoteHit) return;
-        
         let targetNote = null, minTimeDiff = Infinity;
         for (let i = lastCheckedNoteIndex; i < hitObjects.length; i++) {
             const note = hitObjects[i];
@@ -1395,7 +1274,6 @@
             }
             if (note.time > elapsedTime + HIT_WINDOW_BAD + 100) break;
         }
-
         if (targetNote) {
             if (targetNote.type === keyType) {
                 playHitSound(keyType);
@@ -1408,12 +1286,10 @@
             }
         }
     }
-    
     document.addEventListener('keydown', e => {
         if (e.repeat) return;
         const key = e.key.toUpperCase();
         pressedKeys.add(key);
-
         let hitKeyId = null;
         for (const id in KEYS) {
             if (KEYS[id] === key) {
@@ -1425,11 +1301,9 @@
             processPlayerHit(hitKeyId);
         }
     });
-    
     document.addEventListener('keyup', e => {
         pressedKeys.delete(e.key.toUpperCase());
     });
-    
     function checkMisses(elapsedTime) {
         for (let i = lastCheckedNoteIndex; i < hitObjects.length; i++) {
             const note = hitObjects[i];
@@ -1438,7 +1312,6 @@
                 continue;
             }
             if (note.time > elapsedTime + HIT_WINDOW_BAD) break;
-            
             if (note.type !== 'balloon' && note.type !== 'roll') {
                 if (elapsedTime > note.time + HIT_WINDOW_BAD) {
                     handleJudgment('fuka', note);
@@ -1451,15 +1324,12 @@
             }
         }
     }
-    
     function handleJudgment(judgement, note) {
         if(note.judged) return;
         note.judged = true;
-
         const judgmentMap = { ryo: '良', ka: '可', fuka: '不可'};
         showJudgment(judgmentMap[judgement]);
         judgmentCounts[judgement]++;
-
         if(judgement === 'ryo' || judgement === 'ka') {
             const basePoints = judgement === 'ryo' ? 300 : 100;
             let scoreMultiplier = 1;
@@ -1504,14 +1374,12 @@
             const accVal = (judgmentCounts.ryo * 300 + judgmentCounts.ka * 150) / (totalHits * 300);
             accuracy = accVal * 100;
         }
-        
         let rank = 'S';
         if (accuracy < 100) rank = 'S';
         if (accuracy < 95) rank = 'A';
         if (accuracy < 90) rank = 'B';
         if (accuracy < 80) rank = 'C';
         if (accuracy < 70) rank = 'D';
-
         dom.accuracyElement.textContent = `${rank} ${accuracy.toFixed(2)}%`;
     }
     function showJudgment(text) {
@@ -1556,7 +1424,6 @@
         if (backgroundType === 'video') dom.backgroundVideo.pause();
         dom.pauseOverlay.style.display = 'none';
         dom.resultsOverlay.style.display = 'none';
-        
         if (beatmapLoaded && audioLoaded) {
             startGame();
         } else {
@@ -1564,16 +1431,13 @@
         }
     }
     function backToTitle() {
-        // ★★★ フルスクリーン関連の処理を追加 ★★★
-        removeOrientationListener(); // 向きの監視を解除
+        removeOrientationListener();
         if (document.fullscreenElement) {
-            document.exitFullscreen(); // フルスクリーンを解除
+            document.exitFullscreen();
         }
-
         isGameRunning = false; isPaused = false;
         if(dom.audioPlayer) dom.audioPlayer.pause();
         if (backgroundType === 'video' && dom.backgroundVideo) dom.backgroundVideo.pause();
-        
         dom.pauseOverlay.style.display = 'none';
         dom.resultsOverlay.style.display = 'none';
         dom.gameContainer.style.display = 'none';
@@ -1584,15 +1448,11 @@
     function showResults() {
         if(!isGameRunning && dom.resultsOverlay.style.display === 'flex') return;
         isGameRunning = false;
-
-        // ★★★ フルスクリーン関連の処理を追加 ★★★
-        removeOrientationListener(); // 向きの監視を解除
+        removeOrientationListener();
         if (document.fullscreenElement) {
-            document.exitFullscreen(); // フルスクリーンを解除
+            document.exitFullscreen();
         }
-
         cancelAnimationFrame(animationFrameId);
-        
         dom.resultsSongTitle.textContent = `${songInfo.title} - ${songInfo.version}`;
         dom.resultsScoreValue.textContent = Math.floor(score);
         dom.resultsMaxComboValue.textContent = maxCombo;
@@ -1602,37 +1462,28 @@
         dom.resultsOverlay.style.display = 'flex';
         if (backgroundType === 'video') dom.backgroundVideo.pause();
     }
-
     function setupTouchListeners() {
         dom.touchControls.addEventListener('touchstart', (e) => {
             e.preventDefault();
-
             const vh = window.innerHeight / 100;
             const drumSizeVh = parseFloat(dom.touchDrumSizeSlider.value);
             const yOffsetVh = parseFloat(dom.touchDrumYOffsetSlider.value);
             const rimThicknessVh = Math.max(2, drumSizeVh / 18);
-
             const centerX = window.innerWidth / 2;
             const centerY = window.innerHeight + (yOffsetVh * vh);
-            
             const outerRadius = (drumSizeVh * vh) / 2;
             const rimThicknessPx = rimThicknessVh * vh;
             const innerRadius = outerRadius - rimThicknessPx;
-
             for (const touch of e.changedTouches) {
                 const touchX = touch.clientX;
                 const touchY = touch.clientY;
-
                 const dx = touchX - centerX;
                 const dy = touchY - centerY;
                 const distance = Math.sqrt(dx * dx + dy * dy);
-
                 let hitType = 'katsu';
-
                 if (distance <= innerRadius) {
                     hitType = 'don';
                 }
-                
                 const side = (touchX < centerX) ? 'left' : 'right';
                 const hitKeyId = `${hitType}_${side}`;
                 processPlayerHit(hitKeyId);
@@ -1651,34 +1502,26 @@
     dom.laneCoverSlider.addEventListener('input', updateLaneCover);
     dom.touchDrumSizeSlider.addEventListener('input', updateTouchDrumSize);
     dom.touchDrumYOffsetSlider.addEventListener('input', updateTouchDrumYOffset);
-    
     dom.startButton.addEventListener('click', startGame);
     dom.speedSlider.addEventListener('input', updateSpeed);
-    // dom.fullscreenButton.addEventListener('click', toggleFullscreen); // ★★★ 削除
     dom.ingamePauseButton.addEventListener('click', togglePause);
-    
     dom.resumeButton.addEventListener('click', togglePause);
     dom.retryButton.addEventListener('click', retryGame);
     dom.backToTitlePause.addEventListener('click', backToTitle);
     dom.resultsRetryButton.addEventListener('click', retryGame);
     dom.backToTitleResults.addEventListener('click', backToTitle);
-
     dom.audioPlayer.addEventListener('canplaythrough', () => {
        if(!osz_zip) {
             audioLoaded = true;
             checkReadyState();
        }
     });
-
     window.addEventListener('resize', initGameUI);
 
-    // ★★★ PWA対応ここから ★★★
+    // --- PWA対応 ---
     document.addEventListener('DOMContentLoaded', () => {
-        // --- 1. アイコンを生成 ---
         const iconSvg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><rect width="512" height="512" fill="#1f2940"/><circle cx="256" cy="256" r="220" fill="#d9534f"/><circle cx="256" cy="256" r="180" fill="none" stroke="#ffffff" stroke-width="20"/></svg>`;
         const iconDataUrl = `data:image/svg+xml;base64,${btoa(iconSvg)}`;
-        
-        // --- 2. Manifest情報を定義 ---
         const manifestContent = {
             "name": "Taiko Player",
             "short_name": "Taiko",
@@ -1692,30 +1535,19 @@
                 { "src": iconDataUrl, "type": "image/svg+xml", "sizes": "512x512" }
             ]
         };
-
         const manifestBlob = new Blob([JSON.stringify(manifestContent)], {type: 'application/json'});
         const manifestUrl = URL.createObjectURL(manifestBlob);
-
-        // --- 3. <head>内のリンクに設定 ---
         document.getElementById('manifest').setAttribute('href', manifestUrl);
         document.getElementById('apple-icon').setAttribute('href', iconDataUrl);
-
-        // --- 4. Service Workerを定義 ---
-        const swCode = `
-            self.addEventListener('install', (e) => self.skipWaiting());
-            self.addEventListener('fetch', (e) => { /* 何もしない */ });
-        `;
+        const swCode = `self.addEventListener('install',(e)=>self.skipWaiting());self.addEventListener('fetch',(e)=>{});`;
         const swBlob = new Blob([swCode], { type: 'application/javascript' });
         const swUrl = URL.createObjectURL(swBlob);
-
-        // --- 5. Service Workerを登録 ---
         if ('serviceWorker' in navigator) {
             navigator.serviceWorker.register(swUrl)
                 .then(reg => console.log('Service Worker registered successfully:', reg))
                 .catch(err => console.log('Service Worker registration failed:', err));
         }
     });
-    // ★★★ PWA対応ここまで ★★★
     </script>
 </body>
 </html>
