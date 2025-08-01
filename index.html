@@ -3,11 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <title>Taiko Player</title>
-    <!-- ★★★ ここから追加 ★★★ -->
+
+    <!-- ★★★ PWA対応ここから ★★★ -->
     <meta name="theme-color" content="#d9534f">
-    <link rel="manifest" href="manifest.json">
-    <link rel="apple-touch-icon" href="icon-192x192.png">
-    <!-- ★★★ ここまで追加 ★★★ -->
+    <link rel="manifest" id="manifest">
+    <link rel="apple-touch-icon" id="apple-icon">
+    <!-- ★★★ PWA対応ここまで ★★★ -->
+    
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <style>
@@ -250,7 +252,7 @@
             width: 70px;
             height: 70px;
             top: calc(50% - 40px);
-            left: 70px; /* ★★★ 値を変更 ★★★ */
+            left: 70px;
             transform: translateY(-50%);
             z-index: 15;
             pointer-events: none;
@@ -357,20 +359,19 @@
             line-height: 1.6;
         }
 
-        /* ★★★ ここから追加 ★★★ */
         #roll-counter {
             position: absolute;
-            z-index: 25; /* 他のUIより手前に表示 */
+            z-index: 25;
             color: white;
             font-size: 36px;
             font-weight: bold;
             text-shadow: 0 0 5px black, 0 0 5px black;
-            transform: translateX(-50%); /* 自身の中心でX軸を中央揃え */
+            transform: translateX(-50%);
             pointer-events: none;
-            display: none; /* 初期状態は非表示 */
+            display: none;
         }
-        /* ★★★ ここまで追加 ★★★ */
 
+        /* 縦向きの時は警告を表示し、ゲーム画面を隠す */
         @media (orientation: portrait) {
             #app-container, #game-container {
                 display: none !important;
@@ -434,8 +435,6 @@
                 <input type="range" id="touch-drum-y-offset-slider" min="-40" max="10" value="-5" step="1">
             </div>
 
-            <!-- ★★★ UI設定項目を削除 ★★★ -->
-
             <div class="grid-item-full">
                 <label>キー設定</label>
                 <div id="key-config-inputs">
@@ -479,7 +478,8 @@
                     <input type="file" id="katsu-sound-file" accept="audio/*">
                 </div>
             </div>
-            <button id="fullscreen-button" class="control-button grid-item-full">フルスクリーン</button>
+            <!-- ★★★ フルスクリーンボタンを削除 ★★★ -->
+            <!-- <button id="fullscreen-button" class="control-button grid-item-full">フルスクリーン</button> -->
             <button id="start-button" class="grid-item-full" disabled>ゲーム開始</button>
             <p class="grid-item-full">※ ESCキーでポーズ</p>
         </div>
@@ -514,7 +514,7 @@
         </div>
         <div id="touch-controls"></div>
         <div id="touch-drum-visual"></div>
-        <div id="roll-counter"></div> <!-- ★★★ ロールカウンター用のHTML要素を追加 ★★★ -->
+        <div id="roll-counter"></div>
     </div>
 
     <div id="pause-overlay" class="overlay">
@@ -585,7 +585,7 @@
         singleHandBigNoteCheckbox: document.getElementById('single-hand-big-note-checkbox'),
         keyConfigInputs: document.getElementById('key-config-inputs'),
         startButton: document.getElementById('start-button'),
-        fullscreenButton: document.getElementById('fullscreen-button'),
+        // fullscreenButton: document.getElementById('fullscreen-button'), // ★★★ 削除
         backgroundVideo: document.getElementById('background-video'),
         backgroundImage: document.getElementById('background-image'),
         playfield: document.getElementById('playfield'),
@@ -625,7 +625,7 @@
         touchDrumYOffsetSlider: document.getElementById('touch-drum-y-offset-slider'),
         touchDrumYOffsetLabel: document.getElementById('touch-drum-y-offset-label'),
         drumDisplay: document.getElementById('drum-display'),
-        rollCounter: document.getElementById('roll-counter'), // ★★★ 追加 ★★★
+        rollCounter: document.getElementById('roll-counter'),
     };
 
     let KEYS = { don_left: 'D', don_right: 'K', katsu_left: 'S', katsu_right: 'L' };
@@ -665,6 +665,54 @@
     let rollCounterClearTime = 0;
     let isGoGoNow = false;
     let drumHitTimeouts = {};
+
+    // ★★★ フルスクリーン＆画面回転ハンドラここから ★★★
+    /**
+     * 現在の画面の向きをチェックし、フルスクリーン状態を制御する
+     */
+    async function handleOrientationChange() {
+        // screen.orientation APIがサポートされていないブラウザでは何もしない
+        if (!screen.orientation) return;
+
+        try {
+            const isLandscape = screen.orientation.type.includes('landscape');
+            
+            // 現在フルスクリーンかどうかを確認
+            const isFullscreen = !!document.fullscreenElement;
+
+            if (isLandscape && !isFullscreen) {
+                // 横向きで、かつフルスクリーンでない場合 → フルスクリーンを要求
+                // navigationUI: "hide" はAndroidでナビゲーションバーを隠すため
+                await document.documentElement.requestFullscreen({ navigationUI: "hide" });
+            } else if (!isLandscape && isFullscreen) {
+                // 縦向きで、かつフルスクリーンである場合 → フルスクリーンを解除
+                await document.exitFullscreen();
+            }
+        } catch (err) {
+            // フルスクリーンの要求は失敗することがあるため、エラーはコンソールに出力するだけにする
+            console.error(`自動フルスクリーンに失敗しました: ${err}`);
+        }
+    }
+
+    /**
+     * 画面の向きが変わったときのイベントリスナーをセットアップする
+     */
+    function setupOrientationListener() {
+        if (screen.orientation) {
+            screen.orientation.addEventListener('change', handleOrientationChange);
+        }
+    }
+
+    /**
+     * イベントリスナーを解除する
+     */
+    function removeOrientationListener() {
+        if (screen.orientation) {
+            screen.orientation.removeEventListener('change', handleOrientationChange);
+        }
+    }
+    // ★★★ フルスクリーン＆画面回転ハンドラここまで ★★★
+
 
     function parseOsuFile(content) {
         try {
@@ -1034,6 +1082,11 @@
         dom.appContainer.style.display = 'none';
         dom.gameContainer.style.display = 'block';
         initGameUI();
+        
+        // ★★★ フルスクリーンハンドラをセットアップ ★★★
+        setupOrientationListener(); // 向きが変わった時のイベント監視を開始
+        handleOrientationChange(); // 現在の向きをチェックして即時フルスクリーン化を試みる
+        
         updateLaneCover();
         
         dom.backgroundVideo.style.display = 'none';
@@ -1213,7 +1266,6 @@
         }
     }
     
-    // ★★★ ここから修正 ★★★
     function drawRollCounter(elapsedTime) {
         if (rollCounterClearTime > 0 && elapsedTime >= rollCounterClearTime) {
             activeRollHits = 0;
@@ -1221,14 +1273,11 @@
         }
 
         if (activeRollHits > 0) {
-            // ドラムディスプレイの位置を基準にカウンターの位置を決定
             const drumRect = dom.drumDisplay.getBoundingClientRect();
-            const gameRect = dom.gameContainer.getBoundingClientRect(); // 親要素からの相対位置を計算するため
+            const gameRect = dom.gameContainer.getBoundingClientRect();
 
-            // X座標：ドラムの中心
             const left = (drumRect.left - gameRect.left) + (drumRect.width / 2);
-            // Y座標：ドラムの上部より少し上
-            const top = (drumRect.top - gameRect.top)  + 15; // 35pxくらい上に配置
+            const top = (drumRect.top - gameRect.top)  + 15;
 
             dom.rollCounter.style.left = `${left}px`;
             dom.rollCounter.style.top = `${top}px`;
@@ -1238,7 +1287,6 @@
             dom.rollCounter.style.display = 'none';
         }
     }
-    // ★★★ ここまで修正 ★★★
 
     function playHitSound(type) {
         const sound = (type === 'don') ? donSound : katsuSound;
@@ -1516,6 +1564,12 @@
         }
     }
     function backToTitle() {
+        // ★★★ フルスクリーン関連の処理を追加 ★★★
+        removeOrientationListener(); // 向きの監視を解除
+        if (document.fullscreenElement) {
+            document.exitFullscreen(); // フルスクリーンを解除
+        }
+
         isGameRunning = false; isPaused = false;
         if(dom.audioPlayer) dom.audioPlayer.pause();
         if (backgroundType === 'video' && dom.backgroundVideo) dom.backgroundVideo.pause();
@@ -1530,6 +1584,13 @@
     function showResults() {
         if(!isGameRunning && dom.resultsOverlay.style.display === 'flex') return;
         isGameRunning = false;
+
+        // ★★★ フルスクリーン関連の処理を追加 ★★★
+        removeOrientationListener(); // 向きの監視を解除
+        if (document.fullscreenElement) {
+            document.exitFullscreen(); // フルスクリーンを解除
+        }
+
         cancelAnimationFrame(animationFrameId);
         
         dom.resultsSongTitle.textContent = `${songInfo.title} - ${songInfo.version}`;
@@ -1541,57 +1602,39 @@
         dom.resultsOverlay.style.display = 'flex';
         if (backgroundType === 'video') dom.backgroundVideo.pause();
     }
-    function toggleFullscreen() {
-        if (!document.fullscreenElement) {
-            document.documentElement.requestFullscreen().catch(err => {});
-        } else {
-            document.exitFullscreen();
-        }
-    }
 
     function setupTouchListeners() {
         dom.touchControls.addEventListener('touchstart', (e) => {
             e.preventDefault();
 
-            // 1. ビューポート単位(vh)と設定値を取得
             const vh = window.innerHeight / 100;
             const drumSizeVh = parseFloat(dom.touchDrumSizeSlider.value);
             const yOffsetVh = parseFloat(dom.touchDrumYOffsetSlider.value);
-            // CSSの計算式に合わせてフチの太さをvh単位で計算
             const rimThicknessVh = Math.max(2, drumSizeVh / 18);
 
-            // 2. 太鼓の中心座標と、ドン判定の内側半径をピクセル単位で計算
             const centerX = window.innerWidth / 2;
-            const centerY = window.innerHeight + (yOffsetVh * vh); // 中心Y座標は画面下部からのオフセットを考慮
+            const centerY = window.innerHeight + (yOffsetVh * vh);
             
-            // 太鼓全体の半径
             const outerRadius = (drumSizeVh * vh) / 2;
-            // フチの太さ
             const rimThicknessPx = rimThicknessVh * vh;
-            // ドン判定となる、内側の面部分の半径
             const innerRadius = outerRadius - rimThicknessPx;
 
-            // 3. 各タッチ位置をループして当たり判定を行う
             for (const touch of e.changedTouches) {
                 const touchX = touch.clientX;
                 const touchY = touch.clientY;
 
-                // 太鼓の中心からの距離を計算
                 const dx = touchX - centerX;
                 const dy = touchY - centerY;
                 const distance = Math.sqrt(dx * dx + dy * dy);
 
-                let hitType = 'katsu'; // デフォルトは「カッ」
+                let hitType = 'katsu';
 
-                // 4. ドン判定エリアの内側かどうかを判定
                 if (distance <= innerRadius) {
-                    // ドン判定の半径の内側なら「ドン」
                     hitType = 'don';
                 }
                 
-                // 5. 左右を判定して最終的なキーIDを決定し、処理を呼び出す
                 const side = (touchX < centerX) ? 'left' : 'right';
-                const hitKeyId = `${hitType}_${side}`; // 例: 'don_left', 'katsu_right'
+                const hitKeyId = `${hitType}_${side}`;
                 processPlayerHit(hitKeyId);
             }
         }, { passive: false });
@@ -1611,7 +1654,7 @@
     
     dom.startButton.addEventListener('click', startGame);
     dom.speedSlider.addEventListener('input', updateSpeed);
-    dom.fullscreenButton.addEventListener('click', toggleFullscreen);
+    // dom.fullscreenButton.addEventListener('click', toggleFullscreen); // ★★★ 削除
     dom.ingamePauseButton.addEventListener('click', togglePause);
     
     dom.resumeButton.addEventListener('click', togglePause);
@@ -1629,20 +1672,50 @@
 
     window.addEventListener('resize', initGameUI);
 
-    // ★★★ ここから追加 ★★★
-    // PWA: Service Workerの登録
-    if ('serviceWorker' in navigator) {
-        window.addEventListener('load', () => {
-            navigator.serviceWorker.register('./service-worker.js')
-                .then(registration => {
-                    console.log('ServiceWorker registration successful: ', registration);
-                })
-                .catch(err => {
-                    console.log('ServiceWorker registration failed: ', err);
-                });
-        });
-    }
-    // ★★★ ここまで追加 ★★★
+    // ★★★ PWA対応ここから ★★★
+    document.addEventListener('DOMContentLoaded', () => {
+        // --- 1. アイコンを生成 ---
+        const iconSvg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><rect width="512" height="512" fill="#1f2940"/><circle cx="256" cy="256" r="220" fill="#d9534f"/><circle cx="256" cy="256" r="180" fill="none" stroke="#ffffff" stroke-width="20"/></svg>`;
+        const iconDataUrl = `data:image/svg+xml;base64,${btoa(iconSvg)}`;
+        
+        // --- 2. Manifest情報を定義 ---
+        const manifestContent = {
+            "name": "Taiko Player",
+            "short_name": "Taiko",
+            "start_url": ".",
+            "display": "standalone",
+            "background_color": "#1f2940",
+            "theme_color": "#d9534f",
+            "description": "A web-based Taiko no Tatsujin simulator.",
+            "icons": [
+                { "src": iconDataUrl, "type": "image/svg+xml", "sizes": "192x192" },
+                { "src": iconDataUrl, "type": "image/svg+xml", "sizes": "512x512" }
+            ]
+        };
+
+        const manifestBlob = new Blob([JSON.stringify(manifestContent)], {type: 'application/json'});
+        const manifestUrl = URL.createObjectURL(manifestBlob);
+
+        // --- 3. <head>内のリンクに設定 ---
+        document.getElementById('manifest').setAttribute('href', manifestUrl);
+        document.getElementById('apple-icon').setAttribute('href', iconDataUrl);
+
+        // --- 4. Service Workerを定義 ---
+        const swCode = `
+            self.addEventListener('install', (e) => self.skipWaiting());
+            self.addEventListener('fetch', (e) => { /* 何もしない */ });
+        `;
+        const swBlob = new Blob([swCode], { type: 'application/javascript' });
+        const swUrl = URL.createObjectURL(swBlob);
+
+        // --- 5. Service Workerを登録 ---
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register(swUrl)
+                .then(reg => console.log('Service Worker registered successfully:', reg))
+                .catch(err => console.log('Service Worker registration failed:', err));
+        }
+    });
+    // ★★★ PWA対応ここまで ★★★
     </script>
 </body>
 </html>
