@@ -313,6 +313,7 @@
             overflow: hidden;
             pointer-events: none;
             z-index: 4;
+            opacity: var(--touch-drum-opacity, 0.3);
         }
         #touch-drum-visual::after {
             content: '';
@@ -458,6 +459,11 @@
             <div class="grid-item-full">
                 <label for="touch-drum-y-offset-slider" id="touch-drum-y-offset-label">タッチ太鼓のY軸オフセット (-5vh)</label>
                 <input type="range" id="touch-drum-y-offset-slider" min="-40" max="10" value="-5" step="1">
+            </div>
+
+            <div class="grid-item-full">
+                <label for="touch-drum-opacity-slider" id="touch-drum-opacity-label">タッチ太鼓の不透明度 (30%)</label>
+                <input type="range" id="touch-drum-opacity-slider" min="0" max="100" value="30" step="1">
             </div>
 
             <div class="grid-item-full">
@@ -655,6 +661,9 @@
         touchDrumSizeLabel: document.getElementById('touch-drum-size-label'),
         touchDrumYOffsetSlider: document.getElementById('touch-drum-y-offset-slider'),
         touchDrumYOffsetLabel: document.getElementById('touch-drum-y-offset-label'),
+        touchDrumOpacitySlider: document.getElementById('touch-drum-opacity-slider'),
+        touchDrumOpacityLabel: document.getElementById('touch-drum-opacity-label'),
+        touchDrumVisual: document.getElementById('touch-drum-visual'),
         drumDisplay: document.getElementById('drum-display'),
         rollCounter: document.getElementById('roll-counter'),
         saveSettingsButton: document.getElementById('save-settings-button'),
@@ -1015,6 +1024,13 @@
         drumContainer.style.setProperty('--touch-drum-y-offset-vh', `${value}vh`);
     }
 
+    function updateTouchDrumOpacity() {
+        const value = dom.touchDrumOpacitySlider.value;
+        const opacity = value / 100;
+        dom.touchDrumOpacityLabel.textContent = `タッチ太鼓の不透明度 (${value}%)`;
+        dom.touchDrumVisual.style.setProperty('--touch-drum-opacity', opacity);
+    }
+
     function updateJudgmentWindows() {
         let perfect = parseInt(dom.hitWindowPerfectInput.value, 10);
         let good = parseInt(dom.hitWindowGoodInput.value, 10);
@@ -1071,6 +1087,7 @@
                 laneCoverValue: dom.laneCoverSlider.value,
                 touchDrumSize: dom.touchDrumSizeSlider.value,
                 touchDrumYOffset: dom.touchDrumYOffsetSlider.value,
+                touchDrumOpacity: dom.touchDrumOpacitySlider.value,
                 autoPlay: dom.autoPlayCheckbox.checked,
                 singleHandBigNote: dom.singleHandBigNoteCheckbox.checked,
                 keys: KEYS,
@@ -1101,6 +1118,7 @@
                 if (settings.laneCoverValue !== undefined) dom.laneCoverSlider.value = settings.laneCoverValue;
                 if (settings.touchDrumSize !== undefined) dom.touchDrumSizeSlider.value = settings.touchDrumSize;
                 if (settings.touchDrumYOffset !== undefined) dom.touchDrumYOffsetSlider.value = settings.touchDrumYOffset;
+                if (settings.touchDrumOpacity !== undefined) dom.touchDrumOpacitySlider.value = settings.touchDrumOpacity;
                 if (settings.autoPlay !== undefined) dom.autoPlayCheckbox.checked = settings.autoPlay;
                 if (settings.singleHandBigNote !== undefined) dom.singleHandBigNoteCheckbox.checked = settings.singleHandBigNote;
                 if (settings.keys) KEYS = settings.keys;
@@ -1121,6 +1139,7 @@
         updateLaneCover();
         updateTouchDrumSize();
         updateTouchDrumYOffset();
+        updateTouchDrumOpacity();
         dom.hitWindowPerfectInput.value = HIT_WINDOW_PERFECT;
         dom.hitWindowGoodInput.value = HIT_WINDOW_GOOD;
         dom.hitWindowBadInput.value = HIT_WINDOW_BAD;
@@ -1668,6 +1687,7 @@
     dom.laneCoverSlider.addEventListener('input', updateLaneCover);
     dom.touchDrumSizeSlider.addEventListener('input', updateTouchDrumSize);
     dom.touchDrumYOffsetSlider.addEventListener('input', updateTouchDrumYOffset);
+    dom.touchDrumOpacitySlider.addEventListener('input', updateTouchDrumOpacity);
     dom.saveSettingsButton.addEventListener('click', saveSettings);
     dom.startButton.addEventListener('click', startGame);
     dom.speedSlider.addEventListener('input', updateSpeed);
