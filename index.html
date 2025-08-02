@@ -1628,11 +1628,9 @@
         }
     }
     function backToTitle() {
-        // ★★★★★ 修正点：フルスクリーンモードを解除する処理を追加 ★★★★★
         if (document.exitFullscreen) {
             document.exitFullscreen().catch((err) => console.error(`フルスクリーン解除に失敗: ${err.message}`));
         }
-        // ★★★★★ 修正ここまで ★★★★★
 
         isGameRunning = false; isPaused = false;
         if(dom.audioPlayer) dom.audioPlayer.pause();
@@ -1725,6 +1723,7 @@
     dom.retryButton.addEventListener('click', retryGame);
     dom.backToTitlePause.addEventListener('click', backToTitle);
     dom.resultsRetryButton.addEventListener('click', retryGame);
+    dom.resultsRetryButton.addEventListener('click', retryGame);
     dom.backToTitleResults.addEventListener('click', backToTitle);
     dom.audioPlayer.addEventListener('canplaythrough', () => {
        if(!osz_zip) {
@@ -1748,7 +1747,8 @@
             "name": "Taiko Player",
             "short_name": "Taiko",
             "start_url": ".",
-            "display": "standalone",
+            // ★★★★★ 修正点：「standalone」を「fullscreen」に変更 ★★★★★
+            "display": "fullscreen",
             "background_color": "#1f2940",
             "theme_color": "#d9534f",
             "description": "A web-based Taiko no Tatsujin simulator.",
