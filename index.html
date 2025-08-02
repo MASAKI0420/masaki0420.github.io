@@ -544,50 +544,50 @@
         <div id="touch-controls"></div>
         <div id="touch-drum-visual"></div>
         <div id="roll-counter"></div>
-    </div>
 
-    <div id="pause-overlay" class="overlay">
-        <div id="pause-menu" class="overlay-menu">
-            <h2>PAUSED</h2>
-            <button id="resume-button" class="overlay-button">再開 (Resume)</button>
-            <button id="retry-button" class="overlay-button">やり直し (Retry)</button>
-            <button id="back-to-title-button-pause" class="overlay-button">タイトルへ戻る</button>
+        <div id="pause-overlay" class="overlay">
+            <div id="pause-menu" class="overlay-menu">
+                <h2>PAUSED</h2>
+                <button id="resume-button" class="overlay-button">再開 (Resume)</button>
+                <button id="retry-button" class="overlay-button">やり直し (Retry)</button>
+                <button id="back-to-title-button-pause" class="overlay-button">タイトルへ戻る</button>
+            </div>
         </div>
-    </div>
-    <div id="results-overlay" class="overlay">
-        <div id="results-menu" class="overlay-menu">
-            <h2>RESULTS</h2>
-            <div id="results-song-title">Song Title</div>
-             <div class="results-main-stats">
-                <div class="results-item">
-                    <span>SCORE</span>
-                    <span id="results-score-value">0</span>
+        <div id="results-overlay" class="overlay">
+            <div id="results-menu" class="overlay-menu">
+                <h2>RESULTS</h2>
+                <div id="results-song-title">Song Title</div>
+                 <div class="results-main-stats">
+                    <div class="results-item">
+                        <span>SCORE</span>
+                        <span id="results-score-value">0</span>
+                    </div>
+                    <div class="results-item">
+                        <span>RANK</span>
+                        <span id="results-rank-value"></span>
+                    </div>
+                    <div class="results-item">
+                        <span>MAX COMBO</span>
+                        <span id="results-max-combo-value">0</span>
+                    </div>
                 </div>
-                <div class="results-item">
-                    <span>RANK</span>
-                    <span id="results-rank-value"></span>
+                <div class="results-judgments">
+                    <div class="judgment-item" id="results-ryo">
+                        <span>良 (PERFECT)</span>
+                        <span id="results-ryo-value">0</span>
+                    </div>
+                     <div class="judgment-item" id="results-ka">
+                        <span>可 (GREAT)</span>
+                        <span id="results-ka-value">0</span>
+                    </div>
+                     <div class="judgment-item" id="results-fuka">
+                        <span>不可 (MISS)</span>
+                        <span id="results-fuka-value">0</span>
+                    </div>
                 </div>
-                <div class="results-item">
-                    <span>MAX COMBO</span>
-                    <span id="results-max-combo-value">0</span>
-                </div>
+                <button id="results-retry-button" class="overlay-button">やり直し (Retry)</button>
+                <button id="back-to-title-button-results" class="overlay-button">タイトルへ戻る</button>
             </div>
-            <div class="results-judgments">
-                <div class="judgment-item" id="results-ryo">
-                    <span>良 (PERFECT)</span>
-                    <span id="results-ryo-value">0</span>
-                </div>
-                 <div class="judgment-item" id="results-ka">
-                    <span>可 (GREAT)</span>
-                    <span id="results-ka-value">0</span>
-                </div>
-                 <div class="judgment-item" id="results-fuka">
-                    <span>不可 (MISS)</span>
-                    <span id="results-fuka-value">0</span>
-                </div>
-            </div>
-            <button id="results-retry-button" class="overlay-button">やり直し (Retry)</button>
-            <button id="back-to-title-button-results" class="overlay-button">タイトルへ戻る</button>
         </div>
     </div>
     
@@ -1192,6 +1192,14 @@
         isGameRunning = false; isPaused = false;
     }
     function startGame() {
+        // フルスクリーンAPIが利用可能か確認し、実行する
+        if (dom.gameContainer.requestFullscreen) {
+            dom.gameContainer.requestFullscreen().catch(err => {
+                // ユーザーが許可しなかった場合などのエラーはコンソールに出力
+                console.log(`フルスクリーンモードへの移行に失敗しました: ${err.message} (${err.name})`);
+            });
+        }
+        
         if (isGameRunning || !beatmapLoaded || !audioLoaded) return;
         resetGame();
         dom.appContainer.style.display = 'none';
@@ -1620,6 +1628,12 @@
         }
     }
     function backToTitle() {
+        // ★★★★★ 修正点：フルスクリーンモードを解除する処理を追加 ★★★★★
+        if (document.exitFullscreen) {
+            document.exitFullscreen().catch((err) => console.error(`フルスクリーン解除に失敗: ${err.message}`));
+        }
+        // ★★★★★ 修正ここまで ★★★★★
+
         isGameRunning = false; isPaused = false;
         if(dom.audioPlayer) dom.audioPlayer.pause();
         if (backgroundType === 'video' && dom.backgroundVideo) dom.backgroundVideo.pause();
