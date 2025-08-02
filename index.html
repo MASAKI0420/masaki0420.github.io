@@ -432,6 +432,18 @@
                     </div>
                 </div>
             </div>
+
+            <!-- ★★★★★ 新規追加：背景の明るさ調整スライダー ★★★★★ -->
+            <div class="grid-item-full">
+                <label for="background-dim-slider" id="background-dim-label">背景の明るさ (50%)</label>
+                <input type="range" id="background-dim-slider" min="0" max="100" value="50" step="1">
+            </div>
+
+            <!-- ★★★★★ 新規追加：レーンの不透明度調整スライダー ★★★★★ -->
+            <div class="grid-item-full">
+                <label for="lane-opacity-slider" id="lane-opacity-label">レーンの不透明度 (85%)</label>
+                <input type="range" id="lane-opacity-slider" min="0" max="100" value="85" step="1">
+            </div>
             
             <div class="grid-item-full">
                 <label>レーンカバー設定</label>
@@ -674,6 +686,12 @@
         orientationWarning: document.getElementById('orientation-warning'),
         desktopWarningMessage: document.getElementById('desktop-warning-message'),
         mobileWarningMessage: document.getElementById('mobile-warning-message'),
+        // ★★★★★ 新規追加：DOM要素の参照 ★★★★★
+        backgroundDimSlider: document.getElementById('background-dim-slider'),
+        backgroundDimLabel: document.getElementById('background-dim-label'),
+        laneOpacitySlider: document.getElementById('lane-opacity-slider'),
+        laneOpacityLabel: document.getElementById('lane-opacity-label'),
+        laneVisual: document.getElementById('lane-visual'),
     };
 
     let KEYS = { don_left: 'D', don_right: 'K', katsu_left: 'S', katsu_right: 'L' };
@@ -1050,6 +1068,23 @@
         dom.touchDrumVisual.style.setProperty('--touch-drum-opacity', opacity);
     }
 
+    // ★★★★★ 新規追加：背景の明るさを更新する関数 ★★★★★
+    function updateBackgroundDim() {
+        const value = dom.backgroundDimSlider.value;
+        const opacity = value / 100;
+        dom.backgroundDimLabel.textContent = `背景の明るさ (${value}%)`;
+        dom.backgroundVideo.style.opacity = opacity;
+        dom.backgroundImage.style.opacity = opacity;
+    }
+
+    // ★★★★★ 新規追加：レーンの不透明度を更新する関数 ★★★★★
+    function updateLaneOpacity() {
+        const value = dom.laneOpacitySlider.value;
+        const opacity = value / 100;
+        dom.laneOpacityLabel.textContent = `レーンの不透明度 (${value}%)`;
+        dom.laneVisual.style.backgroundColor = `rgba(18, 18, 18, ${opacity})`;
+    }
+
     function updateJudgmentWindows() {
         let perfect = parseInt(dom.hitWindowPerfectInput.value, 10);
         let good = parseInt(dom.hitWindowGoodInput.value, 10);
@@ -1102,6 +1137,9 @@
             const settings = {
                 scrollSpeed: dom.speedSlider.value,
                 offset: dom.offsetInput.value,
+                // ★★★★★ 新規追加：設定項目を保存対象に追加 ★★★★★
+                backgroundDim: dom.backgroundDimSlider.value,
+                laneOpacity: dom.laneOpacitySlider.value,
                 laneCoverType: dom.laneCoverType.value,
                 laneCoverValue: dom.laneCoverSlider.value,
                 touchDrumSize: dom.touchDrumSizeSlider.value,
@@ -1133,6 +1171,9 @@
 
                 if (settings.scrollSpeed !== undefined) dom.speedSlider.value = settings.scrollSpeed;
                 if (settings.offset !== undefined) dom.offsetInput.value = settings.offset;
+                // ★★★★★ 新規追加：保存された設定値を読み込む ★★★★★
+                if (settings.backgroundDim !== undefined) dom.backgroundDimSlider.value = settings.backgroundDim;
+                if (settings.laneOpacity !== undefined) dom.laneOpacitySlider.value = settings.laneOpacity;
                 if (settings.laneCoverType !== undefined) dom.laneCoverType.value = settings.laneCoverType;
                 if (settings.laneCoverValue !== undefined) dom.laneCoverSlider.value = settings.laneCoverValue;
                 if (settings.touchDrumSize !== undefined) dom.touchDrumSizeSlider.value = settings.touchDrumSize;
@@ -1155,6 +1196,9 @@
         
         // Update all UI elements and labels from the current values (either default or loaded)
         updateSpeed();
+        // ★★★★★ 新規追加：UIを更新する関数を呼び出す ★★★★★
+        updateBackgroundDim();
+        updateLaneOpacity();
         updateLaneCover();
         updateTouchDrumSize();
         updateTouchDrumYOffset();
@@ -1723,7 +1767,6 @@
     dom.retryButton.addEventListener('click', retryGame);
     dom.backToTitlePause.addEventListener('click', backToTitle);
     dom.resultsRetryButton.addEventListener('click', retryGame);
-    dom.resultsRetryButton.addEventListener('click', retryGame);
     dom.backToTitleResults.addEventListener('click', backToTitle);
     dom.audioPlayer.addEventListener('canplaythrough', () => {
        if(!osz_zip) {
@@ -1731,6 +1774,10 @@
             checkReadyState();
        }
     });
+    
+    // ★★★★★ 新規追加：新しいスライダーのイベントリスナー ★★★★★
+    dom.backgroundDimSlider.addEventListener('input', updateBackgroundDim);
+    dom.laneOpacitySlider.addEventListener('input', updateLaneOpacity);
     
     window.addEventListener('resize', () => {
         checkDeviceAndOrientation();
@@ -1747,7 +1794,6 @@
             "name": "Taiko Player",
             "short_name": "Taiko",
             "start_url": ".",
-            // ★★★★★ 修正点：「standalone」を「fullscreen」に変更 ★★★★★
             "display": "fullscreen",
             "background_color": "#1f2940",
             "theme_color": "#d9534f",
