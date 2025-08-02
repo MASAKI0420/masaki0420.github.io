@@ -350,6 +350,12 @@
             z-index: 9999;
             text-align: center;
         }
+        .orientation-message {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
         .orientation-message p {
             font-size: 1.2em;
             margin-top: 20px;
@@ -377,16 +383,6 @@
             font-size: 0.8em;
             margin-bottom: 4px;
             text-align: center;
-        }
-
-
-        @media (orientation: portrait) {
-            #app-container, #game-container {
-                display: none !important;
-            }
-            #orientation-warning {
-                display: flex !important;
-            }
         }
     </style>
 </head>
@@ -596,7 +592,11 @@
     </div>
     
     <div id="orientation-warning">
-        <div class="orientation-message">
+        <div id="desktop-warning-message" class="orientation-message" style="display: none;">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="80" height="80" fill="currentColor"><path d="M20,18H4V6H20M20,4H4A2,2,0,0,0,2,6V18A2,2,0,0,0,4,20H20A2,2,0,0,0,22,18V6A2,2,0,0,0,20,4Z"/></svg>
+            <p>このサイトはスマートフォン専用です。<br>スマートフォンでお楽しみください。</p>
+        </div>
+        <div id="mobile-warning-message" class="orientation-message" style="display: none;">
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="80" height="80" fill="currentColor"><path d="M18.5,4H5.5A2.5,2.5,0,0,0,3,6.5v11A2.5,2.5,0,0,0,5.5,20h13A2.5,2.5,0,0,0,21,17.5V6.5A2.5,2.5,0,0,0,18.5,4ZM5.5,5.5h13a1,1,0,0,1,1,1v11a1,1,0,0,1-1,1H5.5a1,1,0,0,1-1-1V6.5A1,1,0,0,1,5.5,5.5Z"/></svg>
             <p>快適にプレイするために、<br>端末を横向きにしてください。</p>
         </div>
@@ -671,6 +671,9 @@
         hitWindowPerfectInput: document.getElementById('hit-window-perfect-input'),
         hitWindowGoodInput: document.getElementById('hit-window-good-input'),
         hitWindowBadInput: document.getElementById('hit-window-bad-input'),
+        orientationWarning: document.getElementById('orientation-warning'),
+        desktopWarningMessage: document.getElementById('desktop-warning-message'),
+        mobileWarningMessage: document.getElementById('mobile-warning-message'),
     };
 
     let KEYS = { don_left: 'D', don_right: 'K', katsu_left: 'S', katsu_right: 'L' };
@@ -707,28 +710,44 @@
     let isGoGoNow = false;
     let drumHitTimeouts = {};
 
-    async function handleOrientationChange() {
-        if (!screen.orientation) return;
-        try {
-            const isLandscape = screen.orientation.type.includes('landscape');
-            const isFullscreen = !!document.fullscreenElement;
-            if (isLandscape && !isFullscreen) {
-                await document.documentElement.requestFullscreen({ navigationUI: "hide" });
-            } else if (!isLandscape && isFullscreen) {
-                await document.exitFullscreen();
+    function checkDeviceAndOrientation() {
+        const isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+        const isPortrait = window.innerHeight > window.innerWidth;
+        // A width threshold to guess if it's a desktop or a mobile device in "desktop view" mode.
+        // 1024px is a common breakpoint for tablets, so anything wider is likely a desktop experience.
+        const DESKTOP_WIDTH_THRESHOLD = 1024; 
+
+        // The condition for showing the "PC/Desktop not supported" message is:
+        // 1. It's not a touch-capable device (a real PC).
+        // OR
+        // 2. Its reported screen width is very large, which is typical for "Desktop Site" mode on mobile.
+        if (!isTouchDevice || window.innerWidth >= DESKTOP_WIDTH_THRESHOLD) {
+            dom.appContainer.style.display = 'none';
+            dom.gameContainer.style.display = 'none';
+            dom.mobileWarningMessage.style.display = 'none';
+            dom.desktopWarningMessage.style.display = 'flex';
+            dom.orientationWarning.style.display = 'flex';
+            return; // Stop further checks
+        }
+
+        // If we reach here, it's a touch device with a "mobile-like" width.
+        // Now, we just need to check its orientation.
+        dom.desktopWarningMessage.style.display = 'none';
+        dom.mobileWarningMessage.style.display = 'flex'; // Ensure the mobile message is the one ready to be shown
+
+        if (isPortrait) {
+            // It's a touch device, but in the wrong orientation.
+            dom.appContainer.style.display = 'none';
+            dom.gameContainer.style.display = 'none';
+            dom.orientationWarning.style.display = 'flex';
+        } else {
+            // It's a touch device in the correct (landscape) orientation.
+            dom.orientationWarning.style.display = 'none';
+            if (!isGameRunning) {
+                dom.appContainer.style.display = 'flex';
+            } else {
+                dom.gameContainer.style.display = 'block';
             }
-        } catch (err) {
-            console.error(`自動フルスクリーンに失敗しました: ${err}`);
-        }
-    }
-    function setupOrientationListener() {
-        if (screen.orientation) {
-            screen.orientation.addEventListener('change', handleOrientationChange);
-        }
-    }
-    function removeOrientationListener() {
-        if (screen.orientation) {
-            screen.orientation.removeEventListener('change', handleOrientationChange);
         }
     }
 
@@ -1178,8 +1197,7 @@
         dom.appContainer.style.display = 'none';
         dom.gameContainer.style.display = 'block';
         initGameUI();
-        setupOrientationListener();
-        handleOrientationChange();
+        
         updateLaneCover();
         dom.backgroundVideo.style.display = 'none';
         dom.backgroundImage.style.display = 'none';
@@ -1602,10 +1620,6 @@
         }
     }
     function backToTitle() {
-        removeOrientationListener();
-        if (document.fullscreenElement) {
-            document.exitFullscreen();
-        }
         isGameRunning = false; isPaused = false;
         if(dom.audioPlayer) dom.audioPlayer.pause();
         if (backgroundType === 'video' && dom.backgroundVideo) dom.backgroundVideo.pause();
@@ -1615,14 +1629,12 @@
         dom.appContainer.style.display = 'flex';
         resetGame();
         checkReadyState();
+        checkDeviceAndOrientation(); // Re-check orientation when going back to title
     }
     function showResults() {
         if(!isGameRunning && dom.resultsOverlay.style.display === 'flex') return;
         isGameRunning = false;
-        removeOrientationListener();
-        if (document.fullscreenElement) {
-            document.exitFullscreen();
-        }
+        
         cancelAnimationFrame(animationFrameId);
 
         // Populate basic info
@@ -1706,7 +1718,13 @@
             checkReadyState();
        }
     });
-    window.addEventListener('resize', initGameUI);
+    
+    window.addEventListener('resize', () => {
+        checkDeviceAndOrientation();
+        initGameUI();
+    });
+    document.addEventListener('DOMContentLoaded', checkDeviceAndOrientation);
+
 
     // --- PWA対応 ---
     document.addEventListener('DOMContentLoaded', () => {
