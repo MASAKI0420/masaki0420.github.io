@@ -219,7 +219,6 @@
         .overlay-button:hover { background-color: #4a5578; }
         .overlay-button:active { transform: scale(0.98); }
         
-        /* ★★★ リザルト画面のスタイルここから ★★★ */
         #results-menu {
             transform: scale(0.8);
             transition: transform 0.2s;
@@ -240,7 +239,6 @@
         #results-ryo { color: gold; }
         #results-ka { color: white; }
         #results-fuka { color: #dda0dd; }
-        /* ★★★ リザルト画面のスタイルここまで ★★★ */
 
 
         #drum-display {
@@ -323,7 +321,7 @@
             width: 100%;
             height: 200%;
             border-radius: 50%;
-            background: #cccccc; 
+            background: white; 
         }
         #touch-drum-visual::before {
             content: '';
@@ -433,13 +431,11 @@
                 </div>
             </div>
 
-            <!-- ★★★★★ 新規追加：背景の明るさ調整スライダー ★★★★★ -->
             <div class="grid-item-full">
                 <label for="background-dim-slider" id="background-dim-label">背景の明るさ (50%)</label>
                 <input type="range" id="background-dim-slider" min="0" max="100" value="50" step="1">
             </div>
 
-            <!-- ★★★★★ 新規追加：レーンの不透明度調整スライダー ★★★★★ -->
             <div class="grid-item-full">
                 <label for="lane-opacity-slider" id="lane-opacity-label">レーンの不透明度 (85%)</label>
                 <input type="range" id="lane-opacity-slider" min="0" max="100" value="85" step="1">
@@ -686,7 +682,6 @@
         orientationWarning: document.getElementById('orientation-warning'),
         desktopWarningMessage: document.getElementById('desktop-warning-message'),
         mobileWarningMessage: document.getElementById('mobile-warning-message'),
-        // ★★★★★ 新規追加：DOM要素の参照 ★★★★★
         backgroundDimSlider: document.getElementById('background-dim-slider'),
         backgroundDimLabel: document.getElementById('background-dim-label'),
         laneOpacitySlider: document.getElementById('lane-opacity-slider'),
@@ -714,9 +709,6 @@
     let judgmentCounts = { ryo: 0, ka: 0, fuka: 0 };
     let animationFrameId = null;
     let lastNoteTime = 0;
-    let gameStartTime = 0;
-    let pauseStartTime = 0;
-    let totalPauseDuration = 0;
     let pressedKeys = new Set();
     let osz_zip = null;
     let osz_beatmaps = [];
@@ -728,38 +720,38 @@
     let isGoGoNow = false;
     let drumHitTimeouts = {};
 
+    let gameReadyTime = 0;
+    let gameStartTime = 0;
+    let pauseStartTime = 0;
+    let totalPauseDuration = 0;
+    
+    let firstVisibleNoteIndex = 0;
+    let firstVisibleBarLineIndex = 0;
+    let goGoGradient = null;
+    
+    // ★★★★★ パフォーマンス改善：プログレスバー更新抑制用の変数を追加 ★★★★★
+    let lastProgressUpdate = 0;
+
+
     function checkDeviceAndOrientation() {
         const isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
         const isPortrait = window.innerHeight > window.innerWidth;
-        // A width threshold to guess if it's a desktop or a mobile device in "desktop view" mode.
-        // 1024px is a common breakpoint for tablets, so anything wider is likely a desktop experience.
         const DESKTOP_WIDTH_THRESHOLD = 1024; 
-
-        // The condition for showing the "PC/Desktop not supported" message is:
-        // 1. It's not a touch-capable device (a real PC).
-        // OR
-        // 2. Its reported screen width is very large, which is typical for "Desktop Site" mode on mobile.
         if (!isTouchDevice || window.innerWidth >= DESKTOP_WIDTH_THRESHOLD) {
             dom.appContainer.style.display = 'none';
             dom.gameContainer.style.display = 'none';
             dom.mobileWarningMessage.style.display = 'none';
             dom.desktopWarningMessage.style.display = 'flex';
             dom.orientationWarning.style.display = 'flex';
-            return; // Stop further checks
+            return;
         }
-
-        // If we reach here, it's a touch device with a "mobile-like" width.
-        // Now, we just need to check its orientation.
         dom.desktopWarningMessage.style.display = 'none';
-        dom.mobileWarningMessage.style.display = 'flex'; // Ensure the mobile message is the one ready to be shown
-
+        dom.mobileWarningMessage.style.display = 'flex';
         if (isPortrait) {
-            // It's a touch device, but in the wrong orientation.
             dom.appContainer.style.display = 'none';
             dom.gameContainer.style.display = 'none';
             dom.orientationWarning.style.display = 'flex';
         } else {
-            // It's a touch device in the correct (landscape) orientation.
             dom.orientationWarning.style.display = 'none';
             if (!isGameRunning) {
                 dom.appContainer.style.display = 'flex';
@@ -874,6 +866,7 @@
                 }
             }
             hitObjects.sort((a, b) => a.time - b.time);
+            barLines.sort((a, b) => a.time - b.time);
             lastNoteTime = hitObjects.length > 0 ? (hitObjects[hitObjects.length - 1].endTime || hitObjects[hitObjects.length - 1].time) : 1;
             return hitObjects.length > 0;
         } catch (error) {
@@ -932,12 +925,24 @@
                 const lowerCasePath = relativePath.toLowerCase();
                 if (lowerCasePath.endsWith('.osu')) {
                     filePromises.push(zipEntry.async('string').then(content => {
-                        const tempInfo = { title: '', artist: '', version: '' };
+                        const tempInfo = { title: '', artist: '', version: '', overallDifficulty: '?' };
                         const lines = content.split('\n');
-                        for(const line of lines) {
-                           if (line.startsWith('Title:')) tempInfo.title = line.substring(6).trim();
-                           else if (line.startsWith('Artist:')) tempInfo.artist = line.substring(7).trim();
-                           else if (line.startsWith('Version:')) tempInfo.version = line.substring(8).trim();
+                        let section = '';
+                        for (const line of lines) {
+                            const trimmedLine = line.trim();
+                            if (trimmedLine.startsWith('[')) {
+                                section = trimmedLine;
+                                continue;
+                            }
+                            if (section === '[Metadata]') {
+                                if (line.startsWith('Title:')) tempInfo.title = line.substring(6).trim();
+                                else if (line.startsWith('Artist:')) tempInfo.artist = line.substring(7).trim();
+                                else if (line.startsWith('Version:')) tempInfo.version = line.substring(8).trim();
+                            } else if (section === '[Difficulty]') {
+                                if (line.startsWith('OverallDifficulty:')) {
+                                    tempInfo.overallDifficulty = line.split(':')[1].trim();
+                                }
+                            }
                         }
                         osz_beatmaps.push({ name: relativePath, content: content, info: tempInfo });
                     }));
@@ -955,7 +960,7 @@
             if (osz_beatmaps.length === 0) { alert('.osuファイルが見つかりませんでした。'); resetGameAndFiles(); return; }
             dom.beatmapSelector.innerHTML = '<option value="">-- 難易度を選択 --</option>';
             osz_beatmaps.forEach((osuFile, index) => {
-                const optionText = `${osuFile.info.version || osuFile.name}`;
+                const optionText = `${osuFile.info.version || osuFile.name} (${osuFile.info.overallDifficulty})`;
                 const option = new Option(optionText, index);
                 dom.beatmapSelector.appendChild(option);
             });
@@ -1068,7 +1073,6 @@
         dom.touchDrumVisual.style.setProperty('--touch-drum-opacity', opacity);
     }
 
-    // ★★★★★ 新規追加：背景の明るさを更新する関数 ★★★★★
     function updateBackgroundDim() {
         const value = dom.backgroundDimSlider.value;
         const opacity = value / 100;
@@ -1077,7 +1081,6 @@
         dom.backgroundImage.style.opacity = opacity;
     }
 
-    // ★★★★★ 新規追加：レーンの不透明度を更新する関数 ★★★★★
     function updateLaneOpacity() {
         const value = dom.laneOpacitySlider.value;
         const opacity = value / 100;
@@ -1133,11 +1136,10 @@
     }
     function saveSettings() {
         try {
-            updateJudgmentWindows(); // Ensure latest values are captured before saving
+            updateJudgmentWindows();
             const settings = {
                 scrollSpeed: dom.speedSlider.value,
                 offset: dom.offsetInput.value,
-                // ★★★★★ 新規追加：設定項目を保存対象に追加 ★★★★★
                 backgroundDim: dom.backgroundDimSlider.value,
                 laneOpacity: dom.laneOpacitySlider.value,
                 laneCoverType: dom.laneCoverType.value,
@@ -1171,7 +1173,6 @@
 
                 if (settings.scrollSpeed !== undefined) dom.speedSlider.value = settings.scrollSpeed;
                 if (settings.offset !== undefined) dom.offsetInput.value = settings.offset;
-                // ★★★★★ 新規追加：保存された設定値を読み込む ★★★★★
                 if (settings.backgroundDim !== undefined) dom.backgroundDimSlider.value = settings.backgroundDim;
                 if (settings.laneOpacity !== undefined) dom.laneOpacitySlider.value = settings.laneOpacity;
                 if (settings.laneCoverType !== undefined) dom.laneCoverType.value = settings.laneCoverType;
@@ -1194,9 +1195,7 @@
             }
         }
         
-        // Update all UI elements and labels from the current values (either default or loaded)
         updateSpeed();
-        // ★★★★★ 新規追加：UIを更新する関数を呼び出す ★★★★★
         updateBackgroundDim();
         updateLaneOpacity();
         updateLaneCover();
@@ -1206,7 +1205,7 @@
         dom.hitWindowPerfectInput.value = HIT_WINDOW_PERFECT;
         dom.hitWindowGoodInput.value = HIT_WINDOW_GOOD;
         dom.hitWindowBadInput.value = HIT_WINDOW_BAD;
-        updateJudgmentWindows(); // To validate and sync variables
+        updateJudgmentWindows();
         Object.keys(KEYS).forEach(keyId => {
             const elId = `key-${keyId.replace('_', '-')}`;
             document.getElementById(elId).textContent = KEYS[keyId];
@@ -1217,9 +1216,17 @@
         dom.canvas.width = rect.width;
         dom.canvas.height = rect.height;
         updateLaneCover();
+
+        goGoGradient = dom.ctx.createLinearGradient(0, 0, 0, dom.canvas.height);
+        goGoGradient.addColorStop(0, "rgba(255, 100, 0, 0.4)");
+        goGoGradient.addColorStop(0.5, "rgba(255, 69, 0, 0.6)");
+        goGoGradient.addColorStop(1, "rgba(255, 100, 0, 0.4)");
     }
+    
     function resetGame() {
         score = 0; combo = 0; maxCombo = 0; totalPauseDuration = 0;
+        gameStartTime = 0; 
+        
         judgmentCounts = { ryo: 0, ka: 0, fuka: 0 };
         accuracy = 100;
         dom.scoreElement.textContent = score;
@@ -1228,6 +1235,8 @@
         if(animationFrameId) cancelAnimationFrame(animationFrameId);
         hitObjects.forEach(note => note.judged = false);
         lastCheckedNoteIndex = 0;
+        firstVisibleNoteIndex = 0;
+        firstVisibleBarLineIndex = 0;
         activeRollHits = 0;
         rollCounterClearTime = 0;
         isGoGoNow = false;
@@ -1235,17 +1244,24 @@
         dom.resultsOverlay.style.display = 'none';
         isGameRunning = false; isPaused = false;
     }
+
+    function onAudioPlay() {
+        if (!isGameRunning || isPaused) return;
+        gameStartTime = performance.now();
+        totalPauseDuration = 0;
+    }
+    
     function startGame() {
-        // フルスクリーンAPIが利用可能か確認し、実行する
         if (dom.gameContainer.requestFullscreen) {
             dom.gameContainer.requestFullscreen().catch(err => {
-                // ユーザーが許可しなかった場合などのエラーはコンソールに出力
                 console.log(`フルスクリーンモードへの移行に失敗しました: ${err.message} (${err.name})`);
             });
         }
         
         if (isGameRunning || !beatmapLoaded || !audioLoaded) return;
+        
         resetGame();
+        
         dom.appContainer.style.display = 'none';
         dom.gameContainer.style.display = 'block';
         initGameUI();
@@ -1257,46 +1273,80 @@
             if (backgroundType === 'video') {
                 dom.backgroundVideo.src = backgroundUrl;
                 dom.backgroundVideo.style.display = 'block';
-                dom.backgroundVideo.currentTime = 0;
-                dom.backgroundVideo.play();
             } else if (backgroundType === 'image') {
                 dom.backgroundImage.src = backgroundUrl;
                 dom.backgroundImage.style.display = 'block';
             }
         }
-        isGameRunning = true; isPaused = false;
+        
+        isGameRunning = true;
+        isPaused = false;
         isAutoPlay = dom.autoPlayCheckbox.checked;
         isSingleHandBigNoteEnabled = dom.singleHandBigNoteCheckbox.checked;
         offset = parseInt(dom.offsetInput.value, 10) || 0;
+        
         if (donSoundSrc) donSound = new Audio(donSoundSrc);
         if (katsuSoundSrc) katsuSound = new Audio(katsuSoundSrc);
-        gameStartTime = performance.now() + 3000;
-        totalPauseDuration = 0;
+        
         dom.audioPlayer.currentTime = 0;
+        
+        dom.audioPlayer.addEventListener('play', onAudioPlay, { once: true });
+        
+        gameReadyTime = performance.now();
+        gameStartTime = 0;
+        
         setTimeout(() => {
             if(isGameRunning && !isPaused) {
                 dom.audioPlayer.play();
+                if (backgroundType === 'video') {
+                    dom.backgroundVideo.currentTime = 0;
+                    dom.backgroundVideo.play();
+                }
             }
         }, 3000);
+        
         animationFrameId = requestAnimationFrame(gameLoop);
     }
+    
     function getGameTime() {
-        if(isPaused) return pauseStartTime - gameStartTime - totalPauseDuration;
+        if (isPaused) {
+            return pauseStartTime - gameStartTime - totalPauseDuration;
+        }
+        
+        if (gameStartTime === 0) {
+            return performance.now() - gameReadyTime - 3000;
+        }
+        
         return performance.now() - gameStartTime - totalPauseDuration;
     }
+
     function gameLoop() {
         if (!isGameRunning) return;
         animationFrameId = requestAnimationFrame(gameLoop);
         if (isPaused) return;
+
+        const currentTime = performance.now();
         const elapsedTime = getGameTime() - offset;
+        const pixelMultiplier = uiScrollSpeed * 0.1;
+        
+        const timeForLeftEdge = elapsedTime - (JUDGE_POINT_X + 50) / pixelMultiplier;
+        while(firstVisibleNoteIndex < hitObjects.length && (hitObjects[firstVisibleNoteIndex].endTime || hitObjects[firstVisibleNoteIndex].time) < timeForLeftEdge) {
+            firstVisibleNoteIndex++;
+        }
+        while(firstVisibleBarLineIndex < barLines.length && barLines[firstVisibleBarLineIndex].time < timeForLeftEdge) {
+            firstVisibleBarLineIndex++;
+        }
+
         isGoGoNow = false;
         for (const section of goGoSections) {
             if (elapsedTime >= section.start && elapsedTime < section.end) {
                 isGoGoNow = true; break;
             }
         }
+
         dom.ctx.clearRect(0, 0, dom.canvas.width, dom.canvas.height);
         drawGameArea(isGoGoNow);
+
         dom.ctx.save();
         if (laneCoverConfig.type === 'right' && laneCoverConfig.value > 0) {
             const clipX = dom.canvas.width * (1 - laneCoverConfig.value / 100);
@@ -1304,29 +1354,36 @@
             dom.ctx.rect(0, 0, clipX, dom.canvas.height);
             dom.ctx.clip();
         }
+        
         drawBarLines(elapsedTime);
         drawNotes(elapsedTime);
+        
         dom.ctx.restore();
         drawRollCounter(elapsedTime);
-        if (isAutoPlay) {
-            autoPlayHandler(elapsedTime);
-        } else {
-            checkMisses(elapsedTime);
+
+        if (gameStartTime > 0) {
+            if (isAutoPlay) {
+                autoPlayHandler(elapsedTime);
+            } else {
+                checkMisses(elapsedTime);
+            }
         }
-        const progress = Math.min(1, elapsedTime / lastNoteTime);
-        dom.progressBar.style.width = (progress * 100) + '%';
-        if (progress >= 1 && elapsedTime > lastNoteTime + 3000) {
+
+        // ★★★★★ パフォーマンス改善：プログレスバーの更新を50msごとに行う ★★★★★
+        if (currentTime - lastProgressUpdate > 50) {
+            const progress = Math.min(1, elapsedTime / lastNoteTime);
+            dom.progressBar.style.width = (progress * 100) + '%';
+            lastProgressUpdate = currentTime;
+        }
+
+        if (elapsedTime > lastNoteTime + 3000) {
             showResults();
         }
     }
     function drawGameArea(isGoGo) {
         const y = dom.canvas.height / 2;
         if (isGoGo) {
-             const fireGradient = dom.ctx.createLinearGradient(0, 0, 0, dom.canvas.height);
-             fireGradient.addColorStop(0, "rgba(255, 100, 0, 0.4)");
-             fireGradient.addColorStop(0.5, "rgba(255, 69, 0, 0.6)");
-             fireGradient.addColorStop(1, "rgba(255, 100, 0, 0.4)");
-             dom.ctx.fillStyle = fireGradient;
+             dom.ctx.fillStyle = goGoGradient;
              dom.ctx.fillRect(0, 0, dom.canvas.width, dom.canvas.height);
         }
         const baseRadius = dom.canvas.height * 0.45;
@@ -1350,35 +1407,47 @@
     function drawBarLines(elapsedTime) {
         const pixelMultiplier = uiScrollSpeed * 0.1;
         dom.ctx.strokeStyle = '#FFFFFF'; dom.ctx.lineWidth = 2; dom.ctx.globalAlpha = 0.5;
-        barLines.forEach(line => {
+        for (let i = firstVisibleBarLineIndex; i < barLines.length; i++) {
+            const line = barLines[i];
             const timeToJudge = line.time - elapsedTime;
-            const x = JUDGE_POINT_X + timeToJudge * line.scrollSpeed * pixelMultiplier;
-            if (x > dom.canvas.width + 50 || x < JUDGE_POINT_X - 50) return;
+            // ★★★★★ パフォーマンス改善：座標を整数に変換 ★★★★★
+            const x = (JUDGE_POINT_X + timeToJudge * line.scrollSpeed * pixelMultiplier) | 0;
+            if (x > dom.canvas.width + 50) break;
+            if (x < JUDGE_POINT_X - 50) continue;
+            
             dom.ctx.beginPath(); dom.ctx.moveTo(x, 0); dom.ctx.lineTo(x, dom.canvas.height); dom.ctx.stroke();
-        });
+        }
         dom.ctx.globalAlpha = 1.0;
     }
     function drawNotes(elapsedTime) {
         const y = dom.canvas.height / 2;
         const pixelMultiplier = uiScrollSpeed * 0.1;
-        for (const note of hitObjects) {
+        for (let i = firstVisibleNoteIndex; i < hitObjects.length; i++) {
+            const note = hitObjects[i];
             if (note.judged) continue;
+            
             const timeToJudge = note.time - elapsedTime;
-            const startX = JUDGE_POINT_X + timeToJudge * note.scrollSpeed * pixelMultiplier;
+            // ★★★★★ パフォーマンス改善：座標を整数に変換 ★★★★★
+            const startX = (JUDGE_POINT_X + timeToJudge * note.scrollSpeed * pixelMultiplier) | 0;
+
+            if (startX > dom.canvas.width + 100) break; 
+
             if (note.type === 'roll' || note.type === 'balloon') {
                 const timeToEnd = note.endTime - elapsedTime;
-                const endX = JUDGE_POINT_X + timeToEnd * note.scrollSpeed * pixelMultiplier;
-                if (endX < JUDGE_POINT_X - 50 || startX > dom.canvas.width + 50) continue;
+                // ★★★★★ パフォーマンス改善：座標を整数に変換 ★★★★★
+                const endX = (JUDGE_POINT_X + timeToEnd * note.scrollSpeed * pixelMultiplier) | 0;
+                if (startX > dom.canvas.width + 50 || endX < -50) continue;
+
                 if (note.type === 'roll') {
-                    const barHeight = note.isBig ? y * 1.1 : y * 0.8;
-                    const radius = barHeight / 2;
+                    const barHeight = (note.isBig ? y * 1.1 : y * 0.8) | 0;
+                    const radius = (barHeight / 2) | 0;
                     dom.ctx.fillStyle = "gold"; dom.ctx.lineWidth = 2; dom.ctx.strokeStyle = '#fff';
                     dom.ctx.beginPath(); dom.ctx.rect(startX, y - radius, endX - startX, barHeight); dom.ctx.fill(); dom.ctx.stroke();
                     dom.ctx.beginPath(); dom.ctx.arc(startX, y, radius, 0, Math.PI * 2); dom.ctx.fill(); dom.ctx.stroke();
                     dom.ctx.strokeStyle = 'gold'; 
                     dom.ctx.beginPath(); dom.ctx.arc(endX, y, radius, 0, Math.PI * 2); dom.ctx.fill(); dom.ctx.stroke();
                 } else {
-                    const radius = y * 0.6;
+                    const radius = (y * 0.6) | 0;
                     let currentX = startX;
                     if (startX < JUDGE_POINT_X && endX > JUDGE_POINT_X) currentX = JUDGE_POINT_X;
                     if (currentX < -radius || currentX > dom.canvas.width + radius) continue;
@@ -1391,8 +1460,8 @@
                     }
                 }
             } else {
-                if (startX > dom.canvas.width + 50 || startX < JUDGE_POINT_X - 50) continue;
-                const radius = note.isBig ? y * 0.7 : y * 0.45;
+                if (startX < -50) continue;
+                const radius = (note.isBig ? y * 0.7 : y * 0.45) | 0;
                 dom.ctx.beginPath(); dom.ctx.fillStyle = note.type === 'don' ? '#ff4d6d' : '#4dabf7';
                 dom.ctx.strokeStyle = '#fff'; dom.ctx.lineWidth = 2;
                 dom.ctx.arc(startX, y, radius, 0, Math.PI * 2); dom.ctx.fill(); dom.ctx.stroke();
@@ -1472,7 +1541,7 @@
         }, 100);
     }
     function processPlayerHit(keyId) {
-        if (!isGameRunning || isPaused || isAutoPlay) return;
+        if (!isGameRunning || isPaused || isAutoPlay || gameStartTime === 0) return;
         const elapsedTime = getGameTime() - offset;
         if (elapsedTime < -500) return;
         showDrumHit(keyId);
@@ -1643,7 +1712,8 @@
         }
     }
     function togglePause() {
-        if (!isGameRunning) return; isPaused = !isPaused;
+        if (!isGameRunning || gameStartTime === 0) return;
+        isPaused = !isPaused;
         if (isPaused) {
             pauseStartTime = performance.now();
             dom.audioPlayer.pause();
@@ -1659,10 +1729,17 @@
         }
     }
     document.addEventListener('keydown', e => { if(e.key === 'Escape') togglePause(); });
+    
     function retryGame() {
         isGameRunning = false; isPaused = false;
-        dom.audioPlayer.pause(); dom.audioPlayer.currentTime = 0;
-        if (backgroundType === 'video') dom.backgroundVideo.pause();
+        dom.audioPlayer.pause();
+        if (dom.audioPlayer.src) {
+            dom.audioPlayer.load();
+        }
+        if (backgroundType === 'video' && dom.backgroundVideo.src) {
+            dom.backgroundVideo.pause();
+            dom.backgroundVideo.load();
+        }
         dom.pauseOverlay.style.display = 'none';
         dom.resultsOverlay.style.display = 'none';
         if (beatmapLoaded && audioLoaded) {
@@ -1671,29 +1748,36 @@
             backToTitle();
         }
     }
+    
     function backToTitle() {
         if (document.exitFullscreen) {
             document.exitFullscreen().catch((err) => console.error(`フルスクリーン解除に失敗: ${err.message}`));
         }
 
         isGameRunning = false; isPaused = false;
-        if(dom.audioPlayer) dom.audioPlayer.pause();
-        if (backgroundType === 'video' && dom.backgroundVideo) dom.backgroundVideo.pause();
+        if(dom.audioPlayer && dom.audioPlayer.src) {
+            dom.audioPlayer.pause();
+            dom.audioPlayer.load();
+        }
+        if (backgroundType === 'video' && dom.backgroundVideo && dom.backgroundVideo.src) {
+            dom.backgroundVideo.pause();
+            dom.backgroundVideo.load();
+        }
         dom.pauseOverlay.style.display = 'none';
         dom.resultsOverlay.style.display = 'none';
         dom.gameContainer.style.display = 'none';
         dom.appContainer.style.display = 'flex';
         resetGame();
         checkReadyState();
-        checkDeviceAndOrientation(); // Re-check orientation when going back to title
+        checkDeviceAndOrientation();
     }
+
     function showResults() {
         if(!isGameRunning && dom.resultsOverlay.style.display === 'flex') return;
         isGameRunning = false;
         
         cancelAnimationFrame(animationFrameId);
 
-        // Populate basic info
         dom.resultsSongTitle.textContent = `${songInfo.title} - ${songInfo.version}`;
         dom.resultsScoreValue.textContent = Math.floor(score);
         dom.resultsMaxComboValue.textContent = maxCombo;
@@ -1701,7 +1785,6 @@
         dom.resultsKaValue.textContent = judgmentCounts.ka;
         dom.resultsFukaValue.textContent = judgmentCounts.fuka;
 
-        // Calculate and display rank
         let rank;
         if (accuracy >= 95) rank = 'S';
         else if (accuracy >= 90) rank = 'A';
@@ -1711,7 +1794,7 @@
 
         const rankValueEl = dom.resultsRankValue;
         rankValueEl.textContent = rank;
-        rankValueEl.className = ''; // Clear previous classes
+        rankValueEl.className = '';
         rankValueEl.classList.add(`rank-${rank.toLowerCase()}`);
         
         dom.resultsOverlay.style.display = 'flex';
@@ -1746,7 +1829,6 @@
         }, { passive: false });
     }
 
-    // --- 初期化処理 ---
     initKeyConfig();
     setupFileListeners();
     setupTouchListeners();
@@ -1767,6 +1849,7 @@
     dom.retryButton.addEventListener('click', retryGame);
     dom.backToTitlePause.addEventListener('click', backToTitle);
     dom.resultsRetryButton.addEventListener('click', retryGame);
+    dom.resultsRetryButton.addEventListener('click', retryGame);
     dom.backToTitleResults.addEventListener('click', backToTitle);
     dom.audioPlayer.addEventListener('canplaythrough', () => {
        if(!osz_zip) {
@@ -1775,7 +1858,6 @@
        }
     });
     
-    // ★★★★★ 新規追加：新しいスライダーのイベントリスナー ★★★★★
     dom.backgroundDimSlider.addEventListener('input', updateBackgroundDim);
     dom.laneOpacitySlider.addEventListener('input', updateLaneOpacity);
     
@@ -1785,8 +1867,6 @@
     });
     document.addEventListener('DOMContentLoaded', checkDeviceAndOrientation);
 
-
-    // --- PWA対応 ---
     document.addEventListener('DOMContentLoaded', () => {
         const iconSvg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><rect width="512" height="512" fill="#1f2940"/><circle cx="256" cy="256" r="220" fill="#d9534f"/><circle cx="256" cy="256" r="180" fill="none" stroke="#ffffff" stroke-width="20"/></svg>`;
         const iconDataUrl = `data:image/svg+xml;base64,${btoa(iconSvg)}`;
