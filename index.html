@@ -209,7 +209,7 @@
             height: 100%;
             background-color: #4dabf7;
             border-radius: 4px;
-            transition: width 0.1s linear;
+            transition: width 0.05s linear;
         }
 
         .overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.85); color: white; display: none; flex-direction: column; align-items: center; justify-content: center; z-index: 200; }
@@ -729,8 +729,12 @@
     let firstVisibleBarLineIndex = 0;
     let goGoGradient = null;
     
-    // ★★★★★ パフォーマンス改善：プログレスバー更新抑制用の変数を追加 ★★★★★
     let lastProgressUpdate = 0;
+    
+    let noteCanvases = {};
+    let judgeCircleCanvas = null;
+    // ★★★★★ パフォーマンス改善：Go-Goタイム背景用のプリレンダリングCanvas変数を追加 ★★★★★
+    let goGoCanvas = null;
 
 
     function checkDeviceAndOrientation() {
@@ -1211,16 +1215,110 @@
             document.getElementById(elId).textContent = KEYS[keyId];
         });
     }
+    
+    function preRenderNotes() {
+        const y = dom.canvas.height / 2;
+        const noteTypes = {
+            don:       { radius: y * 0.45, color: '#ff4d6d' },
+            katsu:     { radius: y * 0.45, color: '#4dabf7' },
+            don_big:   { radius: y * 0.7,  color: '#ff4d6d' },
+            katsu_big: { radius: y * 0.7,  color: '#4dabf7' }
+        };
+
+        for (const [type, props] of Object.entries(noteTypes)) {
+            const radius = props.radius;
+            const canvas = document.createElement('canvas');
+            const diameter = Math.ceil(radius * 2) + 4;
+            canvas.width = diameter;
+            canvas.height = diameter;
+            const ctx = canvas.getContext('2d');
+            
+            const centerX = diameter / 2;
+            const centerY = diameter / 2;
+
+            ctx.fillStyle = props.color;
+            ctx.strokeStyle = '#fff';
+            ctx.lineWidth = 2;
+
+            ctx.beginPath();
+            ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.stroke();
+            
+            noteCanvases[type] = {
+                image: canvas,
+                radius: radius,
+            };
+        }
+    }
+
+    function preRenderJudgeCircle() {
+        const height = dom.canvas.height;
+        const baseRadius = height * 0.45;
+        const judgeCircleRadius = baseRadius * taikoSizeMultiplier;
+        const diameter = Math.ceil(judgeCircleRadius * 2) + 4;
+
+        const canvas = document.createElement('canvas');
+        canvas.width = diameter;
+        canvas.height = diameter;
+        const ctx = canvas.getContext('2d');
+
+        const centerX = diameter / 2;
+        const centerY = diameter / 2;
+
+        ctx.fillStyle = '#ffc0cb';
+        ctx.beginPath();
+        ctx.arc(centerX, centerY, judgeCircleRadius, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.fillStyle = '#d2b48c';
+        ctx.beginPath();
+        ctx.arc(centerX, centerY, judgeCircleRadius * 0.8, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.strokeStyle = '#a0522d';
+        ctx.lineWidth = judgeCircleRadius * 0.15;
+        ctx.beginPath();
+        ctx.arc(centerX, centerY, judgeCircleRadius * 0.9, 0, Math.PI * 2);
+        ctx.stroke();
+
+        ctx.strokeStyle = '#fff';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(centerX, centerY, judgeCircleRadius * 0.5, 0, Math.PI * 2);
+        ctx.stroke();
+
+        judgeCircleCanvas = canvas;
+    }
+
+    // ★★★★★ パフォーマンス改善：Go-Goタイムの背景を事前に描画する関数 ★★★★★
+    function preRenderGoGoBackground() {
+        const canvas = document.createElement('canvas');
+        canvas.width = dom.canvas.width;
+        canvas.height = dom.canvas.height;
+        const ctx = canvas.getContext('2d');
+
+        const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
+        gradient.addColorStop(0, "rgba(255, 100, 0, 0.4)");
+        gradient.addColorStop(0.5, "rgba(255, 69, 0, 0.6)");
+        gradient.addColorStop(1, "rgba(255, 100, 0, 0.4)");
+        
+        ctx.fillStyle = gradient;
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        goGoCanvas = canvas;
+    }
+
     function initGameUI() {
         const rect = dom.playfield.getBoundingClientRect();
         dom.canvas.width = rect.width;
         dom.canvas.height = rect.height;
         updateLaneCover();
 
-        goGoGradient = dom.ctx.createLinearGradient(0, 0, 0, dom.canvas.height);
-        goGoGradient.addColorStop(0, "rgba(255, 100, 0, 0.4)");
-        goGoGradient.addColorStop(0.5, "rgba(255, 69, 0, 0.6)");
-        goGoGradient.addColorStop(1, "rgba(255, 100, 0, 0.4)");
+        preRenderNotes();
+        preRenderJudgeCircle();
+        // ★★★★★ パフォーマンス改善：Go-Go背景もプリレンダリング ★★★★★
+        preRenderGoGoBackground();
     }
     
     function resetGame() {
@@ -1369,9 +1467,8 @@
             }
         }
 
-        // ★★★★★ パフォーマンス改善：プログレスバーの更新を50msごとに行う ★★★★★
         if (currentTime - lastProgressUpdate > 50) {
-            const progress = Math.min(1, elapsedTime / lastNoteTime);
+            const progress = Math.max(0, Math.min(1, elapsedTime / lastNoteTime));
             dom.progressBar.style.width = (progress * 100) + '%';
             lastProgressUpdate = currentTime;
         }
@@ -1380,37 +1477,27 @@
             showResults();
         }
     }
+
+    // ★★★★★ パフォーマンス改善：描画処理をすべてプリレンダリング画像に置き換え ★★★★★
     function drawGameArea(isGoGo) {
-        const y = dom.canvas.height / 2;
-        if (isGoGo) {
-             dom.ctx.fillStyle = goGoGradient;
-             dom.ctx.fillRect(0, 0, dom.canvas.width, dom.canvas.height);
+        if (isGoGo && goGoCanvas) {
+            dom.ctx.drawImage(goGoCanvas, 0, 0);
         }
-        const baseRadius = dom.canvas.height * 0.45;
-        const judgeCircleRadius = baseRadius * taikoSizeMultiplier;
-        dom.ctx.fillStyle = '#ffc0cb';
-        dom.ctx.beginPath();
-        dom.ctx.arc(JUDGE_POINT_X, y, judgeCircleRadius, 0, Math.PI * 2);
-        dom.ctx.fill();
-        dom.ctx.fillStyle = '#d2b48c';
-        dom.ctx.beginPath();
-        dom.ctx.arc(JUDGE_POINT_X, y, judgeCircleRadius * 0.8, 0, Math.PI * 2);
-        dom.ctx.fill();
-        dom.ctx.strokeStyle = '#a0522d';
-        dom.ctx.lineWidth = judgeCircleRadius * 0.15;
-        dom.ctx.beginPath();
-        dom.ctx.arc(JUDGE_POINT_X, y, judgeCircleRadius * 0.9, 0, Math.PI * 2);
-        dom.ctx.stroke();
-        dom.ctx.strokeStyle = '#fff'; dom.ctx.lineWidth = 2;
-        dom.ctx.beginPath(); dom.ctx.arc(JUDGE_POINT_X, y, judgeCircleRadius * 0.5, 0, Math.PI * 2); dom.ctx.stroke();
+
+        if (judgeCircleCanvas) {
+            const radius = judgeCircleCanvas.width / 2;
+            const x = JUDGE_POINT_X - radius;
+            const y = (dom.canvas.height - judgeCircleCanvas.height) / 2;
+            dom.ctx.drawImage(judgeCircleCanvas, x, y);
+        }
     }
+
     function drawBarLines(elapsedTime) {
         const pixelMultiplier = uiScrollSpeed * 0.1;
         dom.ctx.strokeStyle = '#FFFFFF'; dom.ctx.lineWidth = 2; dom.ctx.globalAlpha = 0.5;
         for (let i = firstVisibleBarLineIndex; i < barLines.length; i++) {
             const line = barLines[i];
             const timeToJudge = line.time - elapsedTime;
-            // ★★★★★ パフォーマンス改善：座標を整数に変換 ★★★★★
             const x = (JUDGE_POINT_X + timeToJudge * line.scrollSpeed * pixelMultiplier) | 0;
             if (x > dom.canvas.width + 50) break;
             if (x < JUDGE_POINT_X - 50) continue;
@@ -1427,14 +1514,12 @@
             if (note.judged) continue;
             
             const timeToJudge = note.time - elapsedTime;
-            // ★★★★★ パフォーマンス改善：座標を整数に変換 ★★★★★
             const startX = (JUDGE_POINT_X + timeToJudge * note.scrollSpeed * pixelMultiplier) | 0;
 
             if (startX > dom.canvas.width + 100) break; 
 
             if (note.type === 'roll' || note.type === 'balloon') {
                 const timeToEnd = note.endTime - elapsedTime;
-                // ★★★★★ パフォーマンス改善：座標を整数に変換 ★★★★★
                 const endX = (JUDGE_POINT_X + timeToEnd * note.scrollSpeed * pixelMultiplier) | 0;
                 if (startX > dom.canvas.width + 50 || endX < -50) continue;
 
@@ -1461,10 +1546,11 @@
                 }
             } else {
                 if (startX < -50) continue;
-                const radius = (note.isBig ? y * 0.7 : y * 0.45) | 0;
-                dom.ctx.beginPath(); dom.ctx.fillStyle = note.type === 'don' ? '#ff4d6d' : '#4dabf7';
-                dom.ctx.strokeStyle = '#fff'; dom.ctx.lineWidth = 2;
-                dom.ctx.arc(startX, y, radius, 0, Math.PI * 2); dom.ctx.fill(); dom.ctx.stroke();
+                const noteKey = `${note.type}${note.isBig ? '_big' : ''}`;
+                const preRenderedNote = noteCanvases[noteKey];
+                if (preRenderedNote) {
+                    dom.ctx.drawImage(preRenderedNote.image, startX - preRenderedNote.radius, y - preRenderedNote.radius);
+                }
             }
         }
     }
