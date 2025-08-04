@@ -171,26 +171,32 @@
         #combo { font-size: 4em; }
         #combo-label { font-size: 1em; margin-left: 2px; }
 
+        /* ★★★★★ 修正点：ここから ★★★★★ */
+        @keyframes judgment-anim {
+            0% { opacity: 0; transform: translateX(-50%) scale(1.0) translateY(1.2); }
+            25% { opacity: 1; transform: translateX(-50%) scale(1.0) translateY(0); }
+            80% { opacity: 1; transform: translateX(-50%) scale(1.0) translateY(0); }
+            100% { opacity: 0; transform: translateX(-50%) scale(1.0) translateY(0); }
+        }
         #judgment-text {
             position: absolute;
-            top: calc(50% - 112px);
-            left: 220px;
-            transform: translateX(-50%);
-            font-size: 2.0em;
-            font-weight: bold;
-            opacity: 0; z-index: 22;
-            padding: 5px 20px; border-radius: 4px;
-            color: white; text-align: center;
-            text-shadow: 0 0 8px #000, 0 0 8px #000;
-            animation: judgment-anim-new 0.4s ease-out;
-            pointer-events: none;
+            top: calc(50% - 112px); /* 判定円の上あたりに表示 */
+            left: 220px; /* 判定円のX座標 */
+            transform: translateX(-50%) scaleY(1.4) scaleX(0.7);
+            z-index: 51; /* タッチレイヤー(50)より手前に */
+            font-size: 2.2em;
+            font-weight: 100;
+            text-shadow: 0 0 8px black, 0 0 5px black;
+            opacity: 0;
+            pointer-events: none; /* 他の操作を妨げないように */
         }
-        @keyframes judgment-anim-new {
-            0% { transform: translateX(-50%) translateY(10px) scale(0.9); opacity: 0; }
-            25% { transform: translateX(-50%) translateY(0) scale(1.05); opacity: 1; }
-            80% { transform: translateX(-50%) translateY(0) scale(1); opacity: 1; }
-            100% { transform: translateX(-50%) translateY(0) scale(1); opacity: 0; }
+        #judgment-text.animate {
+            animation: judgment-anim 0.4s forwards;
         }
+        #judgment-text.ryo { color: gold; }
+        #judgment-text.ka { color: white; }
+        #judgment-text.fuka { color: #dda0dd; }
+        /* ★★★★★ 修正点：ここまで ★★★★★ */
 
         #progress-container {
             position: absolute;
@@ -360,18 +366,6 @@
             line-height: 1.6;
         }
 
-        #roll-counter {
-            position: absolute;
-            z-index: 25;
-            color: white;
-            font-size: 36px;
-            font-weight: bold;
-            text-shadow: 0 0 5px black, 0 0 5px black;
-            transform: translateX(-50%);
-            pointer-events: none;
-            display: none;
-        }
-
         #judgment-config-inputs { 
             display: grid; 
             grid-template-columns: 1fr 1fr 1fr; 
@@ -533,7 +527,10 @@
         <div id="combo-display">
             <span id="combo">0</span><span id="combo-label">x</span>
         </div>
+        
+        <!-- ★★★★★ 修正点：判定テキスト表示用の要素を追加 ★★★★★ -->
         <div id="judgment-text"></div>
+        
         <div id="drum-display">
             <div class="drum-body"></div>
             <div id="drum-don-left" class="drum-hit-area"></div>
@@ -551,7 +548,6 @@
         </div>
         <div id="touch-controls"></div>
         <div id="touch-drum-visual"></div>
-        <div id="roll-counter"></div>
 
         <div id="pause-overlay" class="overlay">
             <div id="pause-menu" class="overlay-menu">
@@ -640,7 +636,7 @@
         accuracyElement: document.getElementById('accuracy'),
         comboElement: document.getElementById('combo'),
         comboDisplay: document.getElementById('combo-display'),
-        judgmentTextElement: document.getElementById('judgment-text'),
+        judgmentText: document.getElementById('judgment-text'), // ★★★★★ 修正点：要素を取得 ★★★★★
         progressBar: document.getElementById('progress-bar'),
         pauseOverlay: document.getElementById('pause-overlay'),
         resumeButton: document.getElementById('resume-button'),
@@ -673,7 +669,6 @@
         touchDrumOpacityLabel: document.getElementById('touch-drum-opacity-label'),
         touchDrumVisual: document.getElementById('touch-drum-visual'),
         drumDisplay: document.getElementById('drum-display'),
-        rollCounter: document.getElementById('roll-counter'),
         saveSettingsButton: document.getElementById('save-settings-button'),
         settingsStatus: document.getElementById('settings-status'),
         hitWindowPerfectInput: document.getElementById('hit-window-perfect-input'),
@@ -689,6 +684,8 @@
         laneVisual: document.getElementById('lane-visual'),
     };
 
+    let KEYS = { don_left: 'D', don_right: 'K', katsu_left: 'S', katsu_right: 'L' };
+    const BASE_SCROLL_SPEED = 6;
     let uiScrollSpeed = BASE_SCROLL_SPEED;
     
     let HIT_WINDOW_PERFECT = 25, HIT_WINDOW_GOOD = 75, HIT_WINDOW_BAD = 100;
@@ -725,14 +722,14 @@
     
     let firstVisibleNoteIndex = 0;
     let firstVisibleBarLineIndex = 0;
-    let goGoGradient = null;
     
     let lastProgressUpdate = 0;
     
     let noteCanvases = {};
     let judgeCircleCanvas = null;
-    // ★★★★★ パフォーマンス改善：Go-Goタイム背景用のプリレンダリングCanvas変数を追加 ★★★★★
     let goGoCanvas = null;
+
+    let judgmentTimeout;
 
 
     function checkDeviceAndOrientation() {
@@ -1186,7 +1183,7 @@
                 if (settings.singleHandBigNote !== undefined) dom.singleHandBigNoteCheckbox.checked = settings.singleHandBigNote;
                 if (settings.keys) KEYS = settings.keys;
                 if (settings.donSoundDataUrl) donSoundSrc = settings.donSoundDataUrl;
-                if (settings.katsuSoundDataUrl) katsuSoundSrc = settings.katsuSoundDataUrl;
+                if (settings.katsuSoundDataUrl) katsuSoundSrc = settings.katsuSoundSrc;
                 if (settings.hitWindowPerfect !== undefined) HIT_WINDOW_PERFECT = settings.hitWindowPerfect;
                 if (settings.hitWindowGood !== undefined) HIT_WINDOW_GOOD = settings.hitWindowGood;
                 if (settings.hitWindowBad !== undefined) HIT_WINDOW_BAD = settings.hitWindowBad;
@@ -1220,7 +1217,9 @@
             don:       { radius: y * 0.45, color: '#ff4d6d' },
             katsu:     { radius: y * 0.45, color: '#4dabf7' },
             don_big:   { radius: y * 0.7,  color: '#ff4d6d' },
-            katsu_big: { radius: y * 0.7,  color: '#4dabf7' }
+            katsu_big: { radius: y * 0.7,  color: '#4dabf7' },
+            roll_cap:      { radius: (y * 0.8) / 2, color: 'gold', stroke: '#fff' },
+            roll_cap_big:  { radius: (y * 1.1) / 2, color: 'gold', stroke: '#fff' }
         };
 
         for (const [type, props] of Object.entries(noteTypes)) {
@@ -1235,7 +1234,7 @@
             const centerY = diameter / 2;
 
             ctx.fillStyle = props.color;
-            ctx.strokeStyle = '#fff';
+            ctx.strokeStyle = props.stroke || '#fff';
             ctx.lineWidth = 2;
 
             ctx.beginPath();
@@ -1289,7 +1288,6 @@
         judgeCircleCanvas = canvas;
     }
 
-    // ★★★★★ パフォーマンス改善：Go-Goタイムの背景を事前に描画する関数 ★★★★★
     function preRenderGoGoBackground() {
         const canvas = document.createElement('canvas');
         canvas.width = dom.canvas.width;
@@ -1315,7 +1313,6 @@
 
         preRenderNotes();
         preRenderJudgeCircle();
-        // ★★★★★ パフォーマンス改善：Go-Go背景もプリレンダリング ★★★★★
         preRenderGoGoBackground();
     }
     
@@ -1327,6 +1324,8 @@
         accuracy = 100;
         dom.scoreElement.textContent = score;
         dom.accuracyElement.textContent = `S 100.00%`;
+        dom.judgmentText.textContent = ''; // ★★★★★ 修正点：判定文字をリセット ★★★★★
+        dom.judgmentText.className = 'judgment-text';
         updateComboDisplay();
         if(animationFrameId) cancelAnimationFrame(animationFrameId);
         hitObjects.forEach(note => note.judged = false);
@@ -1456,6 +1455,10 @@
         
         dom.ctx.restore();
         drawRollCounter(elapsedTime);
+        
+        // ★★★★★ 修正点：Canvasへの描画処理は不要になったため、関数呼び出しを削除 ★★★★★
+        // drawJudgment(currentTime);
+
 
         if (gameStartTime > 0) {
             if (isAutoPlay) {
@@ -1476,7 +1479,6 @@
         }
     }
 
-    // ★★★★★ パフォーマンス改善：描画処理をすべてプリレンダリング画像に置き換え ★★★★★
     function drawGameArea(isGoGo) {
         if (isGoGo && goGoCanvas) {
             dom.ctx.drawImage(goGoCanvas, 0, 0);
@@ -1524,11 +1526,21 @@
                 if (note.type === 'roll') {
                     const barHeight = (note.isBig ? y * 1.1 : y * 0.8) | 0;
                     const radius = (barHeight / 2) | 0;
-                    dom.ctx.fillStyle = "gold"; dom.ctx.lineWidth = 2; dom.ctx.strokeStyle = '#fff';
-                    dom.ctx.beginPath(); dom.ctx.rect(startX, y - radius, endX - startX, barHeight); dom.ctx.fill(); dom.ctx.stroke();
-                    dom.ctx.beginPath(); dom.ctx.arc(startX, y, radius, 0, Math.PI * 2); dom.ctx.fill(); dom.ctx.stroke();
-                    dom.ctx.strokeStyle = 'gold'; 
-                    dom.ctx.beginPath(); dom.ctx.arc(endX, y, radius, 0, Math.PI * 2); dom.ctx.fill(); dom.ctx.stroke();
+                    dom.ctx.fillStyle = "gold";
+                    dom.ctx.strokeStyle = '#fff';
+                    dom.ctx.lineWidth = 2;
+                    
+                    dom.ctx.beginPath();
+                    dom.ctx.rect(startX, y - radius, endX - startX, barHeight);
+                    dom.ctx.fill();
+                    dom.ctx.stroke();
+
+                    const capKey = note.isBig ? 'roll_cap_big' : 'roll_cap';
+                    const cap = noteCanvases[capKey];
+                    if(cap) {
+                        dom.ctx.drawImage(cap.image, startX - cap.radius, y - cap.radius);
+                        dom.ctx.drawImage(cap.image, endX - cap.radius, y - cap.radius);
+                    }
                 } else {
                     const radius = (y * 0.6) | 0;
                     let currentX = startX;
@@ -1552,24 +1564,35 @@
             }
         }
     }
+
     function drawRollCounter(elapsedTime) {
         if (rollCounterClearTime > 0 && elapsedTime >= rollCounterClearTime) {
             activeRollHits = 0;
             rollCounterClearTime = 0;
         }
+
         if (activeRollHits > 0) {
-            const drumRect = dom.drumDisplay.getBoundingClientRect();
-            const gameRect = dom.gameContainer.getBoundingClientRect();
-            const left = (drumRect.left - gameRect.left) + (drumRect.width / 2);
-            const top = (drumRect.top - gameRect.top)  + 15;
-            dom.rollCounter.style.left = `${left}px`;
-            dom.rollCounter.style.top = `${top}px`;
-            dom.rollCounter.textContent = activeRollHits;
-            dom.rollCounter.style.display = 'block';
-        } else {
-            dom.rollCounter.style.display = 'none';
+            const x = 105;
+            const y = dom.canvas.height / 2 + 5;
+
+            dom.ctx.save();
+            
+            dom.ctx.font = 'bold 50px sans-serif';
+            dom.ctx.fillStyle = 'white';
+            dom.ctx.textAlign = 'center';
+            dom.ctx.textBaseline = 'middle';
+            dom.ctx.shadowColor = 'black';
+            dom.ctx.shadowBlur = 8;
+            dom.ctx.shadowOffsetX = 2;
+            dom.ctx.shadowOffsetY = 2;
+
+
+            dom.ctx.fillText(activeRollHits, x, y);
+
+            dom.ctx.restore();
         }
     }
+    
     function playHitSound(type) {
         const sound = (type === 'don') ? donSound : katsuSound;
         if (sound) {
@@ -1776,17 +1799,31 @@
         else rank = 'D';
         dom.accuracyElement.textContent = `${rank} ${accuracy.toFixed(2)}%`;
     }
+    
+    // ★★★★★ 修正点：判定テキストをHTML要素で表示するよう変更 ★★★★★
     function showJudgment(text) {
-        const el = dom.judgmentTextElement;
-        const judgmentStyles = {
-            "良": 'gold', "可": 'white', "不可": '#dda0dd'
-        };
+        const el = dom.judgmentText;
+        const classMap = { '良': 'ryo', '可': 'ka', '不可': 'fuka' };
+        
+        if (judgmentTimeout) clearTimeout(judgmentTimeout);
+        el.classList.remove('animate', 'ryo', 'ka', 'fuka');
+        void el.offsetWidth;
+
         el.textContent = text;
-        el.style.color = judgmentStyles[text] || 'white';
-        el.style.animation = 'none';
-        void el.offsetHeight;
-        el.style.animation = null;
+        el.classList.add(classMap[text]);
+        el.classList.add('animate');
+
+        judgmentTimeout = setTimeout(() => {
+            el.classList.remove('animate');
+        }, 400);
     }
+
+    // ★★★★★ 修正点：Canvasへの描画処理は不要になったため、空にする ★★★★★
+    function drawJudgment(currentTime) {
+        // This function is now empty because judgment is handled by an HTML element.
+    }
+
+
     function updateComboDisplay() {
         if (combo > 0) {
             dom.comboElement.textContent = combo;
