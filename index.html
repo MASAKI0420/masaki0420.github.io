@@ -124,11 +124,6 @@
         input[type="range"] { -webkit-appearance: none; width: 100%; height: 6px; background: #2a344d; border-radius: 3px; outline: none; cursor: pointer; box-sizing: border-box;}
         input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 18px; height: 18px; background: var(--accent-color); border-radius: 50%; cursor: pointer; }
         input[type="number"] { width: 100%; background-color: #2a344d; color: var(--panel-text); border: 1px solid var(--panel-border); border-radius: 6px; padding: 8px; text-align: center; font-size: 1em; box-sizing: border-box; }
-        #key-config-inputs { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; width: 100%; }
-        .key-config-item { display: flex; flex-direction: column; }
-        .key-config-input { flex-grow: 1; height: 45px; background-color: #2a344d; border: 1px solid var(--panel-border); border-radius: 6px; color: var(--panel-text); font-size: 1.3em; font-weight: bold; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all 0.2s; user-select: none; }
-        .key-config-input:hover { background-color: #394362; }
-        .key-config-input.is-waiting { background-color: var(--accent-color); border-color: var(--accent-color); outline: none; color: white; }
         .checkbox-wrapper { display: flex; align-items: center; cursor: pointer; margin-bottom: 5px; }
         input[type="checkbox"] { display: none; }
         .custom-checkbox { width: 20px; height: 20px; background-color: #2a344d; border: 1px solid var(--panel-border); border-radius: 4px; display: inline-block; position: relative; margin-right: 10px; transition: background-color 0.2s; flex-shrink: 0; }
@@ -141,7 +136,7 @@
         #start-button { grid-column: 1 / -1; padding: 15px; font-size: 1.2em; font-weight: 600; color: white; background-color: var(--accent-color); border: none; }
         #start-button:disabled { background-color: var(--disabled-color); cursor: not-allowed; color: #8c92a3; }
         #song-info { grid-column: 1 / -1; min-height: 40px; text-align: center; }
-        #ingame-pause-button { position: absolute; top: 20px; left: 20px; width: 48px; height: 48px; background-color: rgba(0,0,0,0.3); border: 2px solid white; border-radius: 8px; color: white; font-size: 1.8em; display: flex; align-items: center; justify-content: center; cursor: pointer; z-index: 100; }
+        #ingame-pause-button { position: absolute; top: 20px; left: 20px; width: 48px; height: 48px; background-color: rgba(0,0,0,0.3); border: 2px solid white; border-radius: 8px; color: white; font-size: 1.8em; display: flex; align-items: center; justify-content: center; cursor: pointer; z-index: 100; transition: opacity 0.3s; }
         #ui-panel {
             position: absolute; top: 20px; right: 30px;
             color: white; z-index: 20;
@@ -171,32 +166,26 @@
         #combo { font-size: 4em; }
         #combo-label { font-size: 1em; margin-left: 2px; }
 
-        /* ★★★★★ 修正点：ここから ★★★★★ */
-        @keyframes judgment-anim {
-            0% { opacity: 0; transform: translateX(-50%) scale(1.0) translateY(1.2); }
-            25% { opacity: 1; transform: translateX(-50%) scale(1.0) translateY(0); }
-            80% { opacity: 1; transform: translateX(-50%) scale(1.0) translateY(0); }
-            100% { opacity: 0; transform: translateX(-50%) scale(1.0) translateY(0); }
-        }
         #judgment-text {
             position: absolute;
-            top: calc(50% - 112px); /* 判定円の上あたりに表示 */
-            left: 220px; /* 判定円のX座標 */
-            transform: translateX(-50%) scaleY(1.4) scaleX(0.7);
-            z-index: 51; /* タッチレイヤー(50)より手前に */
-            font-size: 2.2em;
-            font-weight: 100;
-            text-shadow: 0 0 8px black, 0 0 5px black;
-            opacity: 0;
-            pointer-events: none; /* 他の操作を妨げないように */
+            top: calc(50% - 1px);
+            left: 220px;
+            transform: translateX(-50%);
+            font-size: 2.0em;
+            font-weight: bold;
+            opacity: 0; z-index: 22;
+            padding: 5px 20px; border-radius: 4px;
+            color: white; text-align: center;
+            text-shadow: 0 0 8px #000, 0 0 8px #000;
+            animation: judgment-anim-new 0.4s ease-out;
+            pointer-events: none;
         }
-        #judgment-text.animate {
-            animation: judgment-anim 0.4s forwards;
+        @keyframes judgment-anim-new {
+            0% { transform: translateX(-50%) translateY(10px) scale(0.9); opacity: 0; }
+            25% { transform: translateX(-50%) translateY(0) scale(1.05); opacity: 1; }
+            80% { transform: translateX(-50%) translateY(0) scale(1); opacity: 1; }
+            100% { transform: translateX(-50%) translateY(0) scale(1); opacity: 0; }
         }
-        #judgment-text.ryo { color: gold; }
-        #judgment-text.ka { color: white; }
-        #judgment-text.fuka { color: #dda0dd; }
-        /* ★★★★★ 修正点：ここまで ★★★★★ */
 
         #progress-container {
             position: absolute;
@@ -366,6 +355,18 @@
             line-height: 1.6;
         }
 
+        #roll-counter {
+            position: absolute;
+            z-index: 25;
+            color: white;
+            font-size: 36px;
+            font-weight: bold;
+            text-shadow: 0 0 5px black, 0 0 5px black;
+            transform: translateX(-50%);
+            pointer-events: none;
+            display: none;
+        }
+
         #judgment-config-inputs { 
             display: grid; 
             grid-template-columns: 1fr 1fr 1fr; 
@@ -405,6 +406,16 @@
             <div class="offset-control">
                 <label for="offset-input">譜面オフセット (ms)</label>
                 <input type="number" id="offset-input" value="0" step="5">
+            </div>
+
+            <div class="offset-control">
+                <label for="audio-latency-input">ワイヤレス遅延補正 (ms)</label>
+                <input type="number" id="audio-latency-input" value="0" step="5">
+            </div>
+            <div class="grid-item-full" style="grid-column: 1 / -1; margin-top: -15px;">
+                 <p style="font-size: 0.75em; color: #a0a8c0; text-align: left; margin: 0; padding: 0 5px;">
+                     ※ワイヤレスイヤホン使用時、音に対して譜面が早く見える場合、この数値を増やして調整してください (目安: 50～200)。
+                 </p>
             </div>
             
             <div class="grid-item-full">
@@ -464,27 +475,6 @@
                 <input type="range" id="touch-drum-opacity-slider" min="0" max="100" value="30" step="1">
             </div>
 
-            <div class="grid-item-full">
-                <label>キー設定</label>
-                <div id="key-config-inputs">
-                     <div class="key-config-item">
-                        <label>ドン (左)</label>
-                        <div id="key-don-left" class="key-config-input" data-key-id="don_left" tabindex="0">D</div>
-                    </div>
-                    <div class="key-config-item">
-                        <label>ドン (右)</label>
-                        <div id="key-don-right" class="key-config-input" data-key-id="don_right" tabindex="0">K</div>
-                    </div>
-                    <div class="key-config-item">
-                        <label>カッ (左)</label>
-                        <div id="key-katsu-left" class="key-config-input" data-key-id="katsu_left" tabindex="0">S</div>
-                    </div>
-                    <div class="key-config-item">
-                        <label>カッ (右)</label>
-                        <div id="key-katsu-right" class="key-config-input" data-key-id="katsu_right" tabindex="0">L</div>
-                    </div>
-                </div>
-            </div>
              <div class="assist-control">
                 <label>プレイアシスト</label>
                 <label for="auto-play-checkbox" class="checkbox-wrapper">
@@ -527,10 +517,7 @@
         <div id="combo-display">
             <span id="combo">0</span><span id="combo-label">x</span>
         </div>
-        
-        <!-- ★★★★★ 修正点：判定テキスト表示用の要素を追加 ★★★★★ -->
         <div id="judgment-text"></div>
-        
         <div id="drum-display">
             <div class="drum-body"></div>
             <div id="drum-don-left" class="drum-hit-area"></div>
@@ -548,6 +535,7 @@
         </div>
         <div id="touch-controls"></div>
         <div id="touch-drum-visual"></div>
+        <div id="roll-counter"></div>
 
         <div id="pause-overlay" class="overlay">
             <div id="pause-menu" class="overlay-menu">
@@ -606,7 +594,6 @@
         </div>
     </div>
 
-    <audio id="audio-player"></audio>
     <script>
     const dom = {
         appContainer: document.getElementById('app-container'),
@@ -622,9 +609,9 @@
         speedSlider: document.getElementById('speed-slider'),
         speedLabel: document.getElementById('speed-label'),
         offsetInput: document.getElementById('offset-input'),
+        audioLatencyInput: document.getElementById('audio-latency-input'),
         autoPlayCheckbox: document.getElementById('auto-play-checkbox'),
         singleHandBigNoteCheckbox: document.getElementById('single-hand-big-note-checkbox'),
-        keyConfigInputs: document.getElementById('key-config-inputs'),
         startButton: document.getElementById('start-button'),
         backgroundVideo: document.getElementById('background-video'),
         backgroundImage: document.getElementById('background-image'),
@@ -636,7 +623,7 @@
         accuracyElement: document.getElementById('accuracy'),
         comboElement: document.getElementById('combo'),
         comboDisplay: document.getElementById('combo-display'),
-        judgmentText: document.getElementById('judgment-text'), // ★★★★★ 修正点：要素を取得 ★★★★★
+        judgmentTextElement: document.getElementById('judgment-text'),
         progressBar: document.getElementById('progress-bar'),
         pauseOverlay: document.getElementById('pause-overlay'),
         resumeButton: document.getElementById('resume-button'),
@@ -652,7 +639,6 @@
         resultsFukaValue: document.getElementById('results-fuka-value'),
         resultsRetryButton: document.getElementById('results-retry-button'),
         backToTitleResults: document.getElementById('back-to-title-button-results'),
-        audioPlayer: document.getElementById('audio-player'),
         drumDonLeft: document.getElementById('drum-don-left'),
         drumDonRight: document.getElementById('drum-don-right'),
         drumKatsuLeft: document.getElementById('drum-katsu-left'),
@@ -669,6 +655,7 @@
         touchDrumOpacityLabel: document.getElementById('touch-drum-opacity-label'),
         touchDrumVisual: document.getElementById('touch-drum-visual'),
         drumDisplay: document.getElementById('drum-display'),
+        rollCounter: document.getElementById('roll-counter'),
         saveSettingsButton: document.getElementById('save-settings-button'),
         settingsStatus: document.getElementById('settings-status'),
         hitWindowPerfectInput: document.getElementById('hit-window-perfect-input'),
@@ -684,7 +671,15 @@
         laneVisual: document.getElementById('lane-visual'),
     };
 
-    let KEYS = { don_left: 'D', don_right: 'K', katsu_left: 'S', katsu_right: 'L' };
+    let audioContext;
+    let mainAudioBuffer = null;
+    let donSfxBuffer = null;
+    let katsuSfxBuffer = null;
+    let donSfxArrayBuffer = null;
+    let katsuSfxArrayBuffer = null;
+    let mainAudioSource = null;
+
+    const KEYS = { don_left: 'D', don_right: 'K', katsu_left: 'S', katsu_right: 'L' };
     const BASE_SCROLL_SPEED = 6;
     let uiScrollSpeed = BASE_SCROLL_SPEED;
     
@@ -693,14 +688,14 @@
     const JUDGE_POINT_X = 220;
     const taikoSizeMultiplier = 1.0; 
     let laneCoverConfig = { type: 'none', value: 0 };
-    let fileContent = null, audioSrc = null, donSoundSrc = null, katsuSoundSrc = null;
+    let fileContent = null;
     let songInfo = { title: '', artist: '', version: '', audioFilename: '' };
     let hitObjects = [], barLines = [], goGoSections = [];
-    let donSound, katsuSound;
     let audioLoaded = false, beatmapLoaded = false;
     let isGameRunning = false, isPaused = false, isAutoPlay = false;
     let isSingleHandBigNoteEnabled = true;
     let score = 0, combo = 0, offset = 0, maxCombo = 0, accuracy = 100;
+    let audioOutputLatency = 0;
     let judgmentCounts = { ryo: 0, ka: 0, fuka: 0 };
     let animationFrameId = null;
     let lastNoteTime = 0;
@@ -715,13 +710,13 @@
     let isGoGoNow = false;
     let drumHitTimeouts = {};
 
-    let gameReadyTime = 0;
-    let gameStartTime = 0;
+    let performanceStartTime = 0;
     let pauseStartTime = 0;
     let totalPauseDuration = 0;
     
     let firstVisibleNoteIndex = 0;
     let firstVisibleBarLineIndex = 0;
+    let goGoGradient = null;
     
     let lastProgressUpdate = 0;
     
@@ -729,7 +724,29 @@
     let judgeCircleCanvas = null;
     let goGoCanvas = null;
 
-    let judgmentTimeout;
+    async function initAudioContext() {
+        if (audioContext && audioContext.state !== 'closed') {
+            await audioContext.close();
+        }
+        try {
+            audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            if (donSfxArrayBuffer) donSfxBuffer = await decodeAudioData(donSfxArrayBuffer.slice(0));
+            if (katsuSfxArrayBuffer) katsuSfxBuffer = await decodeAudioData(katsuSfxArrayBuffer.slice(0));
+        } catch (e) {
+            alert('Web Audio API is not supported in this browser.');
+            console.error(e);
+        }
+    }
+
+    async function decodeAudioData(arrayBuffer) {
+        if (!audioContext) return null;
+        try {
+            return await audioContext.decodeAudioData(arrayBuffer);
+        } catch(e) {
+            console.error("Error decoding audio data", e);
+            return null;
+        }
+    }
 
 
     function checkDeviceAndOrientation() {
@@ -875,22 +892,18 @@
         }
     }
 
-    function handleSoundFile(e, soundType) {
+    async function handleSoundFile(e, soundType) {
         const file = e.target.files[0];
         if (!file) return;
-
-        const reader = new FileReader();
-        reader.onload = (event) => {
-            const dataUrl = event.target.result;
-            if (soundType === 'don') {
-                donSoundSrc = dataUrl;
-                if (donSound) donSound.src = donSoundSrc;
-            } else if (soundType === 'katsu') {
-                katsuSoundSrc = dataUrl;
-                if (katsuSound) katsuSound.src = katsuSoundSrc;
-            }
-        };
-        reader.readAsDataURL(file);
+        if (!audioContext) await initAudioContext();
+        const arrayBuffer = await file.arrayBuffer();
+        if (soundType === 'don') {
+            donSfxArrayBuffer = arrayBuffer;
+            donSfxBuffer = await decodeAudioData(donSfxArrayBuffer.slice(0));
+        } else if (soundType === 'katsu') {
+            katsuSfxArrayBuffer = arrayBuffer;
+            katsuSfxBuffer = await decodeAudioData(katsuSfxArrayBuffer.slice(0));
+        }
     }
     
     function setupFileListeners() {
@@ -901,6 +914,7 @@
     }
     async function handleOszFile(e) {
         const file = e.target.files[0]; if (!file) return;
+        if (!audioContext) await initAudioContext();
         dom.fileName.textContent = file.name;
         resetGameAndFiles(false);
         dom.songTitleElement.textContent = '読み込み中...'; dom.songArtistElement.textContent = '';
@@ -972,6 +986,7 @@
     async function handleBeatmapSelection() {
         const selectedIndex = dom.beatmapSelector.value;
         beatmapLoaded = false; audioLoaded = false;
+        mainAudioBuffer = null;
         checkReadyState();
         if (selectedIndex === "") return;
         const selectedOsu = osz_beatmaps[parseInt(selectedIndex, 10)]; if (!selectedOsu) return;
@@ -987,11 +1002,9 @@
                  );
                  if(audioFileEntry) {
                     try {
-                        const audioBlob = await audioFileEntry.async('blob');
-                        if (audioSrc) URL.revokeObjectURL(audioSrc);
-                        audioSrc = URL.createObjectURL(audioBlob);
-                        dom.audioPlayer.src = audioSrc;
-                        audioLoaded = true;
+                        const arrayBuffer = await audioFileEntry.async('arraybuffer');
+                        mainAudioBuffer = await decodeAudioData(arrayBuffer);
+                        if(mainAudioBuffer) audioLoaded = true;
                     } catch(e) {
                         alert(`音声ファイル "${songInfo.audioFilename}" の読み込みに失敗しました。`);
                     }
@@ -1015,6 +1028,7 @@
         resetGame();
         if (backgroundUrl) { URL.revokeObjectURL(backgroundUrl); backgroundUrl = null; backgroundType = null; }
         fileContent = null;
+        mainAudioBuffer = null;
         osz_zip = null;
         osz_beatmaps = [];
         beatmapLoaded = false; audioLoaded = false;
@@ -1024,10 +1038,6 @@
         checkReadyState();
     }
     function checkReadyState() {
-        const manualAudioNeeded = !osz_zip;
-        if(manualAudioNeeded && dom.audioPlayer.src && dom.audioPlayer.src !== window.location.href) {
-            audioLoaded = true;
-        }
         dom.startButton.disabled = !(beatmapLoaded && audioLoaded);
     }
     function updateSpeed() {
@@ -1103,42 +1113,13 @@
         dom.hitWindowBadInput.value = HIT_WINDOW_BAD;
     }
 
-    function initKeyConfig() {
-        dom.keyConfigInputs.querySelectorAll('.key-config-input').forEach(keyInput => {
-            keyInput.addEventListener('click', e => {
-                if (isGameRunning) return;
-                document.querySelectorAll('.key-config-input.is-waiting').forEach(el => el.blur());
-                e.currentTarget.textContent = '...';
-                e.currentTarget.classList.add('is-waiting');
-            });
-            keyInput.addEventListener('blur', e => {
-                const keyId = e.currentTarget.dataset.keyId;
-                e.currentTarget.classList.remove('is-waiting');
-                e.currentTarget.textContent = KEYS[keyId];
-            });
-            keyInput.addEventListener('keydown', e => {
-                e.preventDefault();
-                const keyDiv = e.currentTarget;
-                if (!keyDiv.classList.contains('is-waiting')) return;
-                if (e.key === 'Escape') { keyDiv.blur(); return; }
-                const newKey = e.key.toUpperCase();
-                if (newKey.length > 1 && !['SPACE', 'BACKSPACE', 'ENTER'].includes(newKey) ) return;
-                const keyId = keyDiv.dataset.keyId;
-                if (Object.values(KEYS).some((key, k_idx) => key === newKey && Object.keys(KEYS)[k_idx] !== keyId)) {
-                    alert('そのキーは他のアクションで既に使用されています。');
-                    return;
-                }
-                KEYS[keyId] = newKey;
-                keyDiv.blur();
-            });
-        });
-    }
     function saveSettings() {
         try {
             updateJudgmentWindows();
             const settings = {
                 scrollSpeed: dom.speedSlider.value,
                 offset: dom.offsetInput.value,
+                audioLatency: dom.audioLatencyInput.value,
                 backgroundDim: dom.backgroundDimSlider.value,
                 laneOpacity: dom.laneOpacitySlider.value,
                 laneCoverType: dom.laneCoverType.value,
@@ -1148,9 +1129,6 @@
                 touchDrumOpacity: dom.touchDrumOpacitySlider.value,
                 autoPlay: dom.autoPlayCheckbox.checked,
                 singleHandBigNote: dom.singleHandBigNoteCheckbox.checked,
-                keys: KEYS,
-                donSoundDataUrl: donSoundSrc,
-                katsuSoundDataUrl: katsuSoundSrc,
                 hitWindowPerfect: HIT_WINDOW_PERFECT,
                 hitWindowGood: HIT_WINDOW_GOOD,
                 hitWindowBad: HIT_WINDOW_BAD,
@@ -1172,6 +1150,10 @@
 
                 if (settings.scrollSpeed !== undefined) dom.speedSlider.value = settings.scrollSpeed;
                 if (settings.offset !== undefined) dom.offsetInput.value = settings.offset;
+                if (settings.audioLatency !== undefined) {
+                    dom.audioLatencyInput.value = settings.audioLatency;
+                    audioOutputLatency = parseInt(settings.audioLatency, 10) || 0;
+                }
                 if (settings.backgroundDim !== undefined) dom.backgroundDimSlider.value = settings.backgroundDim;
                 if (settings.laneOpacity !== undefined) dom.laneOpacitySlider.value = settings.laneOpacity;
                 if (settings.laneCoverType !== undefined) dom.laneCoverType.value = settings.laneCoverType;
@@ -1181,9 +1163,6 @@
                 if (settings.touchDrumOpacity !== undefined) dom.touchDrumOpacitySlider.value = settings.touchDrumOpacity;
                 if (settings.autoPlay !== undefined) dom.autoPlayCheckbox.checked = settings.autoPlay;
                 if (settings.singleHandBigNote !== undefined) dom.singleHandBigNoteCheckbox.checked = settings.singleHandBigNote;
-                if (settings.keys) KEYS = settings.keys;
-                if (settings.donSoundDataUrl) donSoundSrc = settings.donSoundDataUrl;
-                if (settings.katsuSoundDataUrl) katsuSoundSrc = settings.katsuSoundSrc;
                 if (settings.hitWindowPerfect !== undefined) HIT_WINDOW_PERFECT = settings.hitWindowPerfect;
                 if (settings.hitWindowGood !== undefined) HIT_WINDOW_GOOD = settings.hitWindowGood;
                 if (settings.hitWindowBad !== undefined) HIT_WINDOW_BAD = settings.hitWindowBad;
@@ -1205,10 +1184,6 @@
         dom.hitWindowGoodInput.value = HIT_WINDOW_GOOD;
         dom.hitWindowBadInput.value = HIT_WINDOW_BAD;
         updateJudgmentWindows();
-        Object.keys(KEYS).forEach(keyId => {
-            const elId = `key-${keyId.replace('_', '-')}`;
-            document.getElementById(elId).textContent = KEYS[keyId];
-        });
     }
     
     function preRenderNotes() {
@@ -1217,9 +1192,7 @@
             don:       { radius: y * 0.45, color: '#ff4d6d' },
             katsu:     { radius: y * 0.45, color: '#4dabf7' },
             don_big:   { radius: y * 0.7,  color: '#ff4d6d' },
-            katsu_big: { radius: y * 0.7,  color: '#4dabf7' },
-            roll_cap:      { radius: (y * 0.8) / 2, color: 'gold', stroke: '#fff' },
-            roll_cap_big:  { radius: (y * 1.1) / 2, color: 'gold', stroke: '#fff' }
+            katsu_big: { radius: y * 0.7,  color: '#4dabf7' }
         };
 
         for (const [type, props] of Object.entries(noteTypes)) {
@@ -1234,7 +1207,7 @@
             const centerY = diameter / 2;
 
             ctx.fillStyle = props.color;
-            ctx.strokeStyle = props.stroke || '#fff';
+            ctx.strokeStyle = '#fff';
             ctx.lineWidth = 2;
 
             ctx.beginPath();
@@ -1317,15 +1290,20 @@
     }
     
     function resetGame() {
-        score = 0; combo = 0; maxCombo = 0; totalPauseDuration = 0;
-        gameStartTime = 0; 
+        if(mainAudioSource) {
+            try { mainAudioSource.stop(); } catch(e) {}
+            mainAudioSource.disconnect();
+            mainAudioSource = null;
+        }
+
+        score = 0; combo = 0; maxCombo = 0;
+        performanceStartTime = 0;
+        totalPauseDuration = 0;
         
         judgmentCounts = { ryo: 0, ka: 0, fuka: 0 };
         accuracy = 100;
         dom.scoreElement.textContent = score;
         dom.accuracyElement.textContent = `S 100.00%`;
-        dom.judgmentText.textContent = ''; // ★★★★★ 修正点：判定文字をリセット ★★★★★
-        dom.judgmentText.className = 'judgment-text';
         updateComboDisplay();
         if(animationFrameId) cancelAnimationFrame(animationFrameId);
         hitObjects.forEach(note => note.judged = false);
@@ -1336,25 +1314,28 @@
         rollCounterClearTime = 0;
         isGoGoNow = false;
         pressedKeys.clear();
+        
+        dom.pauseOverlay.style.display = 'none';
         dom.resultsOverlay.style.display = 'none';
         isGameRunning = false; isPaused = false;
     }
 
-    function onAudioPlay() {
-        if (!isGameRunning || isPaused) return;
-        gameStartTime = performance.now();
-        totalPauseDuration = 0;
-    }
-    
-    function startGame() {
+    async function startGame() {
         if (dom.gameContainer.requestFullscreen) {
-            dom.gameContainer.requestFullscreen().catch(err => {
-                console.log(`フルスクリーンモードへの移行に失敗しました: ${err.message} (${err.name})`);
-            });
+            dom.gameContainer.requestFullscreen().catch(err => {});
         }
         
-        if (isGameRunning || !beatmapLoaded || !audioLoaded) return;
+        if (!audioContext || audioContext.state === 'closed') {
+            await initAudioContext();
+        }
         
+        if (isGameRunning) return;
+        if (!beatmapLoaded || !audioLoaded || !audioContext) return;
+        
+        if (audioContext.state === 'suspended') {
+            audioContext.resume();
+        }
+
         resetGame();
         
         dom.appContainer.style.display = 'none';
@@ -1379,40 +1360,47 @@
         isAutoPlay = dom.autoPlayCheckbox.checked;
         isSingleHandBigNoteEnabled = dom.singleHandBigNoteCheckbox.checked;
         offset = parseInt(dom.offsetInput.value, 10) || 0;
+        audioOutputLatency = parseInt(dom.audioLatencyInput.value, 10) || 0;
         
-        if (donSoundSrc) donSound = new Audio(donSoundSrc);
-        if (katsuSoundSrc) katsuSound = new Audio(katsuSoundSrc);
+        dom.ingamePauseButton.disabled = true;
+        dom.ingamePauseButton.style.opacity = '0.5';
+        dom.ingamePauseButton.style.cursor = 'not-allowed';
+
+        const COUNTDOWN_SECONDS = 2.0;
         
-        dom.audioPlayer.currentTime = 0;
+        mainAudioSource = audioContext.createBufferSource();
+        mainAudioSource.buffer = mainAudioBuffer;
+        mainAudioSource.connect(audioContext.destination);
         
-        dom.audioPlayer.addEventListener('play', onAudioPlay, { once: true });
-        
-        gameReadyTime = performance.now();
-        gameStartTime = 0;
+        performanceStartTime = performance.now() + (COUNTDOWN_SECONDS * 1000);
+
+        mainAudioSource.start(audioContext.currentTime + COUNTDOWN_SECONDS);
         
         setTimeout(() => {
-            if(isGameRunning && !isPaused) {
-                dom.audioPlayer.play();
-                if (backgroundType === 'video') {
-                    dom.backgroundVideo.currentTime = 0;
-                    dom.backgroundVideo.play();
-                }
-            }
-        }, 3000);
-        
+            if (!isGameRunning || isPaused) return;
+            dom.ingamePauseButton.disabled = false;
+            dom.ingamePauseButton.style.opacity = '1';
+            dom.ingamePauseButton.style.cursor = 'pointer';
+        }, COUNTDOWN_SECONDS * 1000);
+
+        if (backgroundType === 'video') {
+            dom.backgroundVideo.currentTime = -COUNTDOWN_SECONDS;
+            dom.backgroundVideo.play();
+        }
+
         animationFrameId = requestAnimationFrame(gameLoop);
     }
     
     function getGameTime() {
+        if (!isGameRunning || performanceStartTime === 0) {
+            return 0; 
+        }
+
         if (isPaused) {
-            return pauseStartTime - gameStartTime - totalPauseDuration;
+            return pauseStartTime - performanceStartTime - totalPauseDuration;
         }
-        
-        if (gameStartTime === 0) {
-            return performance.now() - gameReadyTime - 3000;
-        }
-        
-        return performance.now() - gameStartTime - totalPauseDuration;
+
+        return performance.now() - performanceStartTime - totalPauseDuration;
     }
 
     function gameLoop() {
@@ -1420,8 +1408,10 @@
         animationFrameId = requestAnimationFrame(gameLoop);
         if (isPaused) return;
 
-        const currentTime = performance.now();
-        const elapsedTime = getGameTime() - offset;
+        const masterTime = getGameTime();
+        const totalOffset = offset + audioOutputLatency;
+        const elapsedTime = masterTime - totalOffset;
+
         const pixelMultiplier = uiScrollSpeed * 0.1;
         
         const timeForLeftEdge = elapsedTime - (JUDGE_POINT_X + 50) / pixelMultiplier;
@@ -1455,12 +1445,8 @@
         
         dom.ctx.restore();
         drawRollCounter(elapsedTime);
-        
-        // ★★★★★ 修正点：Canvasへの描画処理は不要になったため、関数呼び出しを削除 ★★★★★
-        // drawJudgment(currentTime);
 
-
-        if (gameStartTime > 0) {
+        if (masterTime >= 0) {
             if (isAutoPlay) {
                 autoPlayHandler(elapsedTime);
             } else {
@@ -1468,13 +1454,13 @@
             }
         }
 
-        if (currentTime - lastProgressUpdate > 50) {
-            const progress = Math.max(0, Math.min(1, elapsedTime / lastNoteTime));
+        if (performance.now() - lastProgressUpdate > 50) {
+            const progress = Math.max(0, Math.min(1, masterTime / lastNoteTime));
             dom.progressBar.style.width = (progress * 100) + '%';
-            lastProgressUpdate = currentTime;
+            lastProgressUpdate = performance.now();
         }
 
-        if (elapsedTime > lastNoteTime + 3000) {
+        if (masterTime > lastNoteTime + 3000) {
             showResults();
         }
     }
@@ -1526,21 +1512,11 @@
                 if (note.type === 'roll') {
                     const barHeight = (note.isBig ? y * 1.1 : y * 0.8) | 0;
                     const radius = (barHeight / 2) | 0;
-                    dom.ctx.fillStyle = "gold";
-                    dom.ctx.strokeStyle = '#fff';
-                    dom.ctx.lineWidth = 2;
-                    
-                    dom.ctx.beginPath();
-                    dom.ctx.rect(startX, y - radius, endX - startX, barHeight);
-                    dom.ctx.fill();
-                    dom.ctx.stroke();
-
-                    const capKey = note.isBig ? 'roll_cap_big' : 'roll_cap';
-                    const cap = noteCanvases[capKey];
-                    if(cap) {
-                        dom.ctx.drawImage(cap.image, startX - cap.radius, y - cap.radius);
-                        dom.ctx.drawImage(cap.image, endX - cap.radius, y - cap.radius);
-                    }
+                    dom.ctx.fillStyle = "gold"; dom.ctx.lineWidth = 2; dom.ctx.strokeStyle = '#fff';
+                    dom.ctx.beginPath(); dom.ctx.rect(startX, y - radius, endX - startX, barHeight); dom.ctx.fill(); dom.ctx.stroke();
+                    dom.ctx.beginPath(); dom.ctx.arc(startX, y, radius, 0, Math.PI * 2); dom.ctx.fill(); dom.ctx.stroke();
+                    dom.ctx.strokeStyle = 'gold'; 
+                    dom.ctx.beginPath(); dom.ctx.arc(endX, y, radius, 0, Math.PI * 2); dom.ctx.fill(); dom.ctx.stroke();
                 } else {
                     const radius = (y * 0.6) | 0;
                     let currentX = startX;
@@ -1564,41 +1540,32 @@
             }
         }
     }
-
     function drawRollCounter(elapsedTime) {
         if (rollCounterClearTime > 0 && elapsedTime >= rollCounterClearTime) {
             activeRollHits = 0;
             rollCounterClearTime = 0;
         }
-
         if (activeRollHits > 0) {
-            const x = 105;
-            const y = dom.canvas.height / 2 + 5;
-
-            dom.ctx.save();
-            
-            dom.ctx.font = 'bold 50px sans-serif';
-            dom.ctx.fillStyle = 'white';
-            dom.ctx.textAlign = 'center';
-            dom.ctx.textBaseline = 'middle';
-            dom.ctx.shadowColor = 'black';
-            dom.ctx.shadowBlur = 8;
-            dom.ctx.shadowOffsetX = 2;
-            dom.ctx.shadowOffsetY = 2;
-
-
-            dom.ctx.fillText(activeRollHits, x, y);
-
-            dom.ctx.restore();
+            const drumRect = dom.drumDisplay.getBoundingClientRect();
+            const gameRect = dom.gameContainer.getBoundingClientRect();
+            const left = (drumRect.left - gameRect.left) + (drumRect.width / 2);
+            const top = (drumRect.top - gameRect.top)  + 15;
+            dom.rollCounter.style.left = `${left}px`;
+            dom.rollCounter.style.top = `${top}px`;
+            dom.rollCounter.textContent = activeRollHits;
+            dom.rollCounter.style.display = 'block';
+        } else {
+            dom.rollCounter.style.display = 'none';
         }
     }
-    
     function playHitSound(type) {
-        const sound = (type === 'don') ? donSound : katsuSound;
-        if (sound) {
-            sound.currentTime = 0;
-            sound.play().catch(e => {});
-        }
+        const buffer = (type === 'don') ? donSfxBuffer : katsuSfxBuffer;
+        if (!buffer || !audioContext) return;
+        
+        const source = audioContext.createBufferSource();
+        source.buffer = buffer;
+        source.connect(audioContext.destination);
+        source.start(0);
     }
     function autoPlayHandler(elapsedTime) {
         const AUTO_HIT_INTERVAL = 25;
@@ -1648,8 +1615,11 @@
         }, 100);
     }
     function processPlayerHit(keyId) {
-        if (!isGameRunning || isPaused || isAutoPlay || gameStartTime === 0) return;
-        const elapsedTime = getGameTime() - offset;
+        if (!isGameRunning || isPaused || isAutoPlay || performanceStartTime === 0) return;
+        
+        const totalOffset = offset + audioOutputLatency;
+        const elapsedTime = getGameTime() - totalOffset;
+        
         if (elapsedTime < -500) return;
         showDrumHit(keyId);
         const keyType = keyId.startsWith('don') ? 'don' : 'katsu';
@@ -1715,6 +1685,7 @@
             }
         }
         if (hitKeyId) {
+            if (!audioContext) initAudioContext();
             processPlayerHit(hitKeyId);
         }
     });
@@ -1799,31 +1770,17 @@
         else rank = 'D';
         dom.accuracyElement.textContent = `${rank} ${accuracy.toFixed(2)}%`;
     }
-    
-    // ★★★★★ 修正点：判定テキストをHTML要素で表示するよう変更 ★★★★★
     function showJudgment(text) {
-        const el = dom.judgmentText;
-        const classMap = { '良': 'ryo', '可': 'ka', '不可': 'fuka' };
-        
-        if (judgmentTimeout) clearTimeout(judgmentTimeout);
-        el.classList.remove('animate', 'ryo', 'ka', 'fuka');
-        void el.offsetWidth;
-
+        const el = dom.judgmentTextElement;
+        const judgmentStyles = {
+            "良": 'gold', "可": 'white', "不可": '#dda0dd'
+        };
         el.textContent = text;
-        el.classList.add(classMap[text]);
-        el.classList.add('animate');
-
-        judgmentTimeout = setTimeout(() => {
-            el.classList.remove('animate');
-        }, 400);
+        el.style.color = judgmentStyles[text] || 'white';
+        el.style.animation = 'none';
+        void el.offsetHeight;
+        el.style.animation = null;
     }
-
-    // ★★★★★ 修正点：Canvasへの描画処理は不要になったため、空にする ★★★★★
-    function drawJudgment(currentTime) {
-        // This function is now empty because judgment is handled by an HTML element.
-    }
-
-
     function updateComboDisplay() {
         if (combo > 0) {
             dom.comboElement.textContent = combo;
@@ -1832,63 +1789,53 @@
             dom.comboDisplay.classList.remove('visible');
         }
     }
+
+    function pauseGame() {
+        if (!isGameRunning || isPaused || performanceStartTime === 0) return;
+        isPaused = true;
+        pauseStartTime = performance.now();
+        audioContext.suspend();
+        if (backgroundType === 'video') dom.backgroundVideo.pause();
+        cancelAnimationFrame(animationFrameId);
+        dom.pauseOverlay.style.display = 'flex';
+    }
+
+    function resumeGame() {
+        if (!isGameRunning || !isPaused) return;
+        totalPauseDuration += performance.now() - pauseStartTime;
+        audioContext.resume();
+        if (backgroundType === 'video') dom.backgroundVideo.play();
+        isPaused = false;
+        animationFrameId = requestAnimationFrame(gameLoop);
+        dom.pauseOverlay.style.display = 'none';
+    }
+    
     function togglePause() {
-        if (!isGameRunning || gameStartTime === 0) return;
-        isPaused = !isPaused;
         if (isPaused) {
-            pauseStartTime = performance.now();
-            dom.audioPlayer.pause();
-            if (backgroundType === 'video') dom.backgroundVideo.pause();
-            cancelAnimationFrame(animationFrameId);
-            dom.pauseOverlay.style.display = 'flex';
+            resumeGame();
         } else {
-            totalPauseDuration += performance.now() - pauseStartTime;
-            dom.audioPlayer.play();
-            if (backgroundType === 'video') dom.backgroundVideo.play();
-            animationFrameId = requestAnimationFrame(gameLoop);
-            dom.pauseOverlay.style.display = 'none';
+            pauseGame();
         }
     }
+
     document.addEventListener('keydown', e => { if(e.key === 'Escape') togglePause(); });
     
     function retryGame() {
-        isGameRunning = false; isPaused = false;
-        dom.audioPlayer.pause();
-        if (dom.audioPlayer.src) {
-            dom.audioPlayer.load();
-        }
-        if (backgroundType === 'video' && dom.backgroundVideo.src) {
-            dom.backgroundVideo.pause();
-            dom.backgroundVideo.load();
-        }
-        dom.pauseOverlay.style.display = 'none';
-        dom.resultsOverlay.style.display = 'none';
-        if (beatmapLoaded && audioLoaded) {
-            startGame();
-        } else {
-            backToTitle();
-        }
+        resetGame();
+        startGame();
     }
     
-    function backToTitle() {
+    async function backToTitle() {
         if (document.exitFullscreen) {
-            document.exitFullscreen().catch((err) => console.error(`フルスクリーン解除に失敗: ${err.message}`));
+            document.exitFullscreen().catch((err) => {});
         }
-
-        isGameRunning = false; isPaused = false;
-        if(dom.audioPlayer && dom.audioPlayer.src) {
-            dom.audioPlayer.pause();
-            dom.audioPlayer.load();
+        resetGame();
+        if (audioContext && audioContext.state !== 'closed') {
+             await audioContext.close();
+             audioContext = null;
         }
-        if (backgroundType === 'video' && dom.backgroundVideo && dom.backgroundVideo.src) {
-            dom.backgroundVideo.pause();
-            dom.backgroundVideo.load();
-        }
-        dom.pauseOverlay.style.display = 'none';
-        dom.resultsOverlay.style.display = 'none';
         dom.gameContainer.style.display = 'none';
         dom.appContainer.style.display = 'flex';
-        resetGame();
         checkReadyState();
         checkDeviceAndOrientation();
     }
@@ -1896,6 +1843,9 @@
     function showResults() {
         if(!isGameRunning && dom.resultsOverlay.style.display === 'flex') return;
         isGameRunning = false;
+        if(mainAudioSource) {
+            try { mainAudioSource.stop(); } catch(e) {}
+        }
         
         cancelAnimationFrame(animationFrameId);
 
@@ -1924,6 +1874,7 @@
     function setupTouchListeners() {
         dom.touchControls.addEventListener('touchstart', (e) => {
             e.preventDefault();
+            if (!audioContext) initAudioContext();
             const vh = window.innerHeight / 100;
             const drumSizeVh = parseFloat(dom.touchDrumSizeSlider.value);
             const yOffsetVh = parseFloat(dom.touchDrumYOffsetSlider.value);
@@ -1950,7 +1901,6 @@
         }, { passive: false });
     }
 
-    initKeyConfig();
     setupFileListeners();
     setupTouchListeners();
     loadSettings();
@@ -1965,26 +1915,21 @@
     dom.hitWindowPerfectInput.addEventListener('change', updateJudgmentWindows);
     dom.hitWindowGoodInput.addEventListener('change', updateJudgmentWindows);
     dom.hitWindowBadInput.addEventListener('change', updateJudgmentWindows);
-    dom.ingamePauseButton.addEventListener('click', togglePause);
-    dom.resumeButton.addEventListener('click', togglePause);
+    
+    dom.ingamePauseButton.addEventListener('click', pauseGame);
+    dom.resumeButton.addEventListener('click', resumeGame);
+
     dom.retryButton.addEventListener('click', retryGame);
     dom.backToTitlePause.addEventListener('click', backToTitle);
     dom.resultsRetryButton.addEventListener('click', retryGame);
-    dom.resultsRetryButton.addEventListener('click', retryGame);
     dom.backToTitleResults.addEventListener('click', backToTitle);
-    dom.audioPlayer.addEventListener('canplaythrough', () => {
-       if(!osz_zip) {
-            audioLoaded = true;
-            checkReadyState();
-       }
-    });
     
     dom.backgroundDimSlider.addEventListener('input', updateBackgroundDim);
     dom.laneOpacitySlider.addEventListener('input', updateLaneOpacity);
     
     window.addEventListener('resize', () => {
         checkDeviceAndOrientation();
-        initGameUI();
+        if(isGameRunning) initGameUI();
     });
     document.addEventListener('DOMContentLoaded', checkDeviceAndOrientation);
 
