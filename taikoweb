@@ -1,0 +1,492 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Webゲームランチャー</title>
+    <!-- PWAのテーマカラー -->
+    <meta name="theme-color" content="#000000">
+    <!-- 動的に生成するManifestへのリンク -->
+    <link rel="manifest" id="manifest-link">
+
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            margin: 0;
+            background-color: #000000;
+            color: white;
+            overflow: hidden;
+        }
+
+        /* --- ランチャー画面のスタイル --- */
+        #launcher-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: #121212;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+            box-sizing: border-box;
+            overflow-y: auto;
+            z-index: 20000;
+        }
+        #launcher-title {
+            font-size: 2em;
+            margin-bottom: 30px;
+            color: #ffffff;
+        }
+        #game-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            gap: 20px;
+            width: 100%;
+            max-width: 1200px;
+        }
+        .game-tile {
+            background-color: #2a2a2a;
+            color: white;
+            padding: 20px;
+            border-radius: 12px;
+            text-align: center;
+            font-size: 1.2em;
+            cursor: pointer;
+            transition: transform 0.2s ease, background-color 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 120px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+        }
+        .game-tile:hover {
+            transform: translateY(-5px);
+            background-color: #3c3c3c;
+        }
+
+        /* --- ゲーム表示コンテナ --- */
+        #game-container {
+            display: none; /* 初期状態では非表示 */
+        }
+        .container {
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+        }
+        .search-area {
+            display: none;
+        }
+        .result-area {
+            flex-grow: 1;
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0;
+        }
+        #results-frame {
+            width: 100%;
+            max-width: none;
+            height: 100%;
+            border: none;
+            border-radius: 0;
+            background-color: #ffffff;
+            transition: all 0.3s ease;
+        }
+
+        /* --- ボタン共通スタイル --- */
+        .action-button {
+            display: none; /* 初期状態では非表示 */
+            position: fixed;
+            bottom: 20px;
+            z-index: 10000;
+            padding: 10px 15px;
+            font-size: 16px;
+            color: white;
+            background-color: rgba(0, 123, 255, 0.9);
+            border: 1px solid rgba(255, 255, 255, 0.7);
+            border-radius: 8px;
+            cursor: pointer;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.4);
+        }
+
+        #fullscreen-button {
+            right: 20px;
+        }
+        /* 縦画面用フルスクリーンボタンのスタイル */
+        #force-landscape-fullscreen-button {
+            right: 20px;
+            background-color: rgba(23, 162, 184, 0.9);
+        }
+        #back-to-launcher-button {
+            left: 1px;
+            background-color: rgba(108, 117, 125, 0.9);
+        }
+
+        /* --- インストールボタンのスタイル --- */
+        #install-button {
+            right: 180px;
+            background-color: rgba(40, 167, 69, 0.9);
+            padding-left: 40px; /* アイコン用のスペース */
+        }
+        #install-button::before {
+            content: '↓';
+            position: absolute;
+            left: 15px;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 20px;
+            font-weight: bold;
+        }
+
+        /* 画面の向きによって表示するボタンを切り替え */
+        /* 横画面の時 */
+        @media (orientation: landscape) {
+            #fullscreen-button {
+                display: block;
+            }
+        }
+        /* 縦画面の時 */
+        @media (orientation: portrait) {
+            #force-landscape-fullscreen-button {
+                display: block;
+            }
+            /* 縦画面のタイル表示を1列にする */
+            #game-list {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        body.fullscreen-mode .search-area {
+            opacity: 0;
+            visibility: hidden;
+        }
+        body.fullscreen-mode .result-area {
+            padding: 0;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            z-index: 9999;
+            background-color: #000;
+        }
+        body.fullscreen-mode #results-frame {
+            max-width: none;
+            border-radius: 0;
+            border: none;
+            transition: none;
+        }
+        /* フルスクリーン時に非表示にするボタンを追加 */
+        body.fullscreen-mode #fullscreen-button,
+        body.fullscreen-mode #install-button,
+        body.fullscreen-mode #force-landscape-fullscreen-button {
+            display: none !important;
+        }
+    </style>
+</head>
+<body class="">
+    <!-- ▼▼▼ ゲーム選択画面（ランチャー） ▼▼▼ -->
+    <div id="launcher-screen">
+        <h1 id="launcher-title">ゲームを選択</h1>
+        <div id="game-list">
+            <!-- ゲームのタイルはJavaScriptでここに自動的に追加されます -->
+        </div>
+    </div>
+
+    <!-- ▼▼▼ ゲーム表示画面 ▼▼▼ -->
+    <div id="game-container">
+        <div class="container">
+            <div class="search-area"></div>
+            <div class="result-area">
+                <iframe id="results-frame" name="results-frame" src="about:blank"></iframe>
+            </div>
+        </div>
+
+        <button id="install-button" class="action-button">アプリをインストール</button>
+        <button id="back-to-launcher-button" class="action-button">←</button>
+    </div>
+
+    <!-- ▼▼▼ 2種類のフルスクリーンボタンをここに配置 ▼▼▼ -->
+    <button id="fullscreen-button" class="action-button">フルスクリーン</button>
+    <button id="force-landscape-fullscreen-button" class="action-button">横画面でフルスクリーン</button>
+
+    <script>
+    // ★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★
+    // ★ ここに表示したいゲームのタイトルとURLを追加・編集してください ★
+    // ★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★
+    const games = [
+        { title: "太鼓ウェブ", url: "https://cjdgrevival.com/" },
+        { title: "OSU!taikoスマホ版", url: "https://masaki0420.github.io/" },
+        { title: "太鼓ウェブ創作譜面", url: "https://taikosim.click/" },
+        { title: "太鼓ウェブ本家 2", url: "https://ouo.269seahorse.me/" },
+        // 必要に応じて、このリストにゲームを追加してください
+        // { title: "新しいゲーム", url: "https://game.url/new" },
+    ];
+    // ★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★
+
+
+    // --- ▼▼▼ ページ全体の要素を取得 ▼▼▼ ---
+    const launcherScreen = document.getElementById('launcher-screen');
+    const gameContainer = document.getElementById('game-container');
+    const gameList = document.getElementById('game-list');
+    const resultsFrame = document.getElementById('results-frame');
+    const backToLauncherBtn = document.getElementById('back-to-launcher-button');
+    const installBtn = document.getElementById('install-button');
+    const fullscreenBtn = document.getElementById('fullscreen-button');
+    const forceLandscapeFullscreenBtn = document.getElementById('force-landscape-fullscreen-button');
+
+
+    // --- ▼▼▼ ランチャー画面とゲーム画面の表示を制御するスクリプト ▼▼▼ ---
+
+    function updateView(state) {
+        if (!state || state.view === 'launcher') {
+            launcherScreen.style.display = 'flex';
+            gameContainer.style.display = 'none';
+            backToLauncherBtn.style.display = 'none';
+
+            // ▼▼▼【変更】ランチャー画面でもCSSに応じてフルスクリーンボタンを表示 ▼▼▼
+            // JavaScriptによるボタン表示の上書きをやめ、CSSの画面向き判定に任せる
+            forceLandscapeFullscreenBtn.style.display = ''; // style属性をリセット
+            fullscreenBtn.style.display = ''; // style属性をリセット
+
+            if (resultsFrame.src !== 'about:blank') {
+                resultsFrame.src = 'about:blank';
+            }
+        } else if (state.view === 'game') {
+            launcherScreen.style.display = 'none';
+            gameContainer.style.display = 'block';
+            backToLauncherBtn.style.display = 'block';
+
+            // ゲーム画面でも同様に、CSSによる向きに応じた表示に戻す
+            forceLandscapeFullscreenBtn.style.display = ''; // style属性をリセット
+            fullscreenBtn.style.display = ''; // style属性をリセット
+
+            if (resultsFrame.src !== state.url) {
+                resultsFrame.src = state.url;
+            }
+        }
+    }
+
+    games.forEach(game => {
+        const tile = document.createElement('div');
+        tile.className = 'game-tile';
+        tile.textContent = game.title;
+        tile.addEventListener('click', () => {
+            const newState = { view: 'game', url: game.url };
+            history.pushState(newState, '', '#game');
+            updateView(newState);
+        });
+        gameList.appendChild(tile);
+    });
+
+    backToLauncherBtn.addEventListener('click', () => {
+        window.location.href = window.location.pathname;
+    });
+
+    window.addEventListener('popstate', (event) => {
+        updateView(event.state);
+    });
+
+    document.addEventListener('DOMContentLoaded', () => {
+        if(window.location.hash !== '#game') {
+            history.replaceState({ view: 'launcher' }, '', window.location.pathname);
+            updateView({ view: 'launcher' });
+        } else {
+            history.replaceState({ view: 'launcher' }, '', window.location.pathname);
+            updateView({ view: 'launcher' });
+        }
+    });
+
+
+    // --- ▼▼▼ すべてを1ファイルにまとめるための追加スクリプト（PWAとアイコン） ▼▼▼ ---
+
+    function createIconBase64(size) {
+        const canvas = document.createElement('canvas');
+        canvas.width = size;
+        canvas.height = size;
+        const ctx = canvas.getContext('2d');
+        ctx.fillStyle = '#000000';
+        ctx.fillRect(0, 0, size, size);
+        ctx.strokeStyle = '#FFFFFF';
+        ctx.lineWidth = size * 0.08;
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+        const centerX = size / 2;
+        const arrowTopY = size * 0.25;
+        const arrowBottomY = size * 0.65;
+        const arrowWidth = size * 0.2;
+        ctx.beginPath();
+        ctx.moveTo(centerX, arrowTopY);
+        ctx.lineTo(centerX, arrowBottomY);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(centerX - arrowWidth, arrowBottomY - arrowWidth);
+        ctx.lineTo(centerX, arrowBottomY);
+        ctx.lineTo(centerX + arrowWidth, arrowBottomY - arrowWidth);
+        ctx.stroke();
+        return canvas.toDataURL('image/png');
+    }
+
+    const manifest = {
+      "short_name": "Webゲーム",
+      "name": "Webゲームランチャー",
+      "start_url": ".",
+      "display": "standalone",
+      "background_color": "#000000",
+      "theme_color": "#000000",
+      "icons": [
+        {
+          "src": createIconBase64(512),
+          "type": "image/png",
+          "sizes": "512x512"
+        }
+      ]
+    };
+    const manifestBlob = new Blob([JSON.stringify(manifest)], {type: 'application/json'});
+    const manifestURL = URL.createObjectURL(manifestBlob);
+    document.querySelector('#manifest-link').setAttribute('href', manifestURL);
+
+    const serviceWorkerCode = `
+        const CACHE_NAME = 'web-game-launcher-cache-v1';
+        const urlsToCache = ['./'];
+        self.addEventListener('install', event => {
+          event.waitUntil(caches.open(CACHE_NAME).then(cache => cache.addAll(urlsToCache)));
+          self.skipWaiting();
+        });
+        self.addEventListener('fetch', event => {
+          event.respondWith(caches.match(event.request).then(response => response || fetch(event.request)));
+        });
+        self.addEventListener('activate', event => {
+            const cacheWhitelist = [CACHE_NAME];
+            event.waitUntil(caches.keys().then(cacheNames => Promise.all(cacheNames.map(cacheName => {
+                if (cacheWhitelist.indexOf(cacheName) === -1) return caches.delete(cacheName);
+            }))));
+            return self.clients.claim();
+        });
+    `;
+    const swBlob = new Blob([serviceWorkerCode], { type: 'application/javascript' });
+    const swURL = URL.createObjectURL(swBlob);
+
+
+    // --- ▼▼▼ フルスクリーン関連のスクリプト ▼▼▼ ---
+    const body = document.body;
+    const resultArea = document.querySelector('.result-area');
+
+    // 通常のフルスクリーンボタンの処理
+    fullscreenBtn.addEventListener('click', () => {
+        if (!document.fullscreenElement) {
+            document.documentElement.requestFullscreen().catch(err => {
+                alert(`フルスクリーンにできませんでした: ${err.message}`);
+            });
+        } else {
+            document.exitFullscreen();
+        }
+    });
+
+    // 「横画面でフルスクリーン」ボタンの処理
+    forceLandscapeFullscreenBtn.addEventListener('click', async () => {
+        try {
+            await document.documentElement.requestFullscreen();
+            if (screen.orientation && typeof screen.orientation.lock === 'function') {
+                await screen.orientation.lock('landscape');
+            }
+        } catch (err) {
+            alert(`横画面フルスクリーンにできませんでした: ${err.message}`);
+            if (document.fullscreenElement) {
+                document.exitFullscreen();
+            }
+        }
+    });
+
+
+    function resizeIframeForFullscreen() {
+        if (document.fullscreenElement) {
+            const aspectRatio = 16 / 9;
+            const screenWidth = window.innerWidth;
+            const screenHeight = window.innerHeight;
+
+            if (screenWidth / screenHeight > aspectRatio) {
+                resultsFrame.style.height = screenHeight + 'px';
+                resultsFrame.style.width = (screenHeight * aspectRatio) + 'px';
+            } else {
+                resultsFrame.style.width = screenWidth + 'px';
+                resultsFrame.style.height = (screenWidth / aspectRatio) + 'px';
+            }
+        } else {
+            resultsFrame.style.width = '';
+            resultsFrame.style.height = '';
+        }
+    }
+
+    function debounce(func, wait) {
+        let timeout;
+        return function executedFunction(...args) {
+            const later = () => {
+                clearTimeout(timeout);
+                func(...args);
+            };
+            clearTimeout(timeout);
+            timeout = setTimeout(later, wait);
+        };
+    }
+
+    const debouncedResize = debounce(resizeIframeForFullscreen, 50);
+
+    document.addEventListener('fullscreenchange', () => {
+        const isFullscreen = !!document.fullscreenElement;
+        body.classList.toggle('fullscreen-mode', isFullscreen);
+        resizeIframeForFullscreen();
+        if (isFullscreen) {
+            setTimeout(() => {
+                try { resultsFrame.contentWindow.focus(); } catch (e) { console.error('iframeへのフォーカス設定に失敗しました。', e); }
+            }, 200);
+        }
+    });
+
+    window.addEventListener('resize', debouncedResize);
+
+    resultArea.addEventListener('click', () => {
+        if (body.classList.contains('fullscreen-mode')) {
+            try { resultsFrame.contentWindow.focus(); } catch (e) { console.error('iframeへのフォーカス再設定に失敗しました。', e); }
+        }
+    });
+
+    // --- ▼▼▼ PWAインストール関連のスクリプト ▼▼▼ ---
+    let deferredPrompt;
+
+    window.addEventListener('beforeinstallprompt', (e) => {
+        e.preventDefault();
+        deferredPrompt = e;
+        installBtn.style.display = 'block';
+    });
+
+    installBtn.addEventListener('click', async () => {
+        installBtn.style.display = 'none';
+        deferredPrompt.prompt();
+        const { outcome } = await deferredPrompt.userChoice;
+        console.log(`ユーザーの選択: ${outcome}`);
+        deferredPrompt = null;
+    });
+
+    if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+            navigator.serviceWorker.register(swURL).then(registration => {
+                console.log('ServiceWorkerの登録に成功しました。スコープ: ', registration.scope);
+            }).catch(err => {
+                console.log('ServiceWorkerの登録に失敗しました。', err);
+            });
+        });
+    }
+
+    window.addEventListener('appinstalled', () => {
+        installBtn.style.display = 'none';
+        deferredPrompt = null;
+        console.log('PWAが正常にインストールされました');
+    });
+
+    </script>
+</body>
+</html>
