@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>リアルタイム・オンラインビンゴ</title>
+    <style>
+        :root {
+            --primary-color: #4a90e2; --secondary-color: #b8d8f9; --accent-color: #f5a623;
+            --danger-color: #d0021b; --success-color: #7ed321; --light-bg: #f4f8fb;
+            --white-bg: #ffffff; --text-color: #333; --drawn-color-bg: #e6f7ff; --drawn-color-glow: #007bff;
+        }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background-color: var(--light-bg); color: var(--text-color); display: flex; flex-direction: column; align-items: center; margin: 0; padding: 10px; }
+        h1 { color: var(--primary-color); text-align: center; font-size: 24px; }
+        button { width: 100%; padding: 15px 20px; font-size: 18px; font-weight: bold; cursor: pointer; border: none; border-radius: 8px; color: var(--white-bg); background-color: var(--success-color); transition: background-color 0.3s, transform 0.1s; }
+        button:disabled { background-color: #ccc; cursor: not-allowed; }
+        input { width: 100%; padding: 12px; font-size: 18px; border: 2px solid var(--secondary-color); border-radius: 5px; box-sizing: border-box; text-align: center; margin-bottom: 20px; }
+        
+        .screen { display: none; flex-direction: column; align-items: center; text-align: center; padding: 30px; margin-top: 20px; background-color: var(--white-bg); border-radius: 10px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); max-width: 400px; width: 90%; }
+        .screen.active { display: flex; }
+        
+        #game-container { display: flex; flex-direction: row; justify-content: center; align-items: flex-start; gap: 20px; width: 100%; }
+        #bingo-card { border-collapse: collapse; box-shadow: 0 4px 12px rgba(0,0,0,0.1); background-color: var(--white-bg); }
+        #bingo-card th, #bingo-card td { width: clamp(50px, 18vw, 70px); height: clamp(50px, 18vw, 70px); border: 2px solid var(--primary-color); text-align: center; font-size: clamp(18px, 5vw, 24px); font-weight: bold; cursor: pointer; user-select: none; }
+        #bingo-card th { background-color: var(--secondary-color); color: var(--primary-color); }
+        #bingo-card td.drawn { background-color: var(--drawn-color-bg); box-shadow: 0 0 10px var(--drawn-color-glow); }
+        #bingo-card td.hit { background-color: var(--accent-color); color: var(--white-bg); transform: scale(1.05); }
+        
+        #controls { display: flex; flex-direction: column; align-items: center; gap: 15px; padding: 20px; background-color: var(--white-bg); border-radius: 10px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); width: 320px; }
+        #drawn-number-display span { display: block; font-size: 72px; font-weight: bold; color: var(--danger-color); min-height: 85px; }
+        #history-list { display: flex; flex-wrap: wrap; gap: 8px; list-style: none; padding: 10px; margin: 0; max-height: 150px; overflow-y: auto; background-color: #f7f7f7; border-radius: 5px; }
+        #history-list li { width: 35px; height: 35px; display: flex; justify-content: center; align-items: center; background-color: var(--white-bg); border-radius: 50%; font-weight: bold; }
+        #player-count { font-size: 18px; margin-top: 20px; color: var(--primary-color); }
+
+        @media (max-width: 768px) { #game-container { flex-direction: column; align-items: center; } #controls { width: 95%; max-width: 400px; } }
+    </style>
+</head>
+<body>
+
+    <h1>リアルタイム・オンラインビンゴ</h1>
+
+    <!-- 合言葉入力画面 -->
+    <div id="welcome-screen" class="screen active">
+        <h2>合言葉を入力</h2>
+        <input type="text" id="keyword-input" placeholder="友達と同じ合言葉">
+        <button id="join-room-btn" disabled>部屋に入る</button>
+    </div>
+
+    <!-- 待機画面 -->
+    <div id="waiting-screen" class="screen">
+        <h2>待機中...</h2>
+        <p>合言葉: <b id="keyword-display"></b></p>
+        <p>他のプレイヤーが参加するのを待っています。</p>
+        <p id="player-count">現在の参加者: 1人</p>
+        <p><small>このページのURLを友達に送ると、直接この部屋に招待できます。</small></p>
+    </div>
+
+    <!-- ゲーム画面 -->
+    <div id="game-screen" class="screen">
+        <div id="game-container">
+            <table id="bingo-card"><tbody></tbody></table>
+            <div id="controls">
+                <div id="drawn-number-display">引かれた番号<span id="current-number">?</span></div>
+                <button id="draw-btn">次の番号を引く</button>
+                <div id="drawn-history"><p><b>履歴:</b></p><ul id="history-list"></ul></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- サーバーと通信するためのライブラリ -->
+    <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+    <script>
+        const socket = io(); // サーバーへの接続を開始
+
+        // --- DOM要素 ---
+        const screens = {
+            welcome: document.getElementById('welcome-screen'),
+            waiting: document.getElementById('waiting-screen'),
+            game: document.getElementById('game-screen'),
+        };
+        const keywordInput = document.getElementById('keyword-input');
+        const joinRoomBtn = document.getElementById('join-room-btn');
+        const keywordDisplay = document.getElementById('keyword-display');
+        const playerCount = document.getElementById('player-count');
+        const bingoCardBody = document.querySelector('#bingo-card tbody');
+        const drawBtn = document.getElementById('draw-btn');
+        const currentNumberDisplay = document.getElementById('current-number');
+        const historyList = document.getElementById('history-list');
+
+        let hitNumbers = new Set();
+        
+        // --- 画面切り替え ---
+        function showScreen(screenName) {
+            Object.values(screens).forEach(s => s.classList.remove('active'));
+            screens[screenName].classList.add('active');
+        }
+
+        // --- イベントリスナー ---
+        keywordInput.addEventListener('input', () => {
+            joinRoomBtn.disabled = keywordInput.value.trim() === '';
+        });
+
+        joinRoomBtn.addEventListener('click', () => {
+            const keyword = keywordInput.value.trim();
+            socket.emit('joinRoom', { keyword }); // サーバーに「部屋に入る」ことを通知
+            keywordDisplay.textContent = keyword;
+            showScreen('waiting');
+        });
+
+        drawBtn.addEventListener('click', () => {
+            drawBtn.disabled = true; // 連打防止
+            socket.emit('drawNumber'); // サーバーに「番号を引いて」と依頼
+        });
+        
+        bingoCardBody.addEventListener('click', (e) => {
+            if (e.target.matches('td.drawn:not(.free)')) {
+                e.target.classList.toggle('hit');
+            }
+        });
+
+        // --- サーバーからの通信を受け取る ---
+        socket.on('updatePlayerCount', (count) => {
+            playerCount.textContent = `現在の参加者: ${count}人`;
+        });
+
+        socket.on('gameStart', (cardData) => {
+            createBingoCard(cardData);
+            showScreen('game');
+        });
+
+        socket.on('numberDrawn', (data) => {
+            const { newNumber, drawnNumbers } = data;
+            currentNumberDisplay.textContent = newNumber;
+
+            historyList.innerHTML = '';
+            drawnNumbers.slice().reverse().forEach(num => {
+                const li = document.createElement('li');
+                li.textContent = num;
+                historyList.appendChild(li);
+            });
+
+            document.querySelectorAll(`[data-number="${newNumber}"]`).forEach(cell => {
+                cell.classList.add('drawn');
+            });
+
+            drawBtn.disabled = false; // ボタンを再度有効化
+        });
+        
+        socket.on('gameOver', () => {
+            drawBtn.disabled = true;
+            setTimeout(() => alert('BINGO! おめでとうございます！'), 100);
+        });
+
+        // --- ゲームロジック ---
+        function createBingoCard(cardNumbers) {
+            const headers = ['B', 'I', 'N', 'G', 'O'];
+            const thead = document.createElement('thead');
+            const trHead = document.createElement('tr');
+            headers.forEach(h => {
+                const th = document.createElement('th');
+                th.textContent = h;
+                trHead.appendChild(th);
+            });
+            thead.appendChild(trHead);
+            bingoCardBody.before(thead);
+
+            for (let i = 0; i < 5; i++) {
+                const row = document.createElement('tr');
+                for (let j = 0; j < 5; j++) {
+                    const cell = document.createElement('td');
+                    if (i === 2 && j === 2) {
+                        cell.textContent = 'FREE';
+                        cell.classList.add('free', 'hit', 'drawn');
+                    } else {
+                        const num = cardNumbers[j][i];
+                        cell.textContent = num;
+                        cell.dataset.number = num;
+                    }
+                    row.appendChild(cell);
+                }
+                bingoCardBody.appendChild(row);
+            }
+        }
+    </script>
+</body>
+</html>
