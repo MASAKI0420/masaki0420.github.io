@@ -165,7 +165,9 @@
         #mania-wrapper .overlay-menu h2 { font-size: 2.5em; margin-top: 0; margin-bottom: 30px; }
         #mania-wrapper .overlay-button { display: block; width: 200px; padding: 15px; margin: 10px auto; font-size: 1.2em; color: white; border: 2px solid white; background-color: transparent; border-radius: 8px; cursor: pointer; transition: background-color 0.2s, color 0.2s; }
         #mania-wrapper .overlay-button:hover, #mania-wrapper .overlay-button.selected { background-color: white; color: black; }
-        #mania-wrapper #results-menu .results-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 20px; margin-bottom: 20px; font-size: 1.2em; }
+        #mania-wrapper #results-menu .results-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 20px; margin-bottom: 20px; font-size: 1.1em; }
+        #mania-wrapper .results-grid .results-item span > span { display: inline-block; min-width: 40px; text-align: right; }
+        #mania-wrapper .results-grid .results-item small { font-size: 0.8em; color: #a0a8c0; margin-left: 8px;}
         #mania-wrapper #results-accuracy-container { font-size: 1.5em; font-weight: bold; margin-bottom: 30px; }
         #mania-wrapper #countdown-text { font-size: 8em; font-weight: bold; text-shadow: 0 0 20px rgba(0,0,0,0.7); }
         #mania-wrapper .settings-item { margin-bottom: 20px; text-align: left; padding: 0 20px; width: 250px; }
@@ -410,10 +412,12 @@
                 <div id="results-accuracy-container">ACCURACY: <span id="results-accuracy-value">0.00</span>%</div>
                 <div class="results-grid">
                     <div class="results-item" style="grid-column: 1 / -1;"><span>MAX COMBO: </span><span id="results-max-combo-value">0</span></div>
-                    <div class="results-item"><span>PERFECT: </span><span id="results-perfect-value">0</span></div>
-                    <div class="results-item"><span>GREAT: </span><span id="results-great-value">0</span></div>
-                    <div class="results-item"><span>GOOD: </span><span id="results-good-value">0</span></div>
-                    <div class="results-item"><span>MISS: </span><span id="results-miss-value">0</span></div>
+                    <div class="results-item"><span>PERFECT+: </span><span><span id="results-perfect-plus-value">0</span> <small id="results-perfect-plus-percent">(0.00%)</small></span></div>
+                    <div class="results-item"><span>PERFECT: </span><span><span id="results-perfect-value">0</span> <small id="results-perfect-percent">(0.00%)</small></span></div>
+                    <div class="results-item"><span>GREAT: </span><span><span id="results-great-value">0</span> <small id="results-great-percent">(0.00%)</small></span></div>
+                    <div class="results-item"><span>GOOD: </span><span><span id="results-good-value">0</span> <small id="results-good-percent">(0.00%)</small></span></div>
+                    <div class="results-item"><span>OK: </span><span><span id="results-ok-value">0</span> <small id="results-ok-percent">(0.00%)</small></span></div>
+                    <div class="results-item"><span>MISS: </span><span><span id="results-miss-value">0</span> <small id="results-miss-percent">(0.00%)</small></span></div>
                 </div>
                 <button id="results-retry-button" class="overlay-button">やり直し (Retry)</button>
                 <button id="results-menu-button" class="overlay-button">メニューに戻る (Menu)</button>
@@ -725,10 +729,18 @@
             resultsScore: root.querySelector('#results-score-value'),
             resultsAccuracy: root.querySelector('#results-accuracy-value'),
             resultsMaxCombo: root.querySelector('#results-max-combo-value'),
+            resultsPerfectPlus: root.querySelector('#results-perfect-plus-value'),
+            resultsPerfectPlusPercent: root.querySelector('#results-perfect-plus-percent'),
             resultsPerfect: root.querySelector('#results-perfect-value'),
+            resultsPerfectPercent: root.querySelector('#results-perfect-percent'),
             resultsGreat: root.querySelector('#results-great-value'),
+            resultsGreatPercent: root.querySelector('#results-great-percent'),
             resultsGood: root.querySelector('#results-good-value'),
+            resultsGoodPercent: root.querySelector('#results-good-percent'),
+            resultsOk: root.querySelector('#results-ok-value'),
+            resultsOkPercent: root.querySelector('#results-ok-percent'),
             resultsMiss: root.querySelector('#results-miss-value'),
+            resultsMissPercent: root.querySelector('#results-miss-percent'),
             resultsRetryButton: root.querySelector('#results-retry-button'),
             resultsMenuButton: root.querySelector('#results-menu-button'),
             openSettingsButton: root.querySelector('#open-settings-button'),
@@ -771,22 +783,25 @@
         let keyConfigs = {};
         let activeKeys = [];
         let numLanes = 4;
+        let keyState = [];
+        let keyJustPressed = [];
         const getGameHeight = () => dom.gameContainer.clientHeight;
         const JUDGMENT_LINE_POS_VH = 15;
         const NOTE_HEIGHT = 22;
         const BASE_FALL_MS = 1200;
-        const PERFECT_WINDOW = 40;
-        const GREAT_WINDOW = 80;
-        const GOOD_WINDOW = 120;
+        
+        let JUDGMENT_WINDOWS = {};
+        
         const EARLY_LATE_THRESHOLD = 5;
         const TICK_SCORE_INTERVAL = 100;
         const TICK_SCORE_AMOUNT = 10;
         const LN_EARLY_RELEASE_PERFECT_WINDOW = 120;
         let score = 0, combo = 0, maxCombo = 0, accuracy = 100, totalJudgments = 0, weightedAccuracy = 0, gameEndTime = 0;
-        let judgmentCounts = { PERFECT: 0, GREAT: 0, GOOD: 0, MISS: 0 };
+        let judgmentCounts = { 'PERFECT+': 0, PERFECT: 0, GREAT: 0, GOOD: 0, OK: 0, MISS: 0 };
         let isGameRunning = false, isPaused = false, isAutoPlay = false;
         let selectedPauseIndex = 0;
         let allNotes = [];
+        let nextUnjudgedNoteIndex = 0;
         let activeHolds = [];
         let beatmap = null;
         let audioLoaded = false;
@@ -806,8 +821,54 @@
         async function addBeatmapsToDB(files) { if (!db) return; const transaction = db.transaction(['beatmaps'], 'readwrite'); const store = transaction.objectStore('beatmaps'); for (const file of files) { store.add({ name: file.name, file: file }); } transaction.oncomplete = () => loadBeatmapsFromDB(); transaction.onerror = (event) => console.error('Error adding beatmaps:', event.target.error); }
         async function loadBeatmapsFromDB() { if (!db) return; const transaction = db.transaction(['beatmaps'], 'readonly'); const store = transaction.objectStore('beatmaps'); const request = store.getAll(); request.onsuccess = () => { dom.beatmapLibrarySelector.innerHTML = ''; request.result.forEach(beatmapFile => { const option = new Option(beatmapFile.name, beatmapFile.id); dom.beatmapLibrarySelector.add(option); }); }; }
         async function removeBeatmapFromDB() { if (!db) return; const selectedId = parseInt(dom.beatmapLibrarySelector.value, 10); if (isNaN(selectedId)) { alert('削除する譜面を選択してください。'); return; } const transaction = db.transaction(['beatmaps'], 'readwrite'); const store = transaction.objectStore('beatmaps'); const request = store.delete(selectedId); request.onsuccess = () => { resetBeatmapSelection(); loadBeatmapsFromDB(); }; }
-        async function getBeatmapFileFromDB(id) { return new Promise((resolve, reject) => { if (!db) return reject('DB not initialized'); const transaction = db.transaction(['beatmaps'], 'readonly'); const store = transaction.objectStore('beatmaps'); const request = store.get(id); request.onsuccess = () => resolve(request.result ? request.result.file : null); request.onerror = (event) => reject(event.target.error); }); }
-        function parseBeatmap(text) { const lines = text.split('\n').map(l => l.trim()); const result = { title: '', artist: '', keyCount: 0, hitObjects: [], audioFilename: '', version: '', audioLeadIn: 0, videoFilename: '', videoOffset: 0 }; let currentSection = ''; for (const line of lines) { if (line.startsWith('[')) { currentSection = line; continue; } if (currentSection === '[General]') { if (line.startsWith('AudioFilename:')) result.audioFilename = line.substring(14).trim(); if (line.startsWith('AudioLeadIn:')) result.audioLeadIn = parseInt(line.substring(12).trim(), 10) || 0; } else if (currentSection === '[Events]') { if (line.startsWith('Video,')) { const parts = line.split(','); if (parts.length >= 3) { result.videoOffset = parseInt(parts[1], 10) || 0; result.videoFilename = parts[2].replace(/"/g, ''); } } } else if (currentSection === '[Metadata]') { if (line.startsWith('Title:')) result.title = line.substring(6).trim(); else if (line.startsWith('Artist:')) result.artist = line.substring(7).trim(); else if (line.startsWith('Version:')) result.version = line.substring(8).trim(); } else if (currentSection === '[Difficulty]' && line.startsWith('CircleSize:')) result.keyCount = parseInt(line.substring(11).trim(), 10); else if (currentSection === '[HitObjects]') { const parts = line.split(','); if (parts.length < 6) continue; const x = parseInt(parts[0], 10); const time = parseInt(parts[2], 10); const type = parseInt(parts[3], 10); const lane = Math.floor(x * result.keyCount / 512); if (lane < 0 || lane >= result.keyCount) continue; if (type & 128) { const endTime = parseInt(parts[5].split(':')[0], 10); result.hitObjects.push({ time, lane, type: 'long', endTime }); } else { result.hitObjects.push({ time, lane, type: 'note' }); } } } result.hitObjects.sort((a, b) => a.time - b.time); return result; }
+        async function getBeatmapRecordFromDB(id) { return new Promise((resolve, reject) => { if (!db) return reject('DB not initialized'); const transaction = db.transaction(['beatmaps'], 'readonly'); const store = transaction.objectStore('beatmaps'); const request = store.get(id); request.onsuccess = () => resolve(request.result || null); request.onerror = (event) => reject(event.target.error); }); }
+        function parseBeatmap(text) {
+            const lines = text.split('\n').map(l => l.trim());
+            const result = {
+                title: '', artist: '', keyCount: 0, hitObjects: [],
+                audioFilename: '', version: '', audioLeadIn: 0,
+                videoFilename: '', videoOffset: 0, overallDifficulty: 8 
+            };
+            let currentSection = '';
+            for (const line of lines) {
+                if (line.startsWith('[')) { currentSection = line; continue; }
+                if (currentSection === '[General]') {
+                    if (line.startsWith('AudioFilename:')) result.audioFilename = line.substring(14).trim();
+                    if (line.startsWith('AudioLeadIn:')) result.audioLeadIn = parseInt(line.substring(12).trim(), 10) || 0;
+                } else if (currentSection === '[Events]') {
+                    if (line.startsWith('Video,')) {
+                        const parts = line.split(',');
+                        if (parts.length >= 3) {
+                            result.videoOffset = parseInt(parts[1], 10) || 0;
+                            result.videoFilename = parts[2].replace(/"/g, '');
+                        }
+                    }
+                } else if (currentSection === '[Metadata]') {
+                    if (line.startsWith('Title:')) result.title = line.substring(6).trim();
+                    else if (line.startsWith('Artist:')) result.artist = line.substring(7).trim();
+                    else if (line.startsWith('Version:')) result.version = line.substring(8).trim();
+                } else if (currentSection === '[Difficulty]') {
+                    if (line.startsWith('CircleSize:')) result.keyCount = parseInt(line.substring(11).trim(), 10);
+                    if (line.startsWith('OverallDifficulty:')) result.overallDifficulty = parseFloat(line.substring(18).trim());
+                } else if (currentSection === '[HitObjects]') {
+                    const parts = line.split(',');
+                    if (parts.length < 6) continue;
+                    const x = parseInt(parts[0], 10);
+                    const time = parseInt(parts[2], 10);
+                    const type = parseInt(parts[3], 10);
+                    const lane = Math.floor(x * result.keyCount / 512);
+                    if (lane < 0 || lane >= result.keyCount) continue;
+                    if (type & 128) {
+                        const endTime = parseInt(parts[5].split(':')[0], 10);
+                        result.hitObjects.push({ time, lane, type: 'long', endTime });
+                    } else {
+                        result.hitObjects.push({ time, lane, type: 'note' });
+                    }
+                }
+            }
+            result.hitObjects.sort((a, b) => a.time - b.time);
+            return result;
+        }
         
         function parseMalodyBeatmap(text) {
             try {
@@ -827,6 +888,7 @@
                     audioLeadIn: 0,
                     videoFilename: '',
                     videoOffset: 0,
+                    overallDifficulty: 8
                 };
                 const offset = data.meta.offset || 0;
                 const BEATS_PER_MEASURE = 4;
@@ -887,7 +949,78 @@
         function loadBeatmapSpecificSettings() { const key = getBeatmapSettingsKey(); let audioOffset = 0; let backgroundChoice = 'auto'; if (key) { const settings = JSON.parse(localStorage.getItem('maniaPlayerBeatmapSettings')) || {}; const saved = settings[key]; if (typeof saved === 'object' && saved !== null) { audioOffset = saved.audioOffset || 0; backgroundChoice = saved.backgroundChoice || 'auto'; } } dom.audioOffsetInput.value = audioOffset; dom.backgroundSelector.value = backgroundChoice; }
         async function loadAudioWithWebAudioAPI(blobUrl) { audioLoaded = false; audioContextState.isReady = false; checkReadyState(); try { if (!audioContext) { audioContext = new (window.AudioContext || window.webkitAudioContext)(); } const response = await fetch(blobUrl); const arrayBuffer = await response.arrayBuffer(); audioBuffer = await audioContext.decodeAudioData(arrayBuffer); audioLoaded = true; audioContextState.isReady = true; } catch (e) { console.error("Web Audio APIでの音声デコードに失敗:", e); alert("音声ファイルの読み込みに失敗しました。Web Audio APIがサポートされていないか、ファイルが破損している可能性があります。"); audioLoaded = false; } finally { checkReadyState(); } }
         function setupFileListeners() { dom.addBeatmapsButton.addEventListener('click', () => dom.oszFileInput.click()); dom.oszFileInput.addEventListener('change', (e) => addBeatmapsToDB(e.target.files)); dom.removeBeatmapButton.addEventListener('click', removeBeatmapFromDB); dom.beatmapLibrarySelector.addEventListener('change', handleLibrarySelection); dom.beatmapSelector.addEventListener('change', handleDifficultySelection); }
-        async function handleLibrarySelection() { const selectedId = parseInt(dom.beatmapLibrarySelector.value, 10); resetBeatmapSelection(); if (isNaN(selectedId)) return; currentBeatmapSetId = selectedId; try { const file = await getBeatmapFileFromDB(selectedId); if (!file) throw new Error('File not found in DB.'); dom.songTitleElement.textContent = '読み込み中...'; const jszip = new JSZip(); const zip = await jszip.loadAsync(file); currentOszFiles = { beatmaps: [], audio: {}, video: {}, image: {} }; const filePromises = []; zip.forEach((relativePath, zipEntry) => { const lowerCasePath = relativePath.toLowerCase(); if (lowerCasePath.endsWith('.osu')) { filePromises.push(zipEntry.async('string').then(content => currentOszFiles.beatmaps.push({ name: relativePath, content, type: 'osu' }))); } else if (lowerCasePath.endsWith('.mc')) { filePromises.push(zipEntry.async('string').then(content => currentOszFiles.beatmaps.push({ name: relativePath, content, type: 'malody' }))); } else if (lowerCasePath.endsWith('.mp3') || lowerCasePath.endsWith('.ogg')) { filePromises.push(zipEntry.async('blob').then(blob => currentOszFiles.audio[zipEntry.name] = URL.createObjectURL(blob))); } else if (lowerCasePath.endsWith('.mp4') || lowerCasePath.endsWith('.webm')) { filePromises.push(zipEntry.async('blob').then(blob => currentOszFiles.video[Object.keys(currentOszFiles.video).length] = URL.createObjectURL(blob))); } else if (lowerCasePath.endsWith('.jpg') || lowerCasePath.endsWith('.jpeg') || lowerCasePath.endsWith('.png')) { filePromises.push(zipEntry.async('blob').then(blob => currentOszFiles.image[Object.keys(currentOszFiles.image).length] = URL.createObjectURL(blob))); } }); await Promise.all(filePromises); if (currentOszFiles.beatmaps.length === 0) throw new Error('譜面ファイル (.osu or .mc) が見つかりません。'); dom.beatmapSelector.innerHTML = '<option value="">-- 難易度を選択 --</option>'; currentOszFiles.beatmaps.forEach((beatmapFile, index) => { let optionText = beatmapFile.name; try { if (beatmapFile.type === 'osu') { const tempBeatmap = parseBeatmap(beatmapFile.content); optionText = `${tempBeatmap.version || beatmapFile.name} [${tempBeatmap.keyCount}K]`; } else if (beatmapFile.type === 'malody') { const data = JSON.parse(beatmapFile.content); const mode_ext = data.meta.mode_ext || data.meta.meta_ext; if (data.meta && data.meta.mode === 0 && mode_ext) { const keyCount = mode_ext.column || '?'; const version = data.meta.version || beatmapFile.name; optionText = `${version} [${keyCount}K Malody]`; } } } catch(e) { /* ignore parse errors for preview */ } const option = new Option(optionText, index); dom.beatmapSelector.appendChild(option); }); dom.beatmapSelectorContainer.style.display = 'block'; const firstBeatmapFile = currentOszFiles.beatmaps[0]; let firstBeatmap; if (firstBeatmapFile.type === 'malody') { try { const data = JSON.parse(firstBeatmapFile.content); firstBeatmap = { title: data.meta.title, artist: data.meta.artist }; } catch(e) { firstBeatmap = { title: 'Invalid Malody Chart', artist: '' }; } } else { firstBeatmap = parseBeatmap(firstBeatmapFile.content); } dom.songTitleElement.textContent = firstBeatmap.title || '難易度を選択してください'; dom.songArtistElement.textContent = firstBeatmap.artist || ''; dom.saveOszButton.disabled = false; } catch (err) { alert('譜面の読み込みに失敗しました: ' + err.message); resetBeatmapSelection(); } }
+        async function handleLibrarySelection() {
+            const selectedId = parseInt(dom.beatmapLibrarySelector.value, 10);
+            resetBeatmapSelection();
+            if (isNaN(selectedId)) return;
+            currentBeatmapSetId = selectedId;
+            try {
+                const record = await getBeatmapRecordFromDB(selectedId);
+                if (!record || !record.file) throw new Error('File not found in DB.');
+                const file = record.file;
+                
+                dom.songTitleElement.textContent = '読み込み中...';
+                const jszip = new JSZip();
+                const zip = await jszip.loadAsync(file);
+                currentOszFiles = { beatmaps: [], audio: {}, video: {}, image: {} };
+                const filePromises = [];
+                zip.forEach((relativePath, zipEntry) => {
+                    const lowerCasePath = relativePath.toLowerCase();
+                    if (lowerCasePath.endsWith('.osu')) {
+                        filePromises.push(zipEntry.async('string').then(content => currentOszFiles.beatmaps.push({ name: relativePath, content, type: 'osu' })));
+                    } else if (lowerCasePath.endsWith('.mc')) {
+                        filePromises.push(zipEntry.async('string').then(content => currentOszFiles.beatmaps.push({ name: relativePath, content, type: 'malody' })));
+                    } else if (lowerCasePath.endsWith('.mp3') || lowerCasePath.endsWith('.ogg')) {
+                        filePromises.push(zipEntry.async('blob').then(blob => currentOszFiles.audio[zipEntry.name] = URL.createObjectURL(blob)));
+                    } else if (lowerCasePath.endsWith('.mp4') || lowerCasePath.endsWith('.webm')) {
+                        filePromises.push(zipEntry.async('blob').then(blob => currentOszFiles.video[Object.keys(currentOszFiles.video).length] = URL.createObjectURL(blob)));
+                    } else if (lowerCasePath.endsWith('.jpg') || lowerCasePath.endsWith('.jpeg') || lowerCasePath.endsWith('.png')) {
+                        filePromises.push(zipEntry.async('blob').then(blob => currentOszFiles.image[Object.keys(currentOszFiles.image).length] = URL.createObjectURL(blob)));
+                    }
+                });
+                await Promise.all(filePromises);
+                if (currentOszFiles.beatmaps.length === 0) throw new Error('譜面ファイル (.osu or .mc) が見つかりません。');
+                dom.beatmapSelector.innerHTML = '<option value="">-- 難易度を選択 --</option>';
+                currentOszFiles.beatmaps.forEach((beatmapFile, index) => {
+                    let optionText = beatmapFile.name;
+                    try {
+                        if (beatmapFile.type === 'osu') {
+                            const tempBeatmap = parseBeatmap(beatmapFile.content);
+                            optionText = `${tempBeatmap.version || beatmapFile.name} [${tempBeatmap.keyCount}K]`;
+                        } else if (beatmapFile.type === 'malody') {
+                            const data = JSON.parse(beatmapFile.content);
+                            const mode_ext = data.meta.mode_ext || data.meta.meta_ext;
+                            if (data.meta && data.meta.mode === 0 && mode_ext) {
+                                const keyCount = mode_ext.column || '?';
+                                const version = data.meta.version || beatmapFile.name;
+                                optionText = `${version} [${keyCount}K Malody]`;
+                            }
+                        }
+                    } catch(e) { /* ignore parse errors for preview */ }
+                    const option = new Option(optionText, index);
+                    dom.beatmapSelector.appendChild(option);
+                });
+                dom.beatmapSelectorContainer.style.display = 'block';
+                const firstBeatmapFile = currentOszFiles.beatmaps[0];
+                let firstBeatmap;
+                if (firstBeatmapFile.type === 'malody') {
+                    try {
+                        const data = JSON.parse(firstBeatmapFile.content);
+                        firstBeatmap = { title: data.meta.title, artist: data.meta.artist };
+                    } catch(e) {
+                        firstBeatmap = { title: 'Invalid Malody Chart', artist: '' };
+                    }
+                } else {
+                    firstBeatmap = parseBeatmap(firstBeatmapFile.content);
+                }
+                dom.songTitleElement.textContent = firstBeatmap.title || '難易度を選択してください';
+                dom.songArtistElement.textContent = firstBeatmap.artist || '';
+                dom.saveOszButton.disabled = false;
+            } catch (err) {
+                alert('譜面の読み込みに失敗しました: ' + err.message);
+                resetBeatmapSelection();
+            }
+        }
         function handleDifficultySelection() {
             const selectedIndex = dom.beatmapSelector.value;
             beatmap = null;
@@ -909,6 +1042,9 @@
                     beatmap = parseBeatmap(selectedBeatmapFile.content);
                 }
                 if (!beatmap) { return; }
+                
+                updateJudgmentWindows(beatmap.overallDifficulty);
+                
                 if (beatmap.keyCount > 4) {
                     dom.force4kContainer.style.display = 'block';
                 }
@@ -928,38 +1064,14 @@
                 if (beatmap.audioFilename) {
                     const targetAudioPath = beatmap.audioFilename.replace(/\\/g, '/').toLowerCase();
                     
-                    // Tier 1: Exact Match
                     for (const fullPath of audioFiles) {
-                        if (fullPath.replace(/\\/g, '/').toLowerCase() === targetAudioPath) {
+                        if (fullPath.replace(/\\/g, '/').toLowerCase().endsWith(targetAudioPath)) {
                             audioSrc = currentOszFiles.audio[fullPath];
                             break;
                         }
                     }
-
-                    // Tier 2: Suffix Match
-                    if (!audioSrc) {
-                        for (const fullPath of audioFiles) {
-                            if (fullPath.replace(/\\/g, '/').toLowerCase().endsWith(targetAudioPath)) {
-                                audioSrc = currentOszFiles.audio[fullPath];
-                                break;
-                            }
-                        }
-                    }
-
-                    // Tier 3: Filename Match (fallback)
-                    if (!audioSrc) {
-                        const targetBaseName = targetAudioPath.split('/').pop();
-                        for (const fullPath of audioFiles) {
-                            const zipBaseName = fullPath.replace(/\\/g, '/').toLowerCase().split('/').pop();
-                            if (zipBaseName === targetBaseName) {
-                                audioSrc = currentOszFiles.audio[fullPath];
-                                break;
-                            }
-                        }
-                    }
                 }
                 
-                // Tier 4: The "Last Resort" Heuristic
                 if (!audioSrc && audioFiles.length === 1) {
                     audioSrc = currentOszFiles.audio[audioFiles[0]];
                 }
@@ -984,9 +1096,64 @@
         function getFallMs() { return BASE_FALL_MS / parseFloat(dom.speedSlider.value); }
         function setKeyCount(count) { numLanes = parseInt(count, 10); root.style.setProperty('--num-lanes', numLanes); activeKeys = keyConfigs[numLanes]; initKeyConfig(); initGameUI(); }
         function initKeyConfig() { dom.keyConfigInputsContainer.innerHTML = ''; const currentKeys = keyConfigs[numLanes] || []; for (let i = 0; i < numLanes; i++) { const keyInput = document.createElement('div'); keyInput.className = 'key-config-input'; keyInput.textContent = currentKeys[i] || '...'; keyInput.dataset.laneIndex = i; keyInput.tabIndex = 0; keyInput.addEventListener('click', e => { if (isGameRunning) return; root.querySelectorAll('.key-config-input.is-waiting').forEach(el => el.blur()); e.currentTarget.textContent = '...'; e.currentTarget.classList.add('is-waiting'); }); keyInput.addEventListener('blur', e => { e.currentTarget.classList.remove('is-waiting'); e.currentTarget.textContent = keyConfigs[numLanes][e.currentTarget.dataset.laneIndex]; }); keyInput.addEventListener('keydown', e => { e.preventDefault(); if (!e.currentTarget.classList.contains('is-waiting')) return; if (e.key === 'Escape') { e.currentTarget.blur(); return; } const newKey = e.key.toUpperCase(); if (newKey.length !== 1 && newKey !== ' ') return; const index = parseInt(e.currentTarget.dataset.laneIndex, 10); if (keyConfigs[numLanes].some((key, k_idx) => key === newKey && k_idx !== index)) { alert('そのキーは他のレーンで既に使用されています。'); return; } keyConfigs[numLanes][index] = newKey; e.currentTarget.blur(); updateKeyIndicators(); saveSettings(); }); dom.keyConfigInputsContainer.appendChild(keyInput); } }
-        function initGameUI() { dom.lanesContainer.innerHTML = ''; dom.keyIndicatorsContainer.innerHTML = ''; for (let i = 0; i < numLanes; i++) { const laneElement = document.createElement('div'); laneElement.classList.add('lane'); laneElement.dataset.laneIndex = i; dom.lanesContainer.appendChild(laneElement); laneElement.addEventListener('touchstart', e => { e.preventDefault(); if (!isGameRunning || isPaused || isAutoPlay) return; processHit(parseInt(e.currentTarget.dataset.laneIndex, 10)); }, { passive: false }); laneElement.addEventListener('touchend', e => { e.preventDefault(); if (!isGameRunning || isPaused || isAutoPlay) return; processRelease(parseInt(e.currentTarget.dataset.laneIndex, 10)); }); laneElement.addEventListener('touchcancel', e => { e.preventDefault(); if (!isGameRunning || isPaused || isAutoPlay) return; processRelease(parseInt(e.currentTarget.dataset.laneIndex, 10)); }); const keyIndicator = document.createElement('div'); keyIndicator.classList.add('key'); dom.keyIndicatorsContainer.appendChild(keyIndicator); } updateKeyIndicators(); }
+        function initGameUI() {
+            dom.lanesContainer.innerHTML = '';
+            dom.keyIndicatorsContainer.innerHTML = '';
+            for (let i = 0; i < numLanes; i++) {
+                const laneElement = document.createElement('div');
+                laneElement.classList.add('lane');
+                laneElement.dataset.laneIndex = i;
+                dom.lanesContainer.appendChild(laneElement);
+                
+                const touchStartHandler = e => {
+                    e.preventDefault();
+                    if (!isGameRunning || isPaused || isAutoPlay) return;
+                    const laneIndex = parseInt(e.currentTarget.dataset.laneIndex, 10);
+                    if (keyState[laneIndex]) return;
+                    keyState[laneIndex] = true;
+                    keyJustPressed[laneIndex] = true;
+                };
+                
+                const touchEndHandler = e => {
+                    e.preventDefault();
+                    if (!isGameRunning || isPaused || isAutoPlay) return;
+                    const laneIndex = parseInt(e.currentTarget.dataset.laneIndex, 10);
+                    keyState[laneIndex] = false;
+                    judgeRelease(laneIndex);
+                };
+
+                laneElement.addEventListener('touchstart', touchStartHandler, { passive: false });
+                laneElement.addEventListener('touchend', touchEndHandler);
+                laneElement.addEventListener('touchcancel', touchEndHandler);
+
+                const keyIndicator = document.createElement('div');
+                keyIndicator.classList.add('key');
+                dom.keyIndicatorsContainer.appendChild(keyIndicator);
+            }
+            updateKeyIndicators();
+        }
         function updateKeyIndicators() { const currentKeys = keyConfigs[numLanes] || []; dom.keyConfigInputsContainer.childNodes.forEach((input, i) => { if (currentKeys[i]) input.textContent = currentKeys[i]; }); if(dom.keyIndicatorsContainer) { dom.keyIndicatorsContainer.childNodes.forEach((indicator, i) => { if (currentKeys[i]) indicator.textContent = currentKeys[i]; }); } }
-        function resetGame() { score = 0; combo = 0; maxCombo = 0; accuracy = 100; totalJudgments = 0; weightedAccuracy = 0; judgmentCounts = { PERFECT: 0, GREAT: 0, GOOD: 0, MISS: 0 }; dom.scoreElement.textContent = score; dom.accuracyElement.textContent = '100.00%'; if(dom.errorBar) dom.errorBar.innerHTML = ''; if (animationFrameId) cancelAnimationFrame(animationFrameId); allNotes.forEach(note => { if (note.tickInterval) clearInterval(note.tickInterval); }); allNotes = []; activeHolds = Array(numLanes).fill(null); dom.lanesContainer.querySelectorAll('.note-wrapper').forEach(n => n.remove()); dom.keyIndicatorsContainer.childNodes.forEach(key => key.classList.remove('active')); dom.resultsOverlay.style.display = 'none'; isGameRunning = false; isPaused = false; dom.comboContainer.classList.remove('visible'); dom.comboCount.textContent = '0'; if (audioSourceNode) { audioSourceNode.stop(); audioSourceNode = null; } audioContextState.pausedAt = 0; audioContextState.startedAt = 0; }
+        function resetGame() {
+            score = 0; combo = 0; maxCombo = 0; accuracy = 100; totalJudgments = 0; weightedAccuracy = 0; nextUnjudgedNoteIndex = 0;
+            judgmentCounts = { 'PERFECT+': 0, PERFECT: 0, GREAT: 0, GOOD: 0, OK: 0, MISS: 0 };
+            keyState = Array(numLanes).fill(false);
+            keyJustPressed = Array(numLanes).fill(false);
+            dom.scoreElement.textContent = score;
+            dom.accuracyElement.textContent = '100.00%';
+            if(dom.errorBar) dom.errorBar.innerHTML = '';
+            if (animationFrameId) cancelAnimationFrame(animationFrameId);
+            allNotes.forEach(note => { if (note.tickInterval) clearInterval(note.tickInterval); });
+            allNotes = [];
+            activeHolds = Array(numLanes).fill(null);
+            dom.lanesContainer.querySelectorAll('.note-wrapper').forEach(n => n.remove());
+            dom.keyIndicatorsContainer.childNodes.forEach(key => key.classList.remove('active'));
+            dom.resultsOverlay.style.display = 'none';
+            isGameRunning = false; isPaused = false;
+            dom.comboContainer.classList.remove('visible');
+            dom.comboCount.textContent = '0';
+            if (audioSourceNode) { audioSourceNode.stop(); audioSourceNode = null; }
+            audioContextState.pausedAt = 0; audioContextState.startedAt = 0;
+        }
         function createNoteElement(note) { const wrapper = document.createElement('div'); wrapper.className = 'note-wrapper'; const noteHead = document.createElement('div'); noteHead.className = 'note'; if (note.type === 'long') { const body = document.createElement('div'); body.className = 'long-note-body'; wrapper.appendChild(body); } wrapper.appendChild(noteHead); note.element = wrapper; }
         async function startGame() {
             if (isGameRunning || !beatmap || !audioLoaded) return;
@@ -1019,6 +1186,8 @@
             }
             allNotes = notesToPlay;
             activeKeys = keyConfigs[numLanes];
+            keyState = Array(numLanes).fill(false);
+            keyJustPressed = Array(numLanes).fill(false);
 
             allNotes.forEach(note => {
                 createNoteElement(note);
@@ -1031,28 +1200,15 @@
             dom.appContainer.style.display = 'none';
             dom.gameContainer.style.display = 'block';
             
-            // --- Warm-up phase to prevent initial stutter ---
             await new Promise(resolve => {
-                let warmUpFrames = 30; // Number of frames to warm up
+                let warmUpFrames = 30;
                 const warmUpLoop = () => {
-                    if (warmUpFrames <= 0) {
-                        resolve();
-                        return;
-                    }
-                    const fallMs = getFallMs();
-                    const gameHeight = getGameHeight();
-                    const judgmentLinePx = gameHeight * (JUDGMENT_LINE_POS_VH / 100);
-                    const totalFallDistance = (gameHeight - judgmentLinePx) + NOTE_SPAWN_OFFSET_Y;
-                    const pixelsPerMs = totalFallDistance / fallMs;
-                    // Render notes at a position far before the start time
-                    updateNotePositions(-5000, 0, pixelsPerMs, gameHeight, judgmentLinePx);
-                    
-                    warmUpFrames--;
+                    if (warmUpFrames-- <= 0) { resolve(); return; }
+                    updateNotePositions(-5000, 0, (getGameHeight() / getFallMs()), getGameHeight(), getGameHeight() * (JUDGMENT_LINE_POS_VH / 100));
                     requestAnimationFrame(warmUpLoop);
                 };
                 warmUpLoop();
             });
-            // --- End of warm-up phase ---
 
             dom.countdownOverlay.style.display = 'flex'; 
             dom.gameContainer.classList.add('playing');
@@ -1084,59 +1240,129 @@
         function playAudio(offsetSeconds = 0, startTime = 0) { if (!audioContextState.isReady || !audioBuffer) return; if (audioSourceNode) { audioSourceNode.stop(); } audioSourceNode = audioContext.createBufferSource(); audioSourceNode.buffer = audioBuffer; audioSourceNode.connect(audioContext.destination); audioSourceNode.playbackRate.value = gameContext.rate; const startOffset = Math.max(0, offsetSeconds); const scheduledStart = Math.max(audioContext.currentTime, startTime); audioContextState.startedAt = scheduledStart - startOffset; audioSourceNode.start(scheduledStart, startOffset); }
         function getCurrentBeatmapTime() { if (!isGameRunning) return -Infinity; if (isPaused) { return (audioContextState.pausedAt * 1000) - (applyRateToTime(beatmap.audioLeadIn) || 0) + (parseInt(dom.audioOffsetInput.value, 10) || 0); } if (audioContextState.startedAt > 0) { const elapsed = (audioContext.currentTime - audioContextState.startedAt) * 1000 * gameContext.rate; return elapsed - (beatmap.audioLeadIn || 0) + (parseInt(dom.audioOffsetInput.value, 10) || 0); } const visualElapsed = performance.now() - gameContext.visualStartTime; return (visualElapsed - (getFallMs() + AUDIO_START_DELAY_MS)) * gameContext.rate; }
         function applyRateToTime(time) { return time / gameContext.rate; }
-        function gameLoop() { if (!isGameRunning) return; if (!isPaused) { const now = getCurrentBeatmapTime() / gameContext.rate; const noteUserOffset = parseInt(dom.offsetInput.value, 10) || 0; const fallMs = getFallMs(); const gameHeight = getGameHeight(); const judgmentLinePx = gameHeight * (JUDGMENT_LINE_POS_VH / 100); const totalFallDistance = (gameHeight - judgmentLinePx) + NOTE_SPAWN_OFFSET_Y; const pixelsPerMs = totalFallDistance / fallMs; updateNotePositions(now, noteUserOffset, pixelsPerMs, gameHeight, judgmentLinePx); if (isAutoPlay) autoPlayHandler(now, noteUserOffset); else checkMisses(now, noteUserOffset); if (now > gameEndTime) { isGameRunning = false; showResults(); } } animationFrameId = requestAnimationFrame(gameLoop); }
-        function updateNotePositions(now, userOffset, pixelsPerMs, gameHeight, judgmentLinePx) { const isCircleStyle = dom.playfield.classList.contains('note-style-circle'); const noteHeightForOffset = isCircleStyle ? 70 : 22; const yOffset = noteHeightForOffset / 2; for (const note of allNotes) { if ((note.judged && note.type === 'note') || note.released) continue; const timeToHit = (note.time + userOffset) - now; let headY = (gameHeight - judgmentLinePx) - (timeToHit * pixelsPerMs); if (!note.spawned && headY > -noteHeightForOffset) { note.spawned = true; note.element.classList.remove('hidden'); } if (note.element) { if (activeMods.HD) { const fadeInEndPos = gameHeight * 0.40; const fadeOutStartPos = gameHeight * 0.75; if (headY > fadeInEndPos) { const fadeProgress = Math.max(0, Math.min(1, (headY - fadeInEndPos) / (fadeOutStartPos - fadeInEndPos))); note.element.style.opacity = 1 - fadeProgress; } else { note.element.style.opacity = 1; } } if (note.type === 'long' && note.hit) { headY = gameHeight - judgmentLinePx; if (note.element.querySelector('.note')) note.element.querySelector('.note').style.display = 'none'; } note.element.style.transform = `translateY(${headY - yOffset}px)`; if (note.type === 'long') { const body = note.element.querySelector('.long-note-body'); if (body) { const timeToRelease = (note.endTime + userOffset) - now; const tailY = (gameHeight - judgmentLinePx) - (timeToRelease * pixelsPerMs); const headHeight = noteHeightForOffset; const bodyTopOffset = headHeight / 2; body.style.top = `${tailY - headY}px`; body.style.height = `${Math.max(0, (headY + bodyTopOffset) - tailY)}px`; } } } if (headY > gameHeight + 50) { if (note.element) note.element.classList.add('hidden'); note.judged = true; note.released = true; } } }
-        function autoPlayHandler(now, userOffset) { for (const note of allNotes) { if (!note.judged && now >= (note.time + userOffset)) handleHit('PERFECT', note, 0); if (note.type === 'long' && note.hit && !note.released && now >= (note.endTime + userOffset)) judgeRelease(note.lane, { isAutoCompletion: true }); } }
-        function checkMisses(now, userOffset) { for (const note of allNotes) { if (!note.judged && now > (note.time + userOffset) + GOOD_WINDOW) handleHit('MISS', note, GOOD_WINDOW + 1); } for (let i = 0; i < activeHolds.length; i++) { const holdNote = activeHolds[i]; if (holdNote && now > (holdNote.endTime + userOffset)) judgeRelease(i, { isAutoCompletion: true }); } }
-        function processHit(laneIndex) {
-            if (laneIndex === -1 || laneIndex >= numLanes) return;
-            dom.keyIndicatorsContainer.children[laneIndex].classList.add('active');
+        function gameLoop() {
+            if (!isGameRunning) return;
+            if (!isPaused) {
+                const now = getCurrentBeatmapTime() / gameContext.rate;
+                const noteUserOffset = parseInt(dom.offsetInput.value, 10) || 0;
+                
+                if (isAutoPlay) {
+                    autoPlayHandler(now, noteUserOffset);
+                } else {
+                    processHitsInLoop(now, noteUserOffset);
+                    updateNoteStates(now, noteUserOffset);
+                }
 
-            const userOffset = parseInt(dom.offsetInput.value, 10) || 0;
-            const now = getCurrentBeatmapTime() / gameContext.rate;
-            
-            let bestNote = null;
-            let minDiff = Infinity;
+                // Visual updates
+                const fallMs = getFallMs();
+                const gameHeight = getGameHeight();
+                const judgmentLinePx = gameHeight * (JUDGMENT_LINE_POS_VH / 100);
+                const totalFallDistance = (gameHeight - judgmentLinePx) + NOTE_SPAWN_OFFSET_Y;
+                const pixelsPerMs = totalFallDistance / fallMs;
+                updateNotePositions(now, noteUserOffset, pixelsPerMs, gameHeight, judgmentLinePx);
+                updateLaneLights();
 
-            // allNotesは時間順にソートされている前提
-            for (const note of allNotes) {
-                if (note.lane === laneIndex && !note.judged) {
-                    const diff = Math.abs(now - (note.time + userOffset));
-                    
-                    if (diff <= GOOD_WINDOW) {
-                        if (diff < minDiff) {
-                            bestNote = note;
-                            minDiff = diff;
-                        }
-                    }
-                    // 既に判定ウィンドウを過ぎた未来のノートに到達したら、それ以降を探す必要はない
-                    if (note.time + userOffset > now + GOOD_WINDOW) {
-                        break;
-                    }
+                if (now > gameEndTime) {
+                    isGameRunning = false;
+                    showResults();
                 }
             }
-
-            if (bestNote) {
-                const actualDiff = now - (bestNote.time + userOffset);
-                let judgment;
-                if (minDiff <= PERFECT_WINDOW) {
-                    judgment = 'PERFECT';
-                } else if (minDiff <= GREAT_WINDOW) {
-                    judgment = 'GREAT';
-                } else {
-                    judgment = 'GOOD';
-                }
-                handleHit(judgment, bestNote, actualDiff);
+            animationFrameId = requestAnimationFrame(gameLoop);
+        }
+        function updateLaneLights() {
+            for (let i = 0; i < numLanes; i++) {
+                dom.keyIndicatorsContainer.children[i].classList.toggle('active', keyState[i]);
             }
         }
-        function processRelease(laneIndex) { if (laneIndex === -1 || laneIndex >= numLanes) return; dom.keyIndicatorsContainer.children[laneIndex].classList.remove('active'); judgeRelease(laneIndex); }
-        document.addEventListener('keydown', e => { if(activeGame !== 'mania') return; if (e.repeat || e.key === 'Escape') return; if (!isGameRunning || isPaused || isAutoPlay) return; processHit(activeKeys.indexOf(e.key.toUpperCase())); });
-        document.addEventListener('keyup', e => { if(activeGame !== 'mania') return; if (!isGameRunning || isPaused || isAutoPlay) return; processRelease(activeKeys.indexOf(e.key.toUpperCase())); });
-        function judgeRelease(laneIndex, { isAutoCompletion = false } = {}) { const holdNote = activeHolds[laneIndex]; if (!holdNote) return; const cleanup = () => { clearInterval(holdNote.tickInterval); holdNote.tickInterval = null; activeHolds[laneIndex] = null; holdNote.released = true; if (holdNote.element) holdNote.element.classList.add('hidden'); dom.scoreElement.textContent = score; }; if (isAutoCompletion) { showJudgment('PERFECT'); updateAccuracy('PERFECT'); score += 300; judgmentCounts.PERFECT++; cleanup(); return; } const userOffset = parseInt(dom.offsetInput.value, 10) || 0; const now = getCurrentBeatmapTime() / gameContext.rate; const diff = now - (holdNote.endTime + userOffset); if (diff >= -LN_EARLY_RELEASE_PERFECT_WINDOW) { showJudgment('PERFECT'); updateAccuracy('PERFECT'); score += 300; judgmentCounts.PERFECT++; } else { combo = 0; dom.comboContainer.classList.remove('visible'); showJudgment('MISS'); updateAccuracy('MISS'); judgmentCounts.MISS++; } cleanup(); }
-        function handleHit(judgment, note, diff) { if (note.judged) return; note.judged = true; judgmentCounts[judgment]++; updateAccuracy(judgment); if (judgment === 'MISS') { combo = 0; dom.comboContainer.classList.remove('visible'); } else { if (judgment === 'PERFECT') score += 300; else if (judgment === 'GREAT') score += 100; else if (judgment === 'GOOD') score += 50; combo++; note.hit = true; showHitError(diff); showJudgmentTiming(diff); } if (combo > maxCombo) maxCombo = combo; if (combo > 2) { dom.comboContainer.classList.add('visible'); dom.comboCount.textContent = combo; dom.comboCount.classList.remove('combo-anim'); void dom.comboCount.offsetWidth; dom.comboCount.classList.add('combo-anim'); } showJudgment(judgment); if (note.type === 'note') { if(note.element) note.element.classList.add('hidden'); } else if (note.type === 'long') { if (judgment !== 'MISS') { activeHolds[note.lane] = note; note.tickInterval = setInterval(() => { score += TICK_SCORE_AMOUNT; dom.scoreElement.textContent = score; }, TICK_SCORE_INTERVAL); } else { if(note.element) note.element.classList.add('hidden'); } } dom.scoreElement.textContent = score; }
-        function updateAccuracy(judgment) { totalJudgments++; if (judgment === 'PERFECT') weightedAccuracy += 300; else if (judgment === 'GREAT') weightedAccuracy += 100; else if (judgment === 'GOOD') weightedAccuracy += 50; accuracy = (weightedAccuracy / (totalJudgments * 300)) * 100; dom.accuracyElement.textContent = accuracy.toFixed(2) + '%'; }
-        function showHitError(diff) { if (!dom.errorBar) return; const tick = document.createElement('div'); tick.className = 'error-tick'; const percentage = (diff + GOOD_WINDOW) / (GOOD_WINDOW * 2) * 100; tick.style.left = `${Math.max(0, Math.min(100, percentage))}%`; if (Math.abs(diff) <= PERFECT_WINDOW) { tick.style.backgroundColor = '#4CAF50'; } else if (Math.abs(diff) <= GREAT_WINDOW) { tick.style.backgroundColor = '#FFC107'; } else { tick.style.backgroundColor = '#2196F3'; } dom.errorBar.appendChild(tick); setTimeout(() => tick.remove(), 1000); }
-        function showJudgment(text) { const el = dom.judgmentTextElement; const judgmentStyles = { PERFECT: { bg: 'transparent', color: '#4CAF50' }, GREAT: { bg: 'transparent', color: '#FFC107' }, GOOD: { bg: 'transparent', color: '#2196F3' }, MISS: { bg: 'transparent', color: '#F44336' } }; const style = judgmentStyles[text] || { bg: 'transparent', color: 'white' }; el.textContent = text; el.style.backgroundColor = style.bg; el.style.color = style.color; el.style.animation = 'none'; el.offsetHeight; el.style.animation = null; }
+        function updateNotePositions(now, userOffset, pixelsPerMs, gameHeight, judgmentLinePx) { const isCircleStyle = dom.playfield.classList.contains('note-style-circle'); const noteHeightForOffset = isCircleStyle ? 70 : 22; const yOffset = noteHeightForOffset / 2; for (const note of allNotes) { if ((note.judged && note.type === 'note') || note.released) continue; const timeToHit = (note.time + userOffset) - now; let headY = (gameHeight - judgmentLinePx) - (timeToHit * pixelsPerMs); if (!note.spawned && headY > -noteHeightForOffset) { note.spawned = true; note.element.classList.remove('hidden'); } if (note.element) { if (activeMods.HD) { const fadeInEndPos = gameHeight * 0.40; const fadeOutStartPos = gameHeight * 0.75; if (headY > fadeInEndPos) { const fadeProgress = Math.max(0, Math.min(1, (headY - fadeInEndPos) / (fadeOutStartPos - fadeInEndPos))); note.element.style.opacity = 1 - fadeProgress; } else { note.element.style.opacity = 1; } } if (note.type === 'long' && note.hit) { headY = gameHeight - judgmentLinePx; if (note.element.querySelector('.note')) note.element.querySelector('.note').style.display = 'none'; } note.element.style.transform = `translateY(${headY - yOffset}px)`; if (note.type === 'long') { const body = note.element.querySelector('.long-note-body'); if (body) { const timeToRelease = (note.endTime + userOffset) - now; const tailY = (gameHeight - judgmentLinePx) - (timeToRelease * pixelsPerMs); const headHeight = noteHeightForOffset; const bodyTopOffset = headHeight / 2; body.style.top = `${tailY - headY}px`; body.style.height = `${Math.max(0, (headY + bodyTopOffset) - tailY)}px`; } } } if (headY > gameHeight + 50) { if (note.element) note.element.classList.add('hidden'); note.judged = true; note.released = true; } } }
+        function autoPlayHandler(now, userOffset) { for (const note of allNotes) { if (!note.judged && now >= (note.time + userOffset)) handleHit('PERFECT+', note, 0); if (note.type === 'long' && note.hit && !note.released && now >= (note.endTime + userOffset)) judgeRelease(note.lane, { isAutoCompletion: true }); } }
+        function updateNoteStates(now, userOffset) {
+            while (nextUnjudgedNoteIndex < allNotes.length) {
+                const note = allNotes[nextUnjudgedNoteIndex];
+                if (note.judged) {
+                    nextUnjudgedNoteIndex++;
+                    continue;
+                }
+                if (now > (note.time + userOffset) + JUDGMENT_WINDOWS.MISS) {
+                    handleHit('MISS', note, JUDGMENT_WINDOWS.MISS + 1);
+                } else {
+                    break;
+                }
+            }
+            for (let i = 0; i < activeHolds.length; i++) {
+                const holdNote = activeHolds[i];
+                if (holdNote && now > (holdNote.endTime + userOffset)) {
+                    judgeRelease(i, { isAutoCompletion: true });
+                }
+            }
+        }
+        function processHitsInLoop(now, userOffset) {
+            for(let laneIndex=0; laneIndex<numLanes; ++laneIndex) {
+                if(keyJustPressed[laneIndex]) {
+                    keyJustPressed[laneIndex] = false; // Consume the press
+                    let bestNote = null;
+                    let bestDiff = Infinity;
+                    
+                    for (let i = nextUnjudgedNoteIndex; i < allNotes.length; i++) {
+                        const note = allNotes[i];
+                        if (note.time + userOffset > now + JUDGMENT_WINDOWS.MISS) {
+                            break;
+                        }
+                        if (note.lane === laneIndex && !note.judged) {
+                            const diff = Math.abs(now - (note.time + userOffset));
+                             if (diff < bestDiff) {
+                                bestDiff = diff;
+                                bestNote = note;
+                            }
+                        }
+                    }
+
+                    if (bestNote && bestDiff <= JUDGMENT_WINDOWS.MISS) {
+                         let judgment = 'MISS';
+                         if (bestDiff <= JUDGMENT_WINDOWS.OK) judgment = 'OK';
+                         if (bestDiff <= JUDGMENT_WINDOWS.GOOD) judgment = 'GOOD';
+                         if (bestDiff <= JUDGMENT_WINDOWS.GREAT) judgment = 'GREAT';
+                         if (bestDiff <= JUDGMENT_WINDOWS.PERFECT) judgment = 'PERFECT';
+                         if (bestDiff <= JUDGMENT_WINDOWS.PERFECT_PLUS) judgment = 'PERFECT+';
+                         
+                         handleHit(judgment, bestNote, now - (bestNote.time + userOffset));
+                    }
+                }
+            }
+        }
+        function judgeRelease(laneIndex, { isAutoCompletion = false } = {}) { const holdNote = activeHolds[laneIndex]; if (!holdNote) return; const cleanup = () => { clearInterval(holdNote.tickInterval); holdNote.tickInterval = null; activeHolds[laneIndex] = null; holdNote.released = true; if (holdNote.element) holdNote.element.classList.add('hidden'); dom.scoreElement.textContent = score; }; if (isAutoCompletion) { showJudgment('PERFECT+'); updateAccuracy('PERFECT+'); score += 300; judgmentCounts['PERFECT+']++; cleanup(); return; } const userOffset = parseInt(dom.offsetInput.value, 10) || 0; const now = getCurrentBeatmapTime() / gameContext.rate; const diff = now - (holdNote.endTime + userOffset); if (diff >= -JUDGMENT_WINDOWS.GOOD) { showJudgment('PERFECT+'); updateAccuracy('PERFECT+'); score += 300; judgmentCounts['PERFECT+']++; } else { combo = 0; dom.comboContainer.classList.remove('visible'); showJudgment('MISS'); updateAccuracy('MISS'); judgmentCounts.MISS++; } cleanup(); }
+        document.addEventListener('keydown', e => { if (activeGame !== 'mania' || e.repeat || e.key === 'Escape') return; if (!isGameRunning || isPaused || isAutoPlay) return; const laneIndex = activeKeys.indexOf(e.key.toUpperCase()); if (laneIndex === -1 || keyState[laneIndex]) return; keyState[laneIndex] = true; keyJustPressed[laneIndex] = true; });
+        document.addEventListener('keyup', e => { if(activeGame !== 'mania' || e.key === 'Escape') return; if (!isGameRunning || isPaused || isAutoPlay) return; const laneIndex = activeKeys.indexOf(e.key.toUpperCase()); if (laneIndex === -1) return; keyState[laneIndex] = false; judgeRelease(laneIndex); });
+        function handleHit(judgment, note, diff) { if (note.judged) return; note.judged = true; judgmentCounts[judgment]++; updateAccuracy(judgment); if (judgment === 'MISS') { combo = 0; dom.comboContainer.classList.remove('visible'); } else { if (judgment === 'PERFECT+') score += 300; else if (judgment === 'PERFECT') score += 290; else if (judgment === 'GREAT') score += 200; else if (judgment === 'GOOD') score += 100; else if (judgment === 'OK') score += 50; combo++; note.hit = true; showHitError(diff); showJudgmentTiming(diff); } if (combo > maxCombo) maxCombo = combo; if (combo > 2) { dom.comboContainer.classList.add('visible'); dom.comboCount.textContent = combo; dom.comboCount.classList.remove('combo-anim'); void dom.comboCount.offsetWidth; dom.comboCount.classList.add('combo-anim'); } showJudgment(judgment); if (note.type === 'note') { if(note.element) note.element.classList.add('hidden'); } else if (note.type === 'long') { if (judgment !== 'MISS') { activeHolds[note.lane] = note; note.tickInterval = setInterval(() => { score += TICK_SCORE_AMOUNT; dom.scoreElement.textContent = score; }, TICK_SCORE_INTERVAL); } else { if(note.element) note.element.classList.add('hidden'); } } dom.scoreElement.textContent = score; }
+        function updateAccuracy(judgment) {
+            totalJudgments++;
+            if (judgment === 'PERFECT+') weightedAccuracy += 300;
+            else if (judgment === 'PERFECT') weightedAccuracy += 290;
+            else if (judgment === 'GREAT') weightedAccuracy += 200;
+            else if (judgment === 'GOOD') weightedAccuracy += 100;
+            else if (judgment === 'OK') weightedAccuracy += 50;
+            accuracy = (weightedAccuracy / (totalJudgments * 300)) * 100;
+            dom.accuracyElement.textContent = accuracy.toFixed(2) + '%';
+        }
+        function showHitError(diff) { if (!dom.errorBar) return; const tick = document.createElement('div'); tick.className = 'error-tick'; const percentage = (diff + JUDGMENT_WINDOWS.MISS) / (JUDGMENT_WINDOWS.MISS * 2) * 100; tick.style.left = `${Math.max(0, Math.min(100, percentage))}%`; if (Math.abs(diff) <= JUDGMENT_WINDOWS.PERFECT_PLUS) { tick.style.backgroundColor = '#FFD700'; } else if (Math.abs(diff) <= JUDGMENT_WINDOWS.PERFECT) { tick.style.backgroundColor = '#4CAF50'; } else if (Math.abs(diff) <= JUDGMENT_WINDOWS.GREAT) { tick.style.backgroundColor = '#2196F3'; } else { tick.style.backgroundColor = '#9E9E9E'; } dom.errorBar.appendChild(tick); setTimeout(() => tick.remove(), 1000); }
+        function showJudgment(text) {
+            const el = dom.judgmentTextElement;
+            const judgmentStyles = {
+                'PERFECT+': { bg: 'transparent', color: '#FFD700' }, 
+                PERFECT: { bg: 'transparent', color: '#4CAF50' },
+                GREAT: { bg: 'transparent', color: '#2196F3' },
+                GOOD: { bg: 'transparent', color: '#FFC107' },
+                OK: { bg: 'transparent', color: '#dda0dd' },
+                MISS: { bg: 'transparent', color: '#F44336' }
+            };
+            const style = judgmentStyles[text] || { bg: 'transparent', color: 'white' };
+            el.textContent = text;
+            el.style.backgroundColor = style.bg;
+            el.style.color = style.color;
+            el.style.animation = 'none';
+            el.offsetHeight;
+            el.style.animation = null;
+        }
         function showJudgmentTiming(diff) { const el = dom.judgmentTimingTextElement; let text = ''; if (diff < -EARLY_LATE_THRESHOLD) text = 'Early'; else if (diff > EARLY_LATE_THRESHOLD) text = 'Late'; el.textContent = text; el.style.animation = 'none'; el.offsetHeight; el.style.animation = null; }
         function updatePauseSelection() { const buttons = dom.pauseOverlay.querySelectorAll('.overlay-button'); buttons.forEach((btn, index) => { btn.classList.toggle('selected', index === selectedPauseIndex); }); }
         document.addEventListener('keydown', e => {
@@ -1181,9 +1407,66 @@
             dom.appContainer.style.display = 'flex';
             resetGame();
         }
-        function showResults() { dom.resultsScore.textContent = score; dom.resultsAccuracy.textContent = accuracy.toFixed(2); dom.resultsMaxCombo.textContent = maxCombo; dom.resultsPerfect.textContent = judgmentCounts.PERFECT; dom.resultsGreat.textContent = judgmentCounts.GREAT; dom.resultsGood.textContent = judgmentCounts.GOOD; dom.resultsMiss.textContent = judgmentCounts.MISS; dom.resultsOverlay.style.display = 'flex'; dom.gameContainer.classList.remove('playing'); }
+        function showResults() {
+            dom.resultsScore.textContent = score;
+            dom.resultsAccuracy.textContent = accuracy.toFixed(2);
+            dom.resultsMaxCombo.textContent = maxCombo;
+            
+            const totalNotes = Object.values(judgmentCounts).reduce((a, b) => a + b, 0);
+            
+            const updateResult = (name, valueElem, percentElem) => {
+                const count = judgmentCounts[name];
+                valueElem.textContent = count;
+                const percent = totalNotes > 0 ? (count / totalNotes * 100).toFixed(2) : 0;
+                percentElem.textContent = `(${percent}%)`;
+            };
+
+            updateResult('PERFECT+', dom.resultsPerfectPlus, dom.resultsPerfectPlusPercent);
+            updateResult('PERFECT', dom.resultsPerfect, dom.resultsPerfectPercent);
+            updateResult('GREAT', dom.resultsGreat, dom.resultsGreatPercent);
+            updateResult('GOOD', dom.resultsGood, dom.resultsGoodPercent);
+            updateResult('OK', dom.resultsOk, dom.resultsOkPercent);
+            updateResult('MISS', dom.resultsMiss, dom.resultsMissPercent);
+
+            dom.resultsOverlay.style.display = 'flex';
+            dom.gameContainer.classList.remove('playing');
+        }
         function toggleFullscreen() { const docEl = document.documentElement; const requestFullscreen = docEl.requestFullscreen || docEl.mozRequestFullScreen || docEl.webkitRequestFullscreen || docEl.msRequestFullscreen; const exitFullscreen = document.exitFullscreen || document.mozCancelFullScreen || document.webkitExitFullscreen || document.msExitFullscreen; const isFullscreen = document.fullscreenElement || document.mozFullScreenElement || document.webkitFullscreenElement || document.msFullscreenElement; if (!isFullscreen) { if (requestFullscreen) requestFullscreen.call(document.body); } else { if (exitFullscreen) exitFullscreen.call(document); } }
-        async function saveOszFileToPC() { const selectedId = parseInt(dom.beatmapLibrarySelector.value, 10); if (isNaN(selectedId)) { alert('保存する譜面をライブラリから選択してください。'); return; } try { const file = await getBeatmapFileFromDB(selectedId); if (!file) throw new Error('File not found in DB.'); const url = URL.createObjectURL(file); const a = document.createElement('a'); a.style.display = 'none'; a.href = url; a.download = file.name; document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url); } catch (err) { alert('ファイルの保存に失敗しました。'); console.error('Failed to save .osz file:', err); } }
+        async function saveOszFileToPC() {
+            const selector = dom.beatmapLibrarySelector;
+            const selectedId = parseInt(selector.value, 10);
+            if (isNaN(selectedId)) {
+                alert('保存する譜面をライブラリから選択してください。');
+                return;
+            }
+            
+            const selectedOption = selector.options[selector.selectedIndex];
+            if (!selectedOption) {
+                 alert('有効な譜面が選択されていません。');
+                 return;
+            }
+            
+            try {
+                const record = await getBeatmapRecordFromDB(selectedId);
+                if (!record || !record.file) throw new Error('データベースから譜面ファイルが見つかりませんでした。');
+        
+                const fileBlob = record.file;
+                const fileName = selectedOption.text;
+        
+                const url = URL.createObjectURL(fileBlob);
+                const a = document.createElement('a');
+                a.style.display = 'none';
+                a.href = url;
+                a.download = fileName;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+            } catch (err) {
+                alert(`ファイルの保存に失敗しました。\nエラー: ${err.message}`);
+                console.error('Failed to save .osz file:', err);
+            }
+        }
         function setupMods() { dom.modSelectContainer.addEventListener('click', (e) => { const button = e.target.closest('.mod-button'); if (!button) return; const mod = button.dataset.mod; activeMods[mod] = !activeMods[mod]; button.classList.toggle('active', activeMods[mod]); if (mod === 'HT' && activeMods.HT) { activeMods.DT = false; dom.modSelectContainer.querySelector('[data-mod="DT"]').classList.remove('active'); } if (mod === 'DT' && activeMods.DT) { activeMods.HT = false; dom.modSelectContainer.querySelector('[data-mod="HT"]').classList.remove('active'); } saveSettings(); }); }
         function applyBrightness(value) { root.style.setProperty('--background-brightness', value / 100); if (dom.brightnessValue) dom.brightnessValue.textContent = value; }
         function applyLaneOpacity(value) { if (dom.noteStyleSelector.value === 'circle') { root.style.setProperty('--playfield-bg-opacity', value / 100); } else { root.style.setProperty('--lane-opacity', value / 100); } if (dom.laneOpacityValue) dom.laneOpacityValue.textContent = value; }
@@ -1194,6 +1477,16 @@
         function applyNoteStyle(style) { dom.playfield.classList.toggle('note-style-circle', style === 'circle'); updateOpacitySliderLabel(); applyLaneOpacity(dom.laneOpacitySlider.value); }
         function saveSettings() { const settings = { speed: dom.speedSlider.value, offset: dom.offsetInput.value, autoPlay: dom.autoPlayCheckbox.checked, force4k: dom.force4kCheckbox.checked, keyConfigs: keyConfigs, mods: activeMods, noteStyle: dom.noteStyleSelector.value, brightness: dom.backgroundBrightnessSlider.value, laneOpacity: dom.laneOpacitySlider.value, comboSize: dom.comboSizeSlider.value, comboPosition: dom.comboPositionSlider.value, judgmentPosition: dom.judgmentPositionSlider.value, keyCount: numLanes }; localStorage.setItem('maniaPlayerSettings', JSON.stringify(settings)); }
         function loadSettings() { const savedSettings = localStorage.getItem('maniaPlayerSettings'); const defaultConfigs = generateDefaultKeyConfigs(); if (savedSettings) { const settings = JSON.parse(savedSettings); dom.speedSlider.value = settings.speed || 1.5; dom.offsetInput.value = settings.offset || 0; dom.autoPlayCheckbox.checked = settings.autoPlay || false; dom.force4kCheckbox.checked = settings.force4k || false; keyConfigs = { ...defaultConfigs, ...settings.keyConfigs }; if(settings.mods) { activeMods = settings.mods; Object.keys(activeMods).forEach(modKey => { const button = dom.modSelectContainer.querySelector(`[data-mod="${modKey}"]`); if (button) button.classList.toggle('active', activeMods[modKey]); }); } const noteStyle = settings.noteStyle || 'bar'; dom.noteStyleSelector.value = noteStyle; dom.backgroundBrightnessSlider.value = settings.brightness || 50; dom.laneOpacitySlider.value = settings.laneOpacity || 50; dom.comboSizeSlider.value = settings.comboSize || 100; dom.comboPositionSlider.value = settings.comboPosition || 45; dom.judgmentPositionSlider.value = settings.judgmentPosition || 65; dom.keyCountSelector.value = settings.keyCount || 4; } else { keyConfigs = defaultConfigs; } setKeyCount(dom.keyCountSelector.value); updateSpeed(); applyBrightness(dom.backgroundBrightnessSlider.value); applyComboSize(dom.comboSizeSlider.value); applyComboPositionY(dom.comboPositionSlider.value); applyJudgmentPositionY(dom.judgmentPositionSlider.value); applyNoteStyle(dom.noteStyleSelector.value); }
+        function updateJudgmentWindows(od) {
+            JUDGMENT_WINDOWS = {
+                PERFECT_PLUS: 16,
+                PERFECT: 64 - (3 * od),
+                GREAT: 97 - (3 * od),
+                GOOD: 127 - (3 * od),
+                OK: 151 - (3 * od),
+                MISS: 188 - (3 * od)
+            };
+        }
         
         return {
             initialize: async function() {
@@ -1351,8 +1644,188 @@
         async function handleSavedSongSelect(e) { const songId = e.target.value; dom.saveSongToPcButton.disabled = !songId; if (!songId) { resetGameAndFiles(false); return; } try { dom.beatmapSelectorContainer.style.display = 'none'; dom.songTitleElement.textContent = '読み込み中...'; const blob = await db.getSongBlob(songId); await processOszBlob(blob); } catch(e) { alert('保存済み譜面の読み込みに失敗しました。'); console.error(e); } }
         async function handleDeleteSong() { const songId = dom.savedSongsList.value; if (!songId) { alert('削除する譜面を選択してください。'); return; } if (confirm(`「${dom.savedSongsList.options[dom.savedSongsList.selectedIndex].text}」を削除しますか？`)) { try { await db.deleteSong(songId); await loadSavedSongsList(); resetGameAndFiles(true); alert('譜面を削除しました。'); } catch (e) { alert('譜面の削除に失敗しました。'); console.error(e); } } }
         function loadAndDecodeSound(file, isDon) { if (!file || !audioContext) return; const reader = new FileReader(); reader.onload = (e) => { const arrayBuffer = e.target.result; audioContext.decodeAudioData(arrayBuffer, (buffer) => { if (isDon) { donSoundBuffer = buffer; } else { katsuSoundBuffer = buffer; } }, (error) => { console.error(`Error decoding audio data for ${isDon ? 'Don' : 'Katsu'}:`, error); alert("サウンドファイルのデコードに失敗しました。"); }); }; reader.onerror = () => { alert("サウンドファイルの読み込みに失敗しました。"); }; reader.readAsArrayBuffer(file); }
-        async function handleNewFiles(e) { const files = e.target.files; if (!files || files.length === 0) return; dom.oszFileLabel.classList.add('is-loading'); dom.oszFileInput.disabled = true; let successCount = 0; let errorCount = 0; for (let i = 0; i < files.length; i++) { const file = files[i]; dom.fileName.textContent = `処理中 (${i + 1}/${files.length}): ${file.name}`; if (!file.name.toLowerCase().endsWith('.osz')) { console.warn(`Skipping non-osz file: ${file.name}`); errorCount++; continue; } try { const tempZip = new JSZip(); const loadedZip = await tempZip.loadAsync(file); const firstOsuEntry = Object.values(loadedZip.files).find(f => f.name.toLowerCase().endsWith('.osu')); if (!firstOsuEntry) { console.warn(`Skipping osz without .osu file: ${file.name}`); errorCount++; continue; } const osuContent = await firstOsuEntry.async('string'); const tempInfo = { title: 'Unknown', artist: 'Unknown' }; const lines = osuContent.split('\n'); for (const line of lines) { const trimmedLine = line.trim().toLowerCase(); if (trimmedLine.startsWith('title:')) tempInfo.title = line.substring(6).trim(); else if (trimmedLine.startsWith('artist:')) tempInfo.artist = line.substring(7).trim(); } const songData = { id: `${Date.now()}-${file.name}`, title: tempInfo.title, artist: tempInfo.artist, blob: file }; await db.addSong(songData); successCount++; } catch (err) { console.error(`Failed to process file ${file.name}:`, err); errorCount++; } } dom.fileName.textContent = ''; dom.oszFileLabel.classList.remove('is-loading'); dom.oszFileInput.disabled = false; e.target.value = ''; let message = `${successCount}個の譜面を保存しました。`; if (errorCount > 0) { message += `\n${errorCount}個の譜面は失敗しました。`; } alert(message); if (successCount > 0) { await loadSavedSongsList(); resetGameAndFiles(true); } }
-        async function processOszBlob(blob) { resetGameAndFiles(false); dom.songTitleElement.textContent = '読み込み中...'; dom.songArtistElement.textContent = ''; try { osz_zip = new JSZip(); const zip = await osz_zip.loadAsync(blob); const filePromises = []; osz_beatmaps = []; const imageExtensions = ['.jpg', '.jpeg', '.png']; const videoExtensions = ['.mp4', '.avi', '.webm']; zip.forEach((relativePath, zipEntry) => { const lowerCasePath = relativePath.toLowerCase(); if (lowerCasePath.endsWith('.osu')) { filePromises.push(zipEntry.async('string').then(content => { const tempInfo = { title: '', artist: '', version: '', difficulty: 0 }; const lines = content.split('\n'); let currentSection = ''; for(const line of lines) { const trimmedLine = line.trim(); if (trimmedLine.startsWith('[')) { currentSection = trimmedLine.toLowerCase(); continue; } if (currentSection === '[metadata]') { if (trimmedLine.toLowerCase().startsWith('title:')) tempInfo.title = trimmedLine.substring(6).trim(); else if (trimmedLine.toLowerCase().startsWith('artist:')) tempInfo.artist = trimmedLine.substring(7).trim(); else if (trimmedLine.toLowerCase().startsWith('version:')) tempInfo.version = trimmedLine.substring(8).trim(); } else if (currentSection === '[difficulty]') { if (trimmedLine.toLowerCase().startsWith('overalldifficulty:')) { tempInfo.difficulty = parseFloat(trimmedLine.split(':')[1].trim()); } } } osz_beatmaps.push({ name: relativePath, content: content, info: tempInfo }); })); } else if (videoExtensions.some(ext => lowerCasePath.endsWith(ext))) { if (!availableBackgrounds.video) { filePromises.push(zipEntry.async('blob').then(blob => { availableBackgrounds.video = URL.createObjectURL(blob); })); } } else if (imageExtensions.some(ext => lowerCasePath.endsWith(ext))) { if (!availableBackgrounds.image) { filePromises.push(zipEntry.async('blob').then(blob => { availableBackgrounds.image = URL.createObjectURL(blob); })); } } }); await Promise.all(filePromises); updateBackgroundSelector(); if (osz_beatmaps.length === 0) { throw new Error('.osuファイルが見つかりませんでした。'); } dom.beatmapSelector.innerHTML = '<option value="">-- 難易度を選択 --</option>'; osz_beatmaps.sort((a, b) => a.info.difficulty - b.info.difficulty); osz_beatmaps.forEach((osuFile, index) => { const difficultyText = osuFile.info.difficulty ? ` (Lv.${osuFile.info.difficulty})` : ''; const optionText = `${osuFile.info.version || osuFile.name}${difficultyText}`; const option = new Option(optionText, index); dom.beatmapSelector.appendChild(option); }); dom.beatmapSelectorContainer.style.display = 'block'; dom.beatmapSelector.selectedIndex = 1; handleBeatmapSelection(); } catch (err) { alert('譜面の処理に失敗しました。'); console.error(err); resetGameAndFiles(false); } }
+        async function handleNewFiles(e) {
+            const files = e.target.files;
+            if (!files || files.length === 0) return;
+            dom.oszFileLabel.classList.add('is-loading');
+            dom.oszFileInput.disabled = true;
+            let successCount = 0;
+            let errorCount = 0;
+            for (let i = 0; i < files.length; i++) {
+                const file = files[i];
+                dom.fileName.textContent = `処理中 (${i + 1}/${files.length}): ${file.name}`;
+                if (!file.name.toLowerCase().endsWith('.osz')) {
+                    console.warn(`Skipping non-osz file: ${file.name}`);
+                    errorCount++;
+                    continue;
+                }
+                try {
+                    const tempZip = new JSZip();
+                    const loadedZip = await tempZip.loadAsync(file);
+                    const osuFiles = [];
+                    loadedZip.forEach((relativePath, zipEntry) => {
+                        if (relativePath.toLowerCase().endsWith('.osu')) {
+                            osuFiles.push(zipEntry);
+                        }
+                    });
+
+                    if (osuFiles.length === 0) {
+                        console.warn(`Skipping osz without .osu file: ${file.name}`);
+                        errorCount++;
+                        continue;
+                    }
+
+                    let firstTaikoOsuContent = null;
+                    for (const osuFile of osuFiles) {
+                         const content = await osuFile.async('string');
+                         const lines = content.split('\n');
+                         let isTaikoMode = false;
+                         for(const line of lines) {
+                             const trimmed = line.trim().toLowerCase();
+                             if (trimmed.startsWith('mode:') && trimmed.includes('1')) {
+                                 isTaikoMode = true;
+                                 break;
+                             }
+                         }
+                         if (isTaikoMode) {
+                             firstTaikoOsuContent = content;
+                             break;
+                         }
+                    }
+
+                    if (!firstTaikoOsuContent) {
+                        console.warn(`Skipping osz without Taiko-mode beatmap: ${file.name}`);
+                        errorCount++;
+                        continue;
+                    }
+
+                    const tempInfo = { title: 'Unknown', artist: 'Unknown' };
+                    const lines = firstTaikoOsuContent.split('\n');
+                    for (const line of lines) {
+                        const trimmedLine = line.trim().toLowerCase();
+                        if (trimmedLine.startsWith('title:')) tempInfo.title = line.substring(6).trim();
+                        else if (trimmedLine.startsWith('artist:')) tempInfo.artist = line.substring(7).trim();
+                    }
+                    const songData = { id: `${Date.now()}-${file.name}`, title: tempInfo.title, artist: tempInfo.artist, blob: file };
+                    await db.addSong(songData);
+                    successCount++;
+                } catch (err) {
+                    console.error(`Failed to process file ${file.name}:`, err);
+                    errorCount++;
+                    if (err.name === 'QuotaExceededError') {
+                        alert(`「${file.name}」の保存に失敗しました。\nブラウザの保存容量が上限に達した可能性があります。不要な譜面を削除して、再度お試しください。`);
+                    }
+                }
+            }
+            dom.fileName.textContent = '';
+            dom.oszFileLabel.classList.remove('is-loading');
+            dom.oszFileInput.disabled = false;
+            e.target.value = '';
+            let message = `${successCount}個の譜面を保存しました。`;
+            if (errorCount > 0) {
+                message += `\n${errorCount}個の譜面は失敗しました。`;
+            }
+            if(successCount > 0 || errorCount > 0) {
+               alert(message);
+            }
+            if (successCount > 0) {
+                await loadSavedSongsList();
+                resetGameAndFiles(true);
+            }
+        }
+        async function processOszBlob(blob) {
+            resetGameAndFiles(false);
+            dom.songTitleElement.textContent = '読み込み中...';
+            dom.songArtistElement.textContent = '';
+            try {
+                osz_zip = new JSZip();
+                const zip = await osz_zip.loadAsync(blob);
+                const filePromises = [];
+                osz_beatmaps = [];
+                const imageExtensions = ['.jpg', '.jpeg', '.png'];
+                const videoExtensions = ['.mp4', '.avi', '.webm'];
+                zip.forEach((relativePath, zipEntry) => {
+                    const lowerCasePath = relativePath.toLowerCase();
+                    if (lowerCasePath.endsWith('.osu')) {
+                        filePromises.push(zipEntry.async('string').then(content => {
+                            const lines = content.split('\n');
+                            let isTaikoMode = false;
+                            let inGeneralSection = false;
+                            for (const line of lines) {
+                                const trimmedLine = line.trim().toLowerCase();
+                                if (trimmedLine === '[general]') {
+                                    inGeneralSection = true;
+                                    continue;
+                                }
+                                if (inGeneralSection && trimmedLine.startsWith('[')) {
+                                    inGeneralSection = false;
+                                    break;
+                                }
+                                if (inGeneralSection && trimmedLine.startsWith('mode:')) {
+                                    if (trimmedLine.includes('1')) {
+                                        isTaikoMode = true;
+                                    }
+                                    break;
+                                }
+                            }
+                            if (isTaikoMode) {
+                                const tempInfo = { title: '', artist: '', version: '', difficulty: 0 };
+                                let currentSection = '';
+                                for (const line of lines) {
+                                    const trimmedLine = line.trim();
+                                    if (trimmedLine.startsWith('[')) {
+                                        currentSection = trimmedLine.toLowerCase();
+                                        continue;
+                                    }
+                                    if (currentSection === '[metadata]') {
+                                        if (trimmedLine.toLowerCase().startsWith('title:')) tempInfo.title = trimmedLine.substring(6).trim();
+                                        else if (trimmedLine.toLowerCase().startsWith('artist:')) tempInfo.artist = trimmedLine.substring(7).trim();
+                                        else if (trimmedLine.toLowerCase().startsWith('version:')) tempInfo.version = trimmedLine.substring(8).trim();
+                                    } else if (currentSection === '[difficulty]') {
+                                        if (trimmedLine.toLowerCase().startsWith('overalldifficulty:')) {
+                                            tempInfo.difficulty = parseFloat(trimmedLine.split(':')[1].trim());
+                                        }
+                                    }
+                                }
+                                osz_beatmaps.push({ name: relativePath, content: content, info: tempInfo });
+                            }
+                        }));
+                    } else if (videoExtensions.some(ext => lowerCasePath.endsWith(ext))) {
+                        if (!availableBackgrounds.video) {
+                            filePromises.push(zipEntry.async('blob').then(blob => {
+                                availableBackgrounds.video = URL.createObjectURL(blob);
+                            }));
+                        }
+                    } else if (imageExtensions.some(ext => lowerCasePath.endsWith(ext))) {
+                        if (!availableBackgrounds.image) {
+                            filePromises.push(zipEntry.async('blob').then(blob => {
+                                availableBackgrounds.image = URL.createObjectURL(blob);
+                            }));
+                        }
+                    }
+                });
+                await Promise.all(filePromises);
+                updateBackgroundSelector();
+                if (osz_beatmaps.length === 0) {
+                    throw new Error('.osuファイルが見つかりませんでした (太鼓モードの譜面がありません)。');
+                }
+                dom.beatmapSelector.innerHTML = '<option value="">-- 難易度を選択 --</option>';
+                osz_beatmaps.sort((a, b) => a.info.difficulty - b.info.difficulty);
+                osz_beatmaps.forEach((osuFile, index) => {
+                    const difficultyText = osuFile.info.difficulty ? ` (Lv.${osuFile.info.difficulty.toFixed(2)})` : '';
+                    const optionText = `${osuFile.info.version || osuFile.name}${difficultyText}`;
+                    const option = new Option(optionText, index);
+                    dom.beatmapSelector.appendChild(option);
+                });
+                dom.beatmapSelectorContainer.style.display = 'block';
+                dom.beatmapSelector.selectedIndex = 1;
+                handleBeatmapSelection();
+            } catch (err) {
+                alert('譜面の処理に失敗しました: ' + err.message);
+                console.error(err);
+                resetGameAndFiles(false);
+            }
+        }
         async function handleBeatmapSelection() { const selectedIndex = dom.beatmapSelector.value; beatmapLoaded = false; audioLoaded = false; checkReadyState(); if (selectedIndex === "") { dom.songTitleElement.textContent = '難易度を選択してください'; dom.songArtistElement.textContent = ''; return; }; const selectedOsu = osz_beatmaps[parseInt(selectedIndex, 10)]; if (!selectedOsu) return; fileContent = selectedOsu.content; if (parseOsuFile(fileContent)) { beatmapLoaded = true; dom.songTitleElement.textContent = songInfo.title || '（タイトル不明）'; dom.songArtistElement.textContent = songInfo.artist || '（アーティスト不明）'; if (osz_zip && songInfo.audioFilename) { const targetAudioName = songInfo.audioFilename.replace(/\\/g, '/').toLowerCase(); const audioFileEntry = Object.values(osz_zip.files).find(file => !file.dir && file.name.replace(/\\/g, '/').toLowerCase().endsWith(targetAudioName) ); if(audioFileEntry) { try { const audioBlob = await audioFileEntry.async('blob'); if (audioSrc) URL.revokeObjectURL(audioSrc); audioSrc = URL.createObjectURL(audioBlob); dom.audioPlayer.src = audioSrc; audioLoaded = true; } catch(e) { alert(`音声ファイル "${songInfo.audioFilename}" の読み込みに失敗しました。`); } } else { alert(`音声ファイル "${songInfo.audioFilename}" が見つかりません。`); } } } else { beatmapLoaded = false; audioLoaded = false; dom.songTitleElement.textContent = '非対応の譜面です'; dom.songArtistElement.textContent = '太鼓モードの難易度を選択してください'; alert('この譜面は太鼓モードではありません。'); } checkReadyState(); }
         function resetGameAndFiles(fullReset = true) { resetGame(); if (availableBackgrounds.video) URL.revokeObjectURL(availableBackgrounds.video); if (availableBackgrounds.image) URL.revokeObjectURL(availableBackgrounds.image); availableBackgrounds = { video: null, image: null }; updateBackgroundSelector(); dom.saveSongToPcButton.disabled = true; if (fullReset) { fileContent = null; osz_zip = null; osz_beatmaps = []; beatmapLoaded = false; audioLoaded = false; dom.beatmapSelectorContainer.style.display = 'none'; dom.beatmapSelector.innerHTML = ''; dom.songTitleElement.textContent = '譜面を選択してください'; dom.songArtistElement.textContent = ''; dom.savedSongsList.value = ''; } checkReadyState(); }
         function checkReadyState() { dom.startButton.disabled = !(beatmapLoaded && audioLoaded); }
