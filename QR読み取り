@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>QRコード & URLリーダー (修正版)</title>
+    <style>
+        body {
+            font-family: sans-serif;
+            text-align: center;
+            margin: 0;
+            background-color: #f0f0f0;
+            color: #333;
+        }
+        h1 {
+            margin-top: 1rem;
+        }
+        #video-container {
+            position: relative;
+            width: 90%;
+            max-width: 600px;
+            margin: 1rem auto;
+            border: 2px solid #ccc;
+            border-radius: 8px;
+            overflow: hidden;
+            background-color: #000;
+        }
+        #video {
+            width: 100%;
+            height: auto;
+            display: block;
+        }
+        #canvas {
+            display: none;
+        }
+        #result-container {
+            width: 90%;
+            max-width: 600px;
+            margin: 1rem auto;
+            padding: 1rem;
+            background-color: #fff;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        #result-container h2 {
+            margin-top: 0;
+        }
+        #result-qr, #result-ocr {
+            word-wrap: break-word;
+            margin-bottom: 1rem;
+        }
+        #result-qr a, #result-ocr a {
+            color: #007bff;
+        }
+        #ocr-button {
+            padding: 10px 20px;
+            font-size: 16px;
+            cursor: pointer;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            margin-top: 10px;
+        }
+        #ocr-button:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
+        #ocr-status {
+            margin-top: 10px;
+            font-style: italic;
+            color: #666;
+        }
+    </style>
+    <!-- ライブラリの読み込み -->
+    <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+</head>
+<body>
+
+    <h1>QRコード & URLリーダー</h1>
+    <div id="video-container">
+        <video id="video" playsinline autoplay></video>
+        <canvas id="canvas"></canvas>
+    </div>
+
+    <div id="result-container">
+        <h2>読み取り結果</h2>
+        <div>
+            <strong>QRコード:</strong>
+            <div id="result-qr">カメラの起動を待っています...</div>
+        </div>
+        <hr>
+        <div>
+            <strong>テキスト (OCR):</strong>
+            <div id="result-ocr">下のボタンを押してテキストを読み取ります。</div>
+            <button id="ocr-button" disabled>カメラのテキストを読み取る</button>
+            <div id="ocr-status"></div>
+        </div>
+    </div>
+
+    <script>
+        const video = document.getElementById('video');
+        const canvasElement = document.getElementById('canvas');
+        const canvas = canvasElement.getContext('2d');
+        const resultQrElement = document.getElementById('result-qr');
+        const resultOcrElement = document.getElementById('result-ocr');
+        const ocrButton = document.getElementById('ocr-button');
+        const ocrStatus = document.getElementById('ocr-status');
+
+        let qrCodeFound = false;
+
+        // URLを検出し、リンクに変換する関数
+        function linkify(text) {
+            const urlRegex = /(https?:\/\/[^\s]+)/g;
+            return text.replace(urlRegex, url => `<a href="${url}" target="_blank" rel="noopener noreferrer">${url}</a>`);
+        }
+
+        // カメラを起動する関数
+        async function startCamera() {
+            // まずは背面カメラ (environment) を試す
+            let constraints = { video: { facingMode: { exact: "environment" } } };
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia(constraints);
+                handleStream(stream);
+            } catch (err) {
+                console.log("背面カメラの起動に失敗しました。前面カメラを試します。", err);
+                // 背面カメラが失敗した場合、前面カメラ (user) を試す
+                constraints = { video: { facingMode: "user" } };
+                try {
+                    const stream = await navigator.mediaDevices.getUserMedia(constraints);
+                    handleStream(stream);
+                } catch (finalErr) {
+                    handleCameraError(finalErr);
+                }
+            }
+        }
+
+        // ストリームを処理する関数
+        function handleStream(stream) {
+            video.srcObject = stream;
+            video.setAttribute("playsinline", true);
+            video.play();
+            resultQrElement.textContent = 'カメラにQRコードをかざしてください。';
+            ocrButton.disabled = false; // カメラが起動したらボタンを有効化
+            requestAnimationFrame(tick);
+        }
+        
+        // カメラエラーを処理する関数
+        function handleCameraError(err) {
+            console.error("カメラの起動に失敗しました。", err);
+            let message = "カメラを起動できませんでした。\n";
+
+            if (location.protocol !== 'https:') {
+                message += "原因: このページは安全な接続(HTTPS)ではありません。\n対策: サーバーにアップロードして https:// で始まるURLでアクセスしてください。";
+            } else if (err.name === "NotAllowedError" || err.name === "PermissionDeniedError") {
+                message += "原因: カメラの使用が許可されませんでした。\n対策: ブラウザの設定でこのサイトのカメラアクセスを許可してください。";
+            } else if (err.name === "NotFoundError" || err.name === "DevicesNotFoundError") {
+                message += "原因: 使用可能なカメラが見つかりませんでした。\n対策: カメラがPCに接続されているか確認してください。";
+            } else if (err.name === "NotReadableError" || err.name === "TrackStartError") {
+                message += "原因: カメラが他のプログラムで使用されているか、ハードウェアに問題がある可能性があります。";
+            } else {
+                message += `エラー名: ${err.name}`;
+            }
+            alert(message);
+            resultQrElement.textContent = "カメラの起動に失敗しました。";
+        }
+
+
+        // 定期的にフレームを処理してQRコードをスキャン
+        function tick() {
+            if (video.readyState === video.HAVE_ENOUGH_DATA) {
+                canvasElement.height = video.videoHeight;
+                canvasElement.width = video.videoWidth;
+                canvas.drawImage(video, 0, 0, canvasElement.width, canvasElement.height);
+                const imageData = canvas.getImageData(0, 0, canvasElement.width, canvasElement.height);
+                
+                if (!qrCodeFound) {
+                    const code = jsQR(imageData.data, imageData.width, imageData.height, {
+                        inversionAttempts: "dontInvert",
+                    });
+
+                    if (code) {
+                        qrCodeFound = true;
+                        resultQrElement.innerHTML = linkify(code.data);
+                        if ('vibrate' in navigator) {
+                            navigator.vibrate(200);
+                        }
+                    }
+                }
+            }
+            requestAnimationFrame(tick);
+        }
+
+        // OCRボタンがクリックされたときの処理
+        ocrButton.addEventListener('click', () => {
+            if (!Tesseract) {
+                ocrStatus.textContent = 'OCRライブラリが読み込まれていません。';
+                return;
+            }
+
+            ocrStatus.textContent = 'テキストを解析中です...';
+            ocrButton.disabled = true;
+
+            canvasElement.height = video.videoHeight;
+            canvasElement.width = video.videoWidth;
+            canvas.drawImage(video, 0, 0, canvasElement.width, canvasElement.height);
+
+            Tesseract.recognize(
+                canvasElement,
+                'jpn+eng',
+                { logger: m => console.log(m) }
+            ).then(({ data: { text } }) => {
+                resultOcrElement.innerHTML = linkify(text) || 'テキストが見つかりませんでした。';
+                ocrStatus.textContent = '解析が完了しました。';
+                ocrButton.disabled = false;
+            }).catch(err => {
+                console.error(err);
+                ocrStatus.textContent = 'エラーが発生しました。';
+                ocrButton.disabled = false;
+            });
+        });
+        
+        // ページの読み込みが完了したらカメラを起動
+        window.addEventListener('load', () => {
+            // navigator.mediaDevicesがサポートされているかチェック
+            if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+                startCamera();
+            } else {
+                alert("お使いのブラウザはカメラ機能に対応していません。");
+                resultQrElement.textContent = "ブラウザが非対応です。";
+            }
+        });
+    </script>
+</body>
+</html>
