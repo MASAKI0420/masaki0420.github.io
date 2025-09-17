@@ -234,14 +234,10 @@
             addStartListener(btnLeft, () => startMove(() => playerMove(-1))); addStartListener(btnRight, () => startMove(() => playerMove(1))); 
             addStartListener(btnDown, () => startMove(softDrop)); 
             addStartListener(btnUp, playerQuickDrop);
-            
-            // ▼▼▼【変更箇所】btnXとbtnYに割り当てる機能を入れ替え ▼▼▼
             addStartListener(btnA, playerRotate);
             addStartListener(btnB, playerRotateLeft);
             addStartListener(btnX, hold); 
             addStartListener(btnY, playerRotateLeft);
-            // ▲▲▲【変更箇所】ここまで ▲▲▲
-
             document.addEventListener('touchend', stopMove); document.addEventListener('mouseup', stopMove); document.addEventListener('mouseleave', stopMove);
             document.addEventListener('keydown', e => { if (e.repeat || isGameOver || isPaused) return; switch(e.key.toLowerCase()) { case 'p': togglePause(); break; case 'arrowleft': keyState.left = true; playerMove(-1); dasTimer = 0; dasMoveTimer = 0; break; case 'arrowright': keyState.right = true; playerMove(1); dasTimer = 0; dasMoveTimer = 0; break; case 'arrowdown': keyState.down = true; dasMoveTimer = 0; break; case ' ': case 'arrowup': e.preventDefault(); playerQuickDrop(); break; case 'x': playerRotate(); break; case 'z': playerRotateLeft(); break; case 'c': hold(); break; } });
             document.addEventListener('keyup', e => { switch(e.key.toLowerCase()) { case 'arrowleft': keyState.left = false; break; case 'arrowright': keyState.right = false; break; case 'arrowdown': keyState.down = false; break; } });
