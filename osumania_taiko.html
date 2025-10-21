@@ -352,7 +352,7 @@
             grid-column: 1 / -1; 
             grid-row: 3;
             display: grid; 
-            grid-template-columns: 2fr 1fr; 
+            grid-template-columns: 2fr 1fr 1fr; /* 3列レイアウトに変更 */
             gap: 15px; 
             margin-top: 10px;
         }
@@ -563,7 +563,7 @@
                     </div>
                      <div class="settings-buttons">
                         <button id="open-settings-button" class="control-button">UI設定</button>
-                        <button id="fullscreen-button" class="control-button">フルスクリーン</button>
+                        <button id="mania-fullscreen-button" class="control-button">フルスクリーン (F11)</button>
                         <button id="switch-to-taiko-button" class="control-button">Taiko Playerへ</button>
                     </div>
                 </div>
@@ -787,6 +787,7 @@
                 <div id="buttons-group" class="grid-item-full">
                     <button id="taiko-start-button" disabled>ゲーム開始 (Space)</button>
                     <button id="switch-to-mania-button" class="control-button">Mania Playerへ (M)</button>
+                    <button id="taiko-fullscreen-button" class="control-button">フルスクリーン (F11)</button>
                 </div>
                 
                 <p class="grid-item-full">※ ESCキーでポーズ</p>
@@ -872,23 +873,43 @@
     let activeGame = null;
     let maniaInitialized = false;
     let taikoInitialized = false;
+    let isRequestingFile = false;
+    let shouldReEnterFullscreen = false; // Flag to signal re-entry
 
-    // --- ここから変更 ---
     /**
-     * フルスクリーンモードに移行する関数
+     * URLバーなどを隠すイマーシブなフルスクリーンモードに移行する
      */
     function enterFullscreen() {
         const docEl = document.documentElement;
-        // document.fullscreenElement が null でない場合は、既にフルスクリーンモード
         if (docEl.requestFullscreen && !document.fullscreenElement) {
-            docEl.requestFullscreen().catch(err => {
+            docEl.requestFullscreen({ navigationUI: "hide" }).catch(err => {
                 console.error(`フルスクリーンモードへの移行に失敗しました: ${err.message} (${err.name})`);
             });
         }
     }
 
+    /**
+     * フルスクリーンモードを切り替える（F11キーやボタンから呼び出す）
+     */
+    function toggleFullscreen() {
+        const docEl = document.documentElement;
+        const isInFullscreen = !!document.fullscreenElement;
+
+        if (!isInFullscreen) {
+            if (docEl.requestFullscreen) {
+                docEl.requestFullscreen({ navigationUI: "hide" }).catch(err => {
+                    alert(`フルスクリーンモードにできませんでした: ${err.message}`);
+                });
+            }
+        } else {
+            if (document.exitFullscreen) {
+                document.exitFullscreen();
+            }
+        }
+    }
+    
     function switchToMania() {
-        enterFullscreen(); // フルスクリーンに移行
+        enterFullscreen();
         document.getElementById('game-selector').style.display = 'none';
         document.getElementById('taiko-wrapper').style.display = 'none';
         document.getElementById('mania-wrapper').style.display = 'block';
@@ -900,7 +921,7 @@
     }
 
     function switchToTaiko() {
-        enterFullscreen(); // フルスクリーンに移行
+        enterFullscreen();
         document.getElementById('game-selector').style.display = 'none';
         document.getElementById('mania-wrapper').style.display = 'none';
         document.getElementById('taiko-wrapper').style.display = 'block';
@@ -910,14 +931,44 @@
             taikoInitialized = true;
         }
     }
-    // --- ここまで変更 ---
 
     document.addEventListener('DOMContentLoaded', () => {
         const selectManiaBtn = document.getElementById('select-mania');
         const selectTaikoBtn = document.getElementById('select-taiko');
-
         selectManiaBtn.addEventListener('click', switchToMania);
         selectTaikoBtn.addEventListener('click', switchToTaiko);
+    });
+
+    // --- フルスクリーン自動復帰ロジック ---
+    // フルスクリーン状態が変化したときに発火
+    document.addEventListener('fullscreenchange', () => {
+        // フルスクリーンが解除され、かつファイル選択が原因だった場合
+        if (!document.fullscreenElement && isRequestingFile) {
+            shouldReEnterFullscreen = true; // 再突入フラグを立てる
+            isRequestingFile = false; // 原因フラグはリセット
+        }
+    });
+
+    // ウィンドウにフォーカスが戻ったとき（ファイルダイアログを閉じたときなど）に発火
+    window.addEventListener('focus', () => {
+        // 再突入フラグが立っている場合
+        if (shouldReEnterFullscreen) {
+            shouldReEnterFullscreen = false; // フラグを消費
+            // 少し遅延を入れてからフルスクリーンに再突入（ブラウザの挙動を安定させるため）
+            setTimeout(() => {
+                if (activeGame) { // ゲームがアクティブな場合のみ
+                    enterFullscreen();
+                }
+            }, 300);
+        }
+    });
+    
+    // F11キーでフルスクリーンをトグル
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'F11') {
+            e.preventDefault(); // ブラウザのデフォルト動作をキャンセル
+            toggleFullscreen();
+        }
     });
 
     // --- osu!mania Game Logic (Scoped) ---
@@ -974,7 +1025,7 @@
             resultsMenuButton: root.querySelector('#results-menu-button'),
             openSettingsButton: root.querySelector('#open-settings-button'),
             settingsOverlay: root.querySelector('#settings-overlay'),
-            fullscreenButton: root.querySelector('#fullscreen-button'),
+            fullscreenButton: root.querySelector('#mania-fullscreen-button'),
             beatmapLibrarySelector: root.querySelector('#beatmap-library-selector'),
             addBeatmapsButton: root.querySelector('#add-beatmaps-button'),
             removeBeatmapButton: root.querySelector('#remove-beatmap-button'),
@@ -1177,7 +1228,16 @@
         function saveBeatmapSpecificSettings() { const key = getBeatmapSettingsKey(); if (!key) return; let settings = JSON.parse(localStorage.getItem('maniaPlayerBeatmapSettings')) || {}; settings[key] = { audioOffset: dom.audioOffsetInput.value, backgroundChoice: dom.backgroundSelector.value }; localStorage.setItem('maniaPlayerBeatmapSettings', JSON.stringify(settings)); }
         function loadBeatmapSpecificSettings() { const key = getBeatmapSettingsKey(); let audioOffset = 0; let backgroundChoice = 'auto'; if (key) { const settings = JSON.parse(localStorage.getItem('maniaPlayerBeatmapSettings')) || {}; const saved = settings[key]; if (typeof saved === 'object' && saved !== null) { audioOffset = saved.audioOffset || 0; backgroundChoice = saved.backgroundChoice || 'auto'; } } dom.audioOffsetInput.value = audioOffset; dom.backgroundSelector.value = backgroundChoice; }
         async function loadAudioWithWebAudioAPI(blobUrl) { audioLoaded = false; audioContextState.isReady = false; checkReadyState(); try { if (!audioContext) { audioContext = new (window.AudioContext || window.webkitAudioContext)(); } const response = await fetch(blobUrl); const arrayBuffer = await response.arrayBuffer(); audioBuffer = await audioContext.decodeAudioData(arrayBuffer); audioLoaded = true; audioContextState.isReady = true; } catch (e) { console.error("Web Audio APIでの音声デコードに失敗:", e); alert("音声ファイルの読み込みに失敗しました。Web Audio APIがサポートされていないか、ファイルが破損している可能性があります。"); audioLoaded = false; } finally { checkReadyState(); } }
-        function setupFileListeners() { dom.addBeatmapsButton.addEventListener('click', () => dom.oszFileInput.click()); dom.oszFileInput.addEventListener('change', (e) => addBeatmapsToDB(e.target.files)); dom.removeBeatmapButton.addEventListener('click', removeBeatmapFromDB); dom.beatmapLibrarySelector.addEventListener('change', handleLibrarySelection); dom.beatmapSelector.addEventListener('change', handleDifficultySelection); }
+        function setupFileListeners() {
+            dom.addBeatmapsButton.addEventListener('click', () => {
+                isRequestingFile = true;
+                dom.oszFileInput.click();
+            });
+            dom.oszFileInput.addEventListener('change', (e) => addBeatmapsToDB(e.target.files));
+            dom.removeBeatmapButton.addEventListener('click', removeBeatmapFromDB);
+            dom.beatmapLibrarySelector.addEventListener('change', handleLibrarySelection);
+            dom.beatmapSelector.addEventListener('change', handleDifficultySelection);
+        }
         async function handleLibrarySelection() {
             const selectedId = parseInt(dom.beatmapLibrarySelector.value, 10);
             resetBeatmapSelection();
@@ -1672,7 +1732,6 @@
             dom.resultsOverlay.style.display = 'flex';
             dom.gameContainer.classList.remove('playing');
         }
-        function toggleFullscreen() { const docEl = document.documentElement; const requestFullscreen = docEl.requestFullscreen || docEl.mozRequestFullScreen || docEl.webkitRequestFullscreen || docEl.msRequestFullscreen; const exitFullscreen = document.exitFullscreen || document.mozCancelFullScreen || document.webkitExitFullscreen || document.msExitFullscreen; const isFullscreen = document.fullscreenElement || document.mozFullScreenElement || document.webkitFullscreenElement || document.msFullscreenElement; if (!isFullscreen) { if (requestFullscreen) requestFullscreen.call(document.body); } else { if (exitFullscreen) exitFullscreen.call(document); } }
         async function saveOszFileToPC() {
             const selector = dom.beatmapLibrarySelector;
             const selectedId = parseInt(selector.value, 10);
@@ -1809,6 +1868,7 @@
             backToTitlePause: root.querySelector('#back-to-title-button-pause'),
             backToTitleResults: root.querySelector('#back-to-title-button-results'),
             switchToManiaButton: root.querySelector('#switch-to-mania-button'),
+            fullscreenButton: root.querySelector('#taiko-fullscreen-button'),
             resultsOverlay: root.querySelector('#taiko-results-overlay'),
             resultsSongTitle: root.querySelector('#results-song-title'),
             resultsScoreValue: root.querySelector('#taiko-results-score-value'),
@@ -1922,7 +1982,16 @@
         }
         
         function parseOsuFile(content) { try { hitObjects = []; barLines = []; goGoSections = []; songInfo = { title: '', artist: '', version: '', audioFilename: '' }; let uninheritedTimingPoints = []; let velocityChanges = []; const allTimingPoints = []; const lines = content.split('\n').map(l => l.trim()); let section = ''; let sliderMultiplier = 1.4; let gameMode = -1; for (const line of lines) { if (line.startsWith('[')) { section = line.toLowerCase(); continue; } if (!section) continue; const lowerLine = line.toLowerCase(); if (section === '[general]' && lowerLine.startsWith('mode:')) { gameMode = parseInt(line.split(':')[1].trim(), 10); } else if (section === '[general]' && lowerLine.startsWith('audiofilename:')) songInfo.audioFilename = line.substring(line.indexOf(':') + 1).trim(); else if (section === '[metadata]') { if (lowerLine.startsWith('title:')) songInfo.title = line.substring(line.indexOf(':') + 1).trim(); else if (lowerLine.startsWith('artist:')) songInfo.artist = line.substring(line.indexOf(':') + 1).trim(); else if (lowerLine.startsWith('version:')) songInfo.version = line.substring(line.indexOf(':') + 1).trim(); } else if (section === '[difficulty]') { if (lowerLine.startsWith('slidermultiplier:')) sliderMultiplier = parseFloat(line.split(':')[1]); } else if (section === '[timingpoints]') { const parts = line.split(','); if (parts.length < 2) continue; const time = parseFloat(parts[0]); const val = parseFloat(parts[1]); const meter = parts.length > 2 ? parseInt(parts[2], 10) : 4; const kiai = parts.length > 7 ? (parseInt(parts[7], 10) & 1) !== 0 : false; allTimingPoints.push({ time, kiai }); if (val > 0) { uninheritedTimingPoints.push({ time, beatLength: val, meter }); } else if (val < 0) { velocityChanges.push({ time, multiplier: -100 / val }); } } } if (gameMode !== 1) { console.warn(`Unsupported game mode detected: ${gameMode}. Only Taiko (mode 1) is supported.`); return false; } if (uninheritedTimingPoints.length === 0) uninheritedTimingPoints.push({time: 0, beatLength: 500, meter: 4}); velocityChanges.sort((a,b) => a.time - b.time); const getScrollMultiplier = (time) => { for (let i = velocityChanges.length - 1; i >= 0; i--) { if (velocityChanges[i].time <= time) return velocityChanges[i].multiplier; } return 1.0; }; section = ''; for (const line of lines) { if (line.startsWith('[')) { section = line.toLowerCase(); continue; } if (section !== '[hitobjects]') continue; const parts = line.split(','); if (parts.length < 5) continue; const time = parseInt(parts[2], 10), type = parseInt(parts[3], 10), hitSound = parseInt(parts[4], 10); const isBig = (hitSound & 4) !== 0; const scrollMultiplier = getScrollMultiplier(time); const noteProps = { time, judged: false, scrollSpeed: scrollMultiplier, sePlayed: false }; if (type & 2) { const parentTimingPoint = uninheritedTimingPoints.findLast(p => p.time <= time) || uninheritedTimingPoints[0]; const pixelLength = parseFloat(parts[7]); const duration = pixelLength / (sliderMultiplier * scrollMultiplier * 100) * parentTimingPoint.beatLength; hitObjects.push({ ...noteProps, type: 'roll', isBig, endTime: time + duration, lastAutoHitTime: 0, hitsMade: 0 }); } else if (type & 8) { const endTime = parseInt(parts[5], 10); const duration = endTime - time; const hitsRequired = Math.max(3, Math.ceil(duration / 200)); hitObjects.push({ ...noteProps, type: 'balloon', endTime, hitsRequired, hitsMade: 0, lastAutoHitTime: 0 }); } else if (type & 1) { let noteType = 'don'; if ((hitSound & 2) || (hitSound & 8)) noteType = 'katsu'; hitObjects.push({ ...noteProps, type: noteType, isBig }); } } allTimingPoints.sort((a,b) => a.time - b.time); let kiaiActive = false, kiaiStartTime = 0; const currentLastNoteTime = hitObjects.reduce((max, note) => Math.max(max, note.endTime || note.time), 0); for(const point of allTimingPoints) { if(point.kiai && !kiaiActive) { kiaiActive = true; kiaiStartTime = point.time; } else if (!point.kiai && kiaiActive) { kiaiActive = false; goGoSections.push({start: kiaiStartTime, end: point.time}); } } if(kiaiActive) goGoSections.push({start: kiaiStartTime, end: currentLastNoteTime + 5000}); if (uninheritedTimingPoints.length > 0 && hitObjects.length > 0) { for (let i = 0; i < uninheritedTimingPoints.length; i++) { const currentPoint = uninheritedTimingPoints[i]; const measureLength = currentPoint.beatLength * currentPoint.meter; if(measureLength <= 0) continue; const barEndTime = (i + 1 < uninheritedTimingPoints.length) ? uninheritedTimingPoints[i+1].time : currentLastNoteTime + 2000; for(let t = currentPoint.time; t < barEndTime; t += measureLength) { barLines.push({time: t, scrollSpeed: getScrollMultiplier(t)}); } } } hitObjects.sort((a, b) => a.time - b.time); lastNoteTime = hitObjects.length > 0 ? (hitObjects[hitObjects.length - 1].endTime || hitObjects[hitObjects.length - 1].time) : 1; return hitObjects.length > 0; } catch (error) { console.error("Error during .osu parsing:", error); alert("譜面の解析に失敗しました。"); return false; } }
-        function setupFileListeners() { dom.oszFileInput.addEventListener('change', handleNewFiles); dom.beatmapSelector.addEventListener('change', handleBeatmapSelection); dom.donSoundFileInput.addEventListener('change', e => loadAndDecodeSound(e.target.files[0], true)); dom.katsuSoundFileInput.addEventListener('change', e => loadAndDecodeSound(e.target.files[0], false)); dom.savedSongsList.addEventListener('change', handleSavedSongSelect); dom.deleteSongButton.addEventListener('click', handleDeleteSong); dom.songSearchInput.addEventListener('input', handleSongSearch); }
+        function setupFileListeners() {
+            dom.oszFileInput.addEventListener('change', handleNewFiles);
+            dom.oszFileLabel.addEventListener('click', () => { isRequestingFile = true; });
+            dom.donSoundFileInput.addEventListener('change', e => { isRequestingFile = true; loadAndDecodeSound(e.target.files[0], true); });
+            dom.katsuSoundFileInput.addEventListener('change', e => { isRequestingFile = true; loadAndDecodeSound(e.target.files[0], false); });
+            dom.beatmapSelector.addEventListener('change', handleBeatmapSelection);
+            dom.savedSongsList.addEventListener('change', handleSavedSongSelect);
+            dom.deleteSongButton.addEventListener('click', handleDeleteSong);
+            dom.songSearchInput.addEventListener('input', handleSongSearch);
+        }
         async function loadSavedSongsList() { try { const songsMeta = await db.getSongsMeta(); dom.savedSongsList.innerHTML = '<option value="">-- 保存済み譜面を選択 --</option>'; songsMeta.sort((a,b) => `${a.artist} - ${a.title}`.localeCompare(`${b.artist} - ${b.title}`)).forEach(meta => { const option = document.createElement('option'); option.value = meta.id; option.textContent = `${meta.artist} - ${meta.title}`; dom.savedSongsList.appendChild(option); }); handleSongSearch(); } catch (e) { console.error('Failed to load saved songs list:', e); } }
         function handleSongSearch() { const searchTerm = dom.songSearchInput.value.toLowerCase(); for (const option of dom.savedSongsList.options) { if (option.value === "") continue; const songTitle = option.textContent.toLowerCase(); option.style.display = songTitle.includes(searchTerm) ? '' : 'none'; } }
         async function handleSavedSongSelect(e) { const songId = e.target.value; currentSongId = songId; dom.saveSongToPcButton.disabled = !songId; if (!songId) { resetGameAndFiles(false); return; } try { dom.beatmapSelectorContainer.style.display = 'none'; dom.songTitleElement.textContent = '読み込み中...'; const blob = await db.getSongBlob(songId); await processOszBlob(blob); } catch(e) { alert('保存済み譜面の読み込みに失敗しました。'); console.error(e); } }
@@ -2774,6 +2843,7 @@
                 updateBgBrightness();
                 updateLaneCover();
                 dom.startButton.addEventListener('click', startGame);
+                dom.fullscreenButton.addEventListener('click', toggleFullscreen);
                 dom.speedSlider.addEventListener('input', () => { updateSpeed(); saveSettings(); });
                 dom.offsetInput.addEventListener('change', saveSettings);
                 dom.videoOffsetInput.addEventListener('change', saveSettings);
