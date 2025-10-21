@@ -352,7 +352,7 @@
             grid-column: 1 / -1; 
             grid-row: 3;
             display: grid; 
-            grid-template-columns: 2fr 1fr 1fr; /* 3列レイアウトに変更 */
+            grid-template-columns: 2fr 1fr; 
             gap: 15px; 
             margin-top: 10px;
         }
@@ -563,7 +563,6 @@
                     </div>
                      <div class="settings-buttons">
                         <button id="open-settings-button" class="control-button">UI設定</button>
-                        <button id="mania-fullscreen-button" class="control-button">フルスクリーン (F11)</button>
                         <button id="switch-to-taiko-button" class="control-button">Taiko Playerへ</button>
                     </div>
                 </div>
@@ -572,7 +571,7 @@
                     <div id="song-title">譜面を選択してください</div>
                     <div id="song-artist" style="font-size: 0.9em; color: #a0a8c0;"></div>
                 </div>
-                <p class="grid-item-full">※ 最大10K譜面対応 (長押し対応, Malody 4K譜面対応) / ESCキーまたはポーズボタンでポーズ</p>
+                <p class="grid-item-full">※ WキーまたはESCキーでポーズ / ESC長押しでフルスクリーン解除</p>
             </div>
         </div>
         <div id="game-container" class="game-container">
@@ -787,10 +786,9 @@
                 <div id="buttons-group" class="grid-item-full">
                     <button id="taiko-start-button" disabled>ゲーム開始 (Space)</button>
                     <button id="switch-to-mania-button" class="control-button">Mania Playerへ (M)</button>
-                    <button id="taiko-fullscreen-button" class="control-button">フルスクリーン (F11)</button>
                 </div>
                 
-                <p class="grid-item-full">※ ESCキーでポーズ</p>
+                <p class="grid-item-full">※ WキーまたはESCキーでポーズ / ESC長押しでフルスクリーン解除</p>
                 
                 <!-- Hidden file input -->
                 <input type="file" id="taiko-osz-file" accept=".osz" multiple>
@@ -874,42 +872,15 @@
     let maniaInitialized = false;
     let taikoInitialized = false;
     let isRequestingFile = false;
-    let shouldReEnterFullscreen = false; // Flag to signal re-entry
+    let shouldReEnterFullscreen = false;
+    let escTimer = null;
+    let isEscHeld = false;
+    const LONG_PRESS_DURATION = 1000; // 1秒
 
-    /**
-     * URLバーなどを隠すイマーシブなフルスクリーンモードに移行する
-     */
-    function enterFullscreen() {
-        const docEl = document.documentElement;
-        if (docEl.requestFullscreen && !document.fullscreenElement) {
-            docEl.requestFullscreen({ navigationUI: "hide" }).catch(err => {
-                console.error(`フルスクリーンモードへの移行に失敗しました: ${err.message} (${err.name})`);
-            });
-        }
-    }
+    // --- ここからフルスクリーン関連の関数をすべて削除 ---
 
-    /**
-     * フルスクリーンモードを切り替える（F11キーやボタンから呼び出す）
-     */
-    function toggleFullscreen() {
-        const docEl = document.documentElement;
-        const isInFullscreen = !!document.fullscreenElement;
-
-        if (!isInFullscreen) {
-            if (docEl.requestFullscreen) {
-                docEl.requestFullscreen({ navigationUI: "hide" }).catch(err => {
-                    alert(`フルスクリーンモードにできませんでした: ${err.message}`);
-                });
-            }
-        } else {
-            if (document.exitFullscreen) {
-                document.exitFullscreen();
-            }
-        }
-    }
-    
     function switchToMania() {
-        enterFullscreen();
+        // enterFullscreen(); // 削除
         document.getElementById('game-selector').style.display = 'none';
         document.getElementById('taiko-wrapper').style.display = 'none';
         document.getElementById('mania-wrapper').style.display = 'block';
@@ -921,7 +892,7 @@
     }
 
     function switchToTaiko() {
-        enterFullscreen();
+        // enterFullscreen(); // 削除
         document.getElementById('game-selector').style.display = 'none';
         document.getElementById('mania-wrapper').style.display = 'none';
         document.getElementById('taiko-wrapper').style.display = 'block';
@@ -939,37 +910,24 @@
         selectTaikoBtn.addEventListener('click', switchToTaiko);
     });
 
-    // --- フルスクリーン自動復帰ロジック ---
-    // フルスクリーン状態が変化したときに発火
-    document.addEventListener('fullscreenchange', () => {
-        // フルスクリーンが解除され、かつファイル選択が原因だった場合
-        if (!document.fullscreenElement && isRequestingFile) {
-            shouldReEnterFullscreen = true; // 再突入フラグを立てる
-            isRequestingFile = false; // 原因フラグはリセット
+    // --- フルスクリーン自動復帰ロジックもすべて削除 ---
+    
+    // --- グローバルなキー入力処理からフルスクリーン関連を削除 ---
+    document.addEventListener('keydown', (e) => {
+        // Wキーでポーズ
+        if (e.key.toUpperCase() === 'W' && !e.repeat) {
+             e.preventDefault();
+             if (activeGame === 'mania') ManiaGame.togglePauseExternal();
+             if (activeGame === 'taiko') TaikoGame.togglePauseExternal();
+        }
+        // Escキーでポーズ
+        if (e.key === 'Escape' && !e.repeat) {
+             e.preventDefault();
+             if (activeGame === 'mania') ManiaGame.togglePauseExternal();
+             if (activeGame === 'taiko') TaikoGame.togglePauseExternal();
         }
     });
 
-    // ウィンドウにフォーカスが戻ったとき（ファイルダイアログを閉じたときなど）に発火
-    window.addEventListener('focus', () => {
-        // 再突入フラグが立っている場合
-        if (shouldReEnterFullscreen) {
-            shouldReEnterFullscreen = false; // フラグを消費
-            // 少し遅延を入れてからフルスクリーンに再突入（ブラウザの挙動を安定させるため）
-            setTimeout(() => {
-                if (activeGame) { // ゲームがアクティブな場合のみ
-                    enterFullscreen();
-                }
-            }, 300);
-        }
-    });
-    
-    // F11キーでフルスクリーンをトグル
-    document.addEventListener('keydown', (e) => {
-        if (e.key === 'F11') {
-            e.preventDefault(); // ブラウザのデフォルト動作をキャンセル
-            toggleFullscreen();
-        }
-    });
 
     // --- osu!mania Game Logic (Scoped) ---
     const ManiaGame = (() => {
@@ -1025,7 +983,7 @@
             resultsMenuButton: root.querySelector('#results-menu-button'),
             openSettingsButton: root.querySelector('#open-settings-button'),
             settingsOverlay: root.querySelector('#settings-overlay'),
-            fullscreenButton: root.querySelector('#mania-fullscreen-button'),
+            // fullscreenButton: root.querySelector('#mania-fullscreen-button'), // 削除
             beatmapLibrarySelector: root.querySelector('#beatmap-library-selector'),
             addBeatmapsButton: root.querySelector('#add-beatmaps-button'),
             removeBeatmapButton: root.querySelector('#remove-beatmap-button'),
@@ -1620,8 +1578,28 @@
             }
         }
         function judgeRelease(laneIndex, { isAutoCompletion = false } = {}) { const holdNote = activeHolds[laneIndex]; if (!holdNote) return; const cleanup = () => { clearInterval(holdNote.tickInterval); holdNote.tickInterval = null; activeHolds[laneIndex] = null; holdNote.released = true; if (holdNote.element) holdNote.element.classList.add('hidden'); dom.scoreElement.textContent = score; }; if (isAutoCompletion) { showJudgment('PERFECT+'); updateAccuracy('PERFECT+'); score += 300; judgmentCounts['PERFECT+']++; cleanup(); return; } const userOffset = parseInt(dom.offsetInput.value, 10) || 0; const now = getCurrentBeatmapTime() / gameContext.rate; const diff = now - (holdNote.endTime + userOffset); if (diff >= -JUDGMENT_WINDOWS.GOOD) { showJudgment('PERFECT+'); updateAccuracy('PERFECT+'); score += 300; judgmentCounts['PERFECT+']++; } else { combo = 0; dom.comboContainer.classList.remove('visible'); showJudgment('MISS'); updateAccuracy('MISS'); judgmentCounts.MISS++; } cleanup(); }
-        document.addEventListener('keydown', e => { if (activeGame !== 'mania' || e.repeat || e.key === 'Escape') return; if (!isGameRunning || isPaused || isAutoPlay) return; const laneIndex = activeKeys.indexOf(e.key.toUpperCase()); if (laneIndex === -1 || keyState[laneIndex]) return; keyState[laneIndex] = true; keyJustPressed[laneIndex] = true; });
-        document.addEventListener('keyup', e => { if(activeGame !== 'mania' || e.key === 'Escape') return; if (!isGameRunning || isPaused || isAutoPlay) return; const laneIndex = activeKeys.indexOf(e.key.toUpperCase()); if (laneIndex === -1) return; keyState[laneIndex] = false; judgeRelease(laneIndex); });
+        
+        function handleKeydown(e) {
+            if (activeGame !== 'mania' || e.repeat) return;
+            if (!isGameRunning || isPaused || isAutoPlay) return; 
+            const laneIndex = activeKeys.indexOf(e.key.toUpperCase());
+            if (laneIndex === -1 || keyState[laneIndex]) return; 
+            keyState[laneIndex] = true; 
+            keyJustPressed[laneIndex] = true; 
+        }
+
+        function handleKeyup(e) {
+            if(activeGame !== 'mania') return;
+            if (!isGameRunning || isPaused || isAutoPlay) return;
+            const laneIndex = activeKeys.indexOf(e.key.toUpperCase());
+            if (laneIndex === -1) return;
+            keyState[laneIndex] = false;
+            judgeRelease(laneIndex);
+        }
+
+        document.addEventListener('keydown', handleKeydown);
+        document.addEventListener('keyup', handleKeyup);
+
         function handleHit(judgment, note, diff) { if (note.judged) return; note.judged = true; judgmentCounts[judgment]++; updateAccuracy(judgment); if (judgment === 'MISS') { combo = 0; dom.comboContainer.classList.remove('visible'); } else { if (judgment === 'PERFECT+') score += 300; else if (judgment === 'PERFECT') score += 290; else if (judgment === 'GREAT') score += 200; else if (judgment === 'GOOD') score += 100; else if (judgment === 'OK') score += 50; combo++; note.hit = true; showHitError(diff); showJudgmentTiming(diff); } if (combo > maxCombo) maxCombo = combo; if (combo > 2) { dom.comboContainer.classList.add('visible'); dom.comboCount.textContent = combo; dom.comboCount.classList.remove('combo-anim'); void dom.comboCount.offsetWidth; dom.comboCount.classList.add('combo-anim'); } showJudgment(judgment); if (note.type === 'note') { if(note.element) note.element.classList.add('hidden'); } else if (note.type === 'long') { if (judgment !== 'MISS') { activeHolds[note.lane] = note; note.tickInterval = setInterval(() => { score += TICK_SCORE_AMOUNT; dom.scoreElement.textContent = score; }, TICK_SCORE_INTERVAL); } else { if(note.element) note.element.classList.add('hidden'); } } dom.scoreElement.textContent = score; }
         function updateAccuracy(judgment) {
             totalJudgments++;
@@ -1666,13 +1644,31 @@
         }
         function showJudgmentTiming(diff) { const el = dom.judgmentTimingTextElement; let text = ''; if (diff < -EARLY_LATE_THRESHOLD) text = 'Early'; else if (diff > EARLY_LATE_THRESHOLD) text = 'Late'; el.textContent = text; el.style.animation = 'none'; el.offsetHeight; el.style.animation = null; }
         function updatePauseSelection() { const buttons = dom.pauseOverlay.querySelectorAll('.overlay-button'); buttons.forEach((btn, index) => { btn.classList.toggle('selected', index === selectedPauseIndex); }); }
+        
+        function togglePause() { 
+            if (!isGameRunning) return; 
+            isPaused = !isPaused; 
+            if (isPaused) { 
+                if (audioSourceNode) { 
+                    audioSourceNode.stop(); 
+                    audioSourceNode = null; 
+                } 
+                audioContextState.pausedAt = (audioContext.currentTime - audioContextState.startedAt); 
+                if(dom.videoBackground.style.display !== 'none') dom.videoBackground.pause(); 
+                dom.gameContainer.classList.remove('playing'); 
+                dom.pauseOverlay.style.display = 'flex'; 
+                selectedPauseIndex = 0; 
+                updatePauseSelection(); 
+            } else { 
+                playAudio(audioContextState.pausedAt, 0); 
+                if(dom.videoBackground.style.display !== 'none') dom.videoBackground.play(); 
+                dom.gameContainer.classList.add('playing'); 
+                dom.pauseOverlay.style.display = 'none'; 
+            } 
+        }
+
         document.addEventListener('keydown', e => {
-            if (activeGame !== 'mania') return;
-            if (e.key === 'Escape') {
-                togglePause();
-                return;
-            }
-            if (isPaused) {
+            if (activeGame === 'mania' && isPaused) {
                 const buttons = dom.pauseOverlay.querySelectorAll('.overlay-button');
                 if (buttons.length === 0) return;
                 
@@ -1690,7 +1686,7 @@
                 }
             }
         });
-        function togglePause() { if (!isGameRunning) return; isPaused = !isPaused; if (isPaused) { if (audioSourceNode) { audioSourceNode.stop(); audioSourceNode = null; } audioContextState.pausedAt = (audioContext.currentTime - audioContextState.startedAt); if(dom.videoBackground.style.display !== 'none') dom.videoBackground.pause(); dom.gameContainer.classList.remove('playing'); dom.pauseOverlay.style.display = 'flex'; selectedPauseIndex = 0; updatePauseSelection(); } else { playAudio(audioContextState.pausedAt, 0); if(dom.videoBackground.style.display !== 'none') dom.videoBackground.play(); dom.gameContainer.classList.add('playing'); dom.pauseOverlay.style.display = 'none'; } }
+
         function retryGame() { if (animationFrameId) cancelAnimationFrame(animationFrameId); animationFrameId = null; isGameRunning = false; isPaused = false; if(dom.videoBackground.src) { dom.videoBackground.pause(); dom.videoBackground.currentTime = 0; } dom.pauseOverlay.style.display = 'none'; dom.resultsOverlay.style.display = 'none'; startGame(); }
         function returnToControls() {
             isGameRunning = false;
@@ -1804,7 +1800,7 @@
                 dom.resultsMenuButton.addEventListener('click', returnToControls);
                 dom.switchToTaikoButton.addEventListener('click', switchToTaiko);
                 dom.ingamePauseButton.addEventListener('click', togglePause);
-                dom.fullscreenButton.addEventListener('click', toggleFullscreen);
+                // dom.fullscreenButton.addEventListener('click', toggleFullscreen); // 削除
                 dom.saveOszButton.addEventListener('click', saveOszFileToPC);
                 dom.speedSlider.addEventListener('input', () => { updateSpeed(); saveSettings(); });
                 dom.offsetInput.addEventListener('change', saveSettings);
@@ -1819,7 +1815,8 @@
                 dom.comboPositionSlider.addEventListener('input', (e) => { applyComboPositionY(e.target.value); saveSettings(); });
                 dom.judgmentPositionSlider.addEventListener('input', (e) => { applyJudgmentPositionY(e.target.value); saveSettings(); });
                 dom.keyCountSelector.addEventListener('change', (e) => { setKeyCount(e.target.value); saveSettings(); });
-            }
+            },
+            togglePauseExternal: togglePause
         };
     })();
 
@@ -1868,7 +1865,7 @@
             backToTitlePause: root.querySelector('#back-to-title-button-pause'),
             backToTitleResults: root.querySelector('#back-to-title-button-results'),
             switchToManiaButton: root.querySelector('#switch-to-mania-button'),
-            fullscreenButton: root.querySelector('#taiko-fullscreen-button'),
+            // fullscreenButton: root.querySelector('#taiko-fullscreen-button'), // 削除
             resultsOverlay: root.querySelector('#taiko-results-overlay'),
             resultsSongTitle: root.querySelector('#results-song-title'),
             resultsScoreValue: root.querySelector('#taiko-results-score-value'),
@@ -2586,7 +2583,8 @@
         }
         function autoPlayHandler(elapsedTime) { const AUTO_HIT_INTERVAL = 25; for (const note of hitObjects) { if (note.judged) continue; if (note.type === 'balloon' || note.type === 'roll') { if (elapsedTime >= note.time && elapsedTime <= note.endTime) { if (elapsedTime - (note.lastAutoHitTime || 0) > AUTO_HIT_INTERVAL) { playHitSound('don'); const hitSide = autoPlayHitCounter % 2 === 0 ? 'don_right' : 'don_left'; showDrumHit(hitSide); autoPlayHitCounter++; let hitScore = 100; if (isGoGoNow) hitScore *= 1.2; score += hitScore; note.hitsMade++; if (note.type === 'roll') { activeRollHits = note.hitsMade; rollCounterClearTime = 0; } else if (note.type === 'balloon' && note.hitsMade >= note.hitsRequired) { let burstBonus = 5000; if (isGoGoNow) burstBonus *= 1.2; score += burstBonus; note.judged = true; } dom.scoreElement.textContent = Math.floor(score); note.lastAutoHitTime = elapsedTime; } } if (elapsedTime > note.endTime && !note.judged) { if (note.type === 'roll' && note.hitsMade > 0) rollCounterClearTime = elapsedTime + 2000; note.judged = true; } } else if (elapsedTime >= note.time) { playHitSound(note.type); const isBigNoteTwoHands = note.isBig && !isSingleHandBigNoteEnabled; if (note.type === 'don') { if (isBigNoteTwoHands) { showDrumHit('don_left'); showDrumHit('don_right'); } else { const hitSide = autoPlayHitCounter % 2 === 0 ? 'don_right' : 'don_left'; showDrumHit(hitSide); } } else if (note.type === 'katsu') { if (isBigNoteTwoHands) { showDrumHit('katsu_left'); showDrumHit('katsu_right'); } else { const hitSide = autoPlayHitCounter % 2 === 0 ? 'katsu_right' : 'katsu_left'; showDrumHit(hitSide); } } autoPlayHitCounter++; handleJudgment('ryo', note, 0); } } }
         function showDrumHit(keyId) { const hitMap = { don_left: dom.drumDonLeft, don_right: dom.drumDonRight, katsu_left: dom.drumKatsuLeft, katsu_right: dom.drumKatsuRight, }; const element = hitMap[keyId]; if (!element) return; if (drumHitTimeouts[keyId]) { clearTimeout(drumHitTimeouts[keyId]); } element.classList.add('active'); drumHitTimeouts[keyId] = setTimeout(() => { element.classList.remove('active'); }, 50); }
-        document.addEventListener('keydown', e => {
+        
+        function handleKeydown(e) {
             if (activeGame !== 'taiko' || e.repeat || !isGameRunning || isPaused || isAutoPlay) return;
             const key = e.key.toUpperCase();
             let hitKeyId = null;
@@ -2605,8 +2603,8 @@
             const elapsedTime = (getGameTime() - offset) + seOffset;
             if (elapsedTime < -500) return;
 
-            // 1. アクティブな連打ノートを探す
-            let activeLongNote = null;
+            // ... (rest of the hit logic is unchanged) ...
+             let activeLongNote = null;
             for (let i = lastCheckedNoteIndex; i < hitObjects.length; i++) {
                 const note = hitObjects[i];
                 if (note.judged) continue;
@@ -2619,7 +2617,6 @@
                 if (note.time > elapsedTime + 200) break;
             }
 
-            // 2. アクティブな連打ノートがある場合の処理
             if (activeLongNote) {
                 if (activeLongNote.type === 'roll') {
                     playHitSound(keyType);
@@ -2648,24 +2645,19 @@
                         if (!isAutoSE) playHitSound('katsu');
                     }
                 }
-                return; // 連打処理後は通常ノート判定を行わない
+                return;
             }
             
-            // 3. 通常ノートの判定
             let potentialNote = null;
             let minTimeDiff = Infinity;
 
-            // まず、押されたキーと同じ種類の、一番近い未来のノートを探す
             for (let i = lastCheckedNoteIndex; i < hitObjects.length; i++) {
                 const note = hitObjects[i];
                 if (note.judged || note.type === 'balloon' || note.type === 'roll') continue;
-                
-                // 自分の種類と違うノートは完全に無視 (アレンジプレイのため)
                 if (note.type !== keyType) continue;
 
                 const timeDiff = Math.abs(note.time - elapsedTime);
                 
-                // 早すぎミスを許容する広いウィンドウで最も近いノートを探す
                 if (timeDiff < EARLY_MISS_WINDOW) {
                     if (timeDiff < minTimeDiff) {
                         minTimeDiff = timeDiff;
@@ -2673,13 +2665,11 @@
                     }
                 }
                 
-                // 探す範囲を限定してパフォーマンスを上げる
                 if (note.time > elapsedTime + EARLY_MISS_WINDOW + 100) break;
             }
 
-            // 候補ノートが見つかった場合
             if (potentialNote) {
-                const actualTimeDiff = elapsedTime - potentialNote.time; // 正なら遅い、負なら早い
+                const actualTimeDiff = elapsedTime - potentialNote.time;
 
                 if (!potentialNote.sePlayed) {
                     playHitSound(keyType);
@@ -2689,19 +2679,21 @@
                     handleJudgment('ryo', potentialNote, actualTimeDiff);
                 } else if (Math.abs(actualTimeDiff) <= HIT_WINDOW_GOOD) {
                     handleJudgment('ka', potentialNote, actualTimeDiff);
-                } else if (actualTimeDiff < 0) { // GOODの範囲外で早かった場合
+                } else if (actualTimeDiff < 0) {
                     handleJudgment('fuka', potentialNote);
                 }
-                // 遅すぎの場合は checkMisses に任せるのでここでは何もしない
-            
             } else {
-                // 叩いたキーの種類のノートが近くにない場合 (完全な空打ち or アレンジ)
                 if (!isAutoSE) {
                     playHitSound(keyType);
                 }
             }
+        }
+        document.addEventListener('keydown', handleKeydown);
+        document.addEventListener('keyup', e => { 
+            if (activeGame !== 'taiko') return;
+            pressedKeys.delete(e.key.toUpperCase());
         });
-        document.addEventListener('keyup', e => { if (activeGame !== 'taiko') return; pressedKeys.delete(e.key.toUpperCase()); });
+
         function checkMisses(elapsedTime) { for (let i = lastCheckedNoteIndex; i < hitObjects.length; i++) { const note = hitObjects[i]; if (note.judged) { continue; } if (note.time > elapsedTime + HIT_WINDOW_BAD) break; if (note.type !== 'balloon' && note.type !== 'roll') { if (elapsedTime > note.time + HIT_WINDOW_BAD) { handleJudgment('fuka', note); } } else { if (elapsedTime > note.endTime) { if (note.type === 'roll' && note.hitsMade > 0) rollCounterClearTime = elapsedTime + 2000; note.judged = true; } } } }
         function handleJudgment(judgement, note, diff = null) {
             if(note.judged) return;
@@ -2738,45 +2730,60 @@
         function showJudgment(text) { const el = dom.judgmentTextElement; const judgmentStyles = { "良": 'gold', "可": 'white', "不可": '#dda0dd' }; el.textContent = text; el.style.color = judgmentStyles[text] || 'white'; el.style.animation = 'none'; void el.offsetHeight; el.style.animation = null; }
         function updateComboDisplay() { if (combo > 0) { dom.comboElement.textContent = combo; dom.comboDisplay.classList.add('visible'); } else { dom.comboDisplay.classList.remove('visible'); } }
         function updatePauseSelection() { const buttons = dom.pauseOverlay.querySelectorAll('.overlay-button'); buttons.forEach((btn, index) => { btn.classList.toggle('selected', index === selectedPauseIndex); }); }
+        
+        function togglePause() { 
+            if (isInitialCooldown || !isGameRunning || isPauseButtonCoolingDown) return; 
+            isPauseButtonCoolingDown = true; setTimeout(() => { isPauseButtonCoolingDown = false; }, 500); 
+            isPaused = !isPaused; 
+            if (isPaused) { 
+                pauseStartTime = performance.now(); 
+                dom.audioPlayer.pause(); 
+                if (selectedBackgroundType === 'video' && availableBackgrounds.video) dom.backgroundVideo.pause(); 
+                dom.gameContainer.classList.remove('playing'); 
+                cancelAnimationFrame(animationFrameId); 
+                dom.pauseOverlay.style.display = 'flex'; 
+                selectedPauseIndex = 0; 
+                updatePauseSelection(); 
+            } else { 
+                totalPauseDuration += performance.now() - pauseStartTime; 
+                dom.audioPlayer.play(); 
+                if (selectedBackgroundType === 'video' && availableBackgrounds.video) dom.backgroundVideo.play(); 
+                dom.gameContainer.classList.add('playing'); 
+                animationFrameId = requestAnimationFrame(gameLoop); 
+                dom.pauseOverlay.style.display = 'none'; 
+            } 
+        }
+
         document.addEventListener('keydown', e => {
-            if (activeGame !== 'taiko') return;
-            if (e.key === 'Escape' || (e.key.toUpperCase() === 'P' && e.ctrlKey)) {
-                e.preventDefault();
-                togglePause();
-                return;
-            }
-            if (e.key.toUpperCase() === 'R' && e.ctrlKey) {
-                e.preventDefault();
-                retryGame();
-                return;
-            }
-             if (isPaused) {
-                const buttons = dom.pauseOverlay.querySelectorAll('.overlay-button');
-                if (buttons.length === 0) return;
-                
-                if (e.key === 'ArrowUp') {
+            if (activeGame === 'taiko') {
+                if (isPaused) {
+                    const buttons = dom.pauseOverlay.querySelectorAll('.overlay-button');
+                    if (buttons.length === 0) return;
+                    
+                    if (e.key === 'ArrowUp') {
+                        e.preventDefault();
+                        selectedPauseIndex = (selectedPauseIndex - 1 + buttons.length) % buttons.length;
+                        updatePauseSelection();
+                    } else if (e.key === 'ArrowDown') {
+                        e.preventDefault();
+                        selectedPauseIndex = (selectedPauseIndex + 1) % buttons.length;
+                        updatePauseSelection();
+                    } else if (e.key === 'Enter') {
+                        e.preventDefault();
+                        buttons[selectedPauseIndex].click();
+                    }
+                } else if (isGameRunning && e.code === 'Space') {
                     e.preventDefault();
-                    selectedPauseIndex = (selectedPauseIndex - 1 + buttons.length) % buttons.length;
-                    updatePauseSelection();
-                } else if (e.key === 'ArrowDown') {
+                } else if (!isGameRunning && e.code === 'Space' && !dom.startButton.disabled) {
                     e.preventDefault();
-                    selectedPauseIndex = (selectedPauseIndex + 1) % buttons.length;
-                    updatePauseSelection();
-                } else if (e.key === 'Enter') {
+                    startGame();
+                } else if (!isGameRunning && e.key.toUpperCase() === 'M') {
                     e.preventDefault();
-                    buttons[selectedPauseIndex].click();
+                    switchToMania();
                 }
-            } else if (isGameRunning && e.code === 'Space') {
-                 e.preventDefault();
-            } else if (!isGameRunning && e.code === 'Space' && !dom.startButton.disabled) {
-                e.preventDefault();
-                startGame();
-            } else if (!isGameRunning && e.key.toUpperCase() === 'M') {
-                 e.preventDefault();
-                 switchToMania();
             }
         });
-        function togglePause() { if (isInitialCooldown || !isGameRunning || isPauseButtonCoolingDown) return; isPauseButtonCoolingDown = true; setTimeout(() => { isPauseButtonCoolingDown = false; }, 500); isPaused = !isPaused; if (isPaused) { pauseStartTime = performance.now(); dom.audioPlayer.pause(); if (selectedBackgroundType === 'video' && availableBackgrounds.video) dom.backgroundVideo.pause(); dom.gameContainer.classList.remove('playing'); cancelAnimationFrame(animationFrameId); dom.pauseOverlay.style.display = 'flex'; selectedPauseIndex = 0; updatePauseSelection(); } else { totalPauseDuration += performance.now() - pauseStartTime; dom.audioPlayer.play(); if (selectedBackgroundType === 'video' && availableBackgrounds.video) dom.backgroundVideo.play(); dom.gameContainer.classList.add('playing'); animationFrameId = requestAnimationFrame(gameLoop); dom.pauseOverlay.style.display = 'none'; } }
+
         function retryGame() { isGameRunning = false; if(animationFrameId) cancelAnimationFrame(animationFrameId); dom.audioPlayer.pause(); if (selectedBackgroundType === 'video' && dom.backgroundVideo) dom.backgroundVideo.pause(); dom.pauseOverlay.style.display = 'none'; dom.resultsOverlay.style.display = 'none'; if (beatmapLoaded && audioLoaded) { startGame(); } else { returnToControls(); } }
         function returnToControls() {
             isGameRunning = false;
@@ -2828,7 +2835,6 @@
                 console.error('Failed to save .osz file from Taiko player:', err);
             } finally {
                 dom.saveSongToPcButton.textContent = 'PCへ保存';
-                // Re-enable button only if a song is still selected
                 dom.saveSongToPcButton.disabled = !dom.savedSongsList.value;
             }
         }
@@ -2843,7 +2849,7 @@
                 updateBgBrightness();
                 updateLaneCover();
                 dom.startButton.addEventListener('click', startGame);
-                dom.fullscreenButton.addEventListener('click', toggleFullscreen);
+                // dom.fullscreenButton.addEventListener('click', toggleFullscreen); // 削除
                 dom.speedSlider.addEventListener('input', () => { updateSpeed(); saveSettings(); });
                 dom.offsetInput.addEventListener('change', saveSettings);
                 dom.videoOffsetInput.addEventListener('change', saveSettings);
@@ -2871,7 +2877,8 @@
                     console.error('Application initialization failed:', e);
                     alert('データベースの初期化に失敗しました。保存機能は利用できません。');
                 }
-            }
+            },
+            togglePauseExternal: togglePause
         };
     })();
 
