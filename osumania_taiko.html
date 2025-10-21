@@ -873,7 +873,22 @@
     let maniaInitialized = false;
     let taikoInitialized = false;
 
+    // --- ここから変更 ---
+    /**
+     * フルスクリーンモードに移行する関数
+     */
+    function enterFullscreen() {
+        const docEl = document.documentElement;
+        // document.fullscreenElement が null でない場合は、既にフルスクリーンモード
+        if (docEl.requestFullscreen && !document.fullscreenElement) {
+            docEl.requestFullscreen().catch(err => {
+                console.error(`フルスクリーンモードへの移行に失敗しました: ${err.message} (${err.name})`);
+            });
+        }
+    }
+
     function switchToMania() {
+        enterFullscreen(); // フルスクリーンに移行
         document.getElementById('game-selector').style.display = 'none';
         document.getElementById('taiko-wrapper').style.display = 'none';
         document.getElementById('mania-wrapper').style.display = 'block';
@@ -885,6 +900,7 @@
     }
 
     function switchToTaiko() {
+        enterFullscreen(); // フルスクリーンに移行
         document.getElementById('game-selector').style.display = 'none';
         document.getElementById('mania-wrapper').style.display = 'none';
         document.getElementById('taiko-wrapper').style.display = 'block';
@@ -894,6 +910,7 @@
             taikoInitialized = true;
         }
     }
+    // --- ここまで変更 ---
 
     document.addEventListener('DOMContentLoaded', () => {
         const selectManiaBtn = document.getElementById('select-mania');
