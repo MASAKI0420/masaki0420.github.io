@@ -108,7 +108,7 @@
             grid-template-rows: auto 1fr auto auto auto;
             gap: 20px 25px;
             align-items: flex-start;
-            transform: scale(0.85); /* ▼▼▼ 変更点 ▼▼▼ */
+            transform: scale(0.80); /* ▼▼▼ 変更点 ▼▼▼ */
         }
         #mania-wrapper .panel-column { display: flex; flex-direction: column; gap: 20px; min-height: 350px; }
         #mania-wrapper #beatmap-library-selector { width: 100%; background-color: #2a344d; color: var(--panel-text); border: 1px solid var(--panel-border); border-radius: 6px; padding: 8px; height: 190px; }
@@ -284,6 +284,32 @@
          /* --- Mania Results Rank Style END --- */
 
         /* --- osu!taiko Styles (Scoped) --- */
+	/* --- Taiko Countdown Style START --- */
+	#taiko-wrapper #taiko-countdown-overlay {
+    /*
+      .overlay スタイルは mania / taiko 共通で z-index: 200 を持っているため、
+      taiko-game-container 内の他の要素(z-index: 20-25)より必ず手前に表示されます。
+      そのため、ここでの z-index 指定は不要です。
+    */
+    background-color: rgba(0, 0, 0, 0.6);
+    display: none; /* JavaScriptで制御するために最初は非表示 */
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    position: fixed; /* .overlayの基本スタイルを確実に適用 */
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+}
+
+#taiko-wrapper #taiko-countdown-text {
+    font-size: 8em;
+    font-weight: bold;
+    color: white; /* 文字色を白に指定 */
+    text-shadow: 0 0 20px rgba(0, 0, 0, 0.7);
+}
+	/* --- Taiko Countdown Style END --- */
         #taiko-wrapper {
             --panel-bg: #1f2940;
             --panel-text: #e0e5f0;
@@ -538,7 +564,7 @@
         #mania-wrapper #mania-gameplay-progress-pie {
             position: relative;
             top: 2px;  /* 上下位置: プラスの値で下に、マイナスの値で上に移動 */
-            left: 15px; /* 左右位置: プラスの値で右に、マイナスの値で左に移動 */
+            left: 5px; /* 左右位置: プラスの値で右に、マイナスの値で左に移動 */
         }
         #taiko-wrapper #taiko-gameplay-progress-pie {
             position: relative;
@@ -682,7 +708,7 @@
                     <div id="song-title">譜面を選択してください</div>
                     <div id="song-artist" style="font-size: 0.9em; color: #a0a8c0;"></div>
                 </div>
-                <p class="grid-item-full">※ WキーまたはESCキーでポーズ / ESC長押しでフルスクリーン解除</p>
+                <p class="grid-item-full">※ WキーまたはESCキーでポーズ / ESC長押しでフルスクリーン解除 ©zMASAKI_TAIKO</p>
             </div>
         </div>
         <div id="game-container" class="game-container">
@@ -837,7 +863,7 @@
                         </div>
                          <div class="control-group">
                             <label for="taiko-offset-input">譜面オフセット (ms)</label>
-                            <input type="number" id="taiko-offset-input" value="0" step="0.5">
+                            <input type="number" id="taiko-offset-input" value="0" step="1">
                         </div>
                          <div class="control-group">
                             <label for="taiko-individual-offset-input">個別譜面オフセット (ms)</label>
@@ -1072,6 +1098,8 @@
     let escTimer = null;
     let isEscHeld = false;
     const LONG_PRESS_DURATION = 1000; // 1秒
+    
+    let isRetryOnCooldown = false; // リトライキーのクールダウン管理用フラグ
 
     function switchToMania() {
         document.getElementById('game-selector').style.display = 'none';
@@ -1131,23 +1159,35 @@
     });
 
     document.addEventListener('keydown', (e) => {
-        if (e.key.toUpperCase() === 'W' && !e.repeat) {
-             e.preventDefault();
-             if (activeGame === 'mania') ManiaGame.togglePauseExternal();
-             if (activeGame === 'taiko') TaikoGame.togglePauseExternal();
-        }
-        if (e.key === 'Escape' && !e.repeat) {
+        // --- ポーズキー (W または Esc) の処理 ---
+        if ((e.key.toUpperCase() === 'W' || e.key === 'Escape') && !e.repeat) {
              e.preventDefault();
              if (activeGame === 'mania') ManiaGame.togglePauseExternal();
              if (activeGame === 'taiko') TaikoGame.togglePauseExternal();
         }
 
+        // --- リトライキーの処理 ---
         if (e.key.toUpperCase() === shortcutKeys.retry.toUpperCase() && !e.repeat) {
             e.preventDefault();
+
+            // クールダウン中であれば、ここで処理を完全に中断する
+            if (isRetryOnCooldown) {
+                return;
+            }
+
+            // クールダウンを開始する
+            isRetryOnCooldown = true;
+            // ▼ 変更点 ▼
+            setTimeout(() => {
+                isRetryOnCooldown = false; // 3秒後にクールダウンを解除
+            }, 3000); // 2000ミリ秒から3000ミリ秒（3秒）に変更
+
+            // 実際のリトライ処理を実行
             if (activeGame === 'mania') ManiaGame.retryGameExternal();
             if (activeGame === 'taiko') TaikoGame.retryGameExternal();
         }
 
+        // --- メニューキーの処理 (こちらはクールダウンなし) ---
         if (e.key.toUpperCase() === shortcutKeys.menu.toUpperCase() && !e.repeat) {
             e.preventDefault();
             if (activeGame === 'mania') ManiaGame.returnToControlsExternal();
@@ -2157,6 +2197,7 @@
         let hitObjects = [], barLines = [], goGoSections = [];
         let audioLoaded = false, beatmapLoaded = false;
         let isGameRunning = false, isPaused = false, isAutoPlay = false, isAutoSE = false;
+        let pausedTime = 0;
         let isSingleHandBigNoteEnabled = true;
         let score = 0, combo = 0, offset = 0, maxCombo = 0, accuracy = 100;
         let judgmentCounts = { ryo: 0, ka: 0, fuka: 0 };
@@ -2561,7 +2602,7 @@
             isSingleHandBigNoteEnabled = dom.singleHandBigNoteCheckbox.checked;
             const globalOffset = parseInt(dom.offsetInput.value, 10) || 0;
             const individualOffset = parseInt(dom.individualOffsetInput.value, 10) || 0;
-            offset = globalOffset + individualOffset;
+            offset = 181;
 
             const audioReadyPromise = new Promise(resolve => {
                 if (dom.audioPlayer.readyState >= 4) {
@@ -3010,6 +3051,7 @@
             isPaused = !isPaused; 
             if (isPaused) { 
                 pauseStartTime = performance.now(); 
+                pausedTime = dom.audioPlayer.currentTime;
                 dom.audioPlayer.pause(); 
                 if (selectedBackgroundType === 'video' && availableBackgrounds.video) dom.backgroundVideo.pause(); 
                 dom.gameContainer.classList.remove('playing'); 
@@ -3019,6 +3061,7 @@
                 updatePauseSelection(); 
             } else { 
                 totalPauseDuration += performance.now() - pauseStartTime; 
+                dom.audioPlayer.currentTime = pausedTime;
                 dom.audioPlayer.play(); 
                 if (selectedBackgroundType === 'video' && availableBackgrounds.video) dom.backgroundVideo.play(); 
                 dom.gameContainer.classList.add('playing'); 
@@ -3057,7 +3100,20 @@
             }
         });
 
-        function retryGame() { isGameRunning = false; if(animationFrameId) cancelAnimationFrame(animationFrameId); dom.audioPlayer.pause(); if (selectedBackgroundType === 'video' && dom.backgroundVideo) dom.backgroundVideo.pause(); dom.pauseOverlay.style.display = 'none'; dom.resultsOverlay.style.display = 'none'; if (beatmapLoaded && audioLoaded) { startGame(); } else { returnToControls(); } }
+        function retryGame() { 
+            isGameRunning = false; 
+            if(animationFrameId) cancelAnimationFrame(animationFrameId); 
+            dom.audioPlayer.pause(); 
+            dom.audioPlayer.load();
+            if (selectedBackgroundType === 'video' && dom.backgroundVideo) dom.backgroundVideo.pause(); 
+            dom.pauseOverlay.style.display = 'none'; 
+            dom.resultsOverlay.style.display = 'none'; 
+            if (beatmapLoaded && audioLoaded) { 
+                startGame(); 
+            } else { 
+                returnToControls(); 
+            } 
+        }
         function returnToControls() {
             isGameRunning = false;
             isPaused = false;
@@ -3069,6 +3125,7 @@
             }
             if (selectedBackgroundType === 'video' && dom.backgroundVideo) {
                 dom.backgroundVideo.pause();
+		dom.backgroundVideo.load();
                 dom.backgroundVideo.currentTime = 0;
             }
             dom.pauseOverlay.style.display = 'none';
@@ -3175,8 +3232,17 @@
                 initializeShortcutKeySetup('taiko-shortcut-retry', 'taiko-shortcut-menu');
             },
             togglePauseExternal: togglePause,
-            retryGameExternal: function() { if (isGameRunning) retryGame(); },
-            returnToControlsExternal: function() { if (isGameRunning) returnToControls(); }
+            retryGameExternal: function() {
+                // ゲームがプレイ中(ポーズ中含む)、またはリザルト画面が表示されている場合にリトライを実行
+                if (isGameRunning || isPaused || dom.resultsOverlay.style.display === 'flex') {
+                    retryGame();
+                }
+            },
+            returnToControlsExternal: function() { 
+                if (isGameRunning || isPaused || dom.resultsOverlay.style.display === 'flex') {
+                    returnToControls();
+                }
+            }
         };
     })();
 
