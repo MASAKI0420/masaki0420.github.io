@@ -92,7 +92,47 @@
             --lane-opacity: 0.5;
             --playfield-bg-opacity: 0.5;
         }
-        #mania-wrapper #video-background, #mania-wrapper #image-background { position: fixed; top: 50%; left: 50%; min-width: 100%; min-height: 100%; width: auto; height: auto; transform: translateX(-50%) translateY(-50%); z-index: 1; display: none; filter: brightness(var(--background-brightness)); object-fit: cover; }
+        #mania-wrapper #video-background {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 1;
+            
+            /* ★★★【Maniaの動画サイズ調整はここ】★★★ */
+            width: 110%;
+            height: auto;
+        }
+
+        /* ▼ Taikoの動画専用スタイル (セレクタを修正しました) */
+        #taiko-wrapper #taiko-background-video {
+            position: fixed;
+            top: -7%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 1;
+            
+            /* ★★★【Taikoの動画サイズ調整はここ】★★★ */
+            width: 212%;
+            height: auto;
+        }
+
+        /* ▼ 画像専用スタイル (Mania/Taiko共通, 全体表示で固定) */
+        #mania-wrapper #image-background, #taiko-wrapper #taiko-background-image {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+            object-fit: contain; /* 画像全体を表示 */
+        }
+
+        /* ▼ Mania専用の追加スタイル (表示切替と明るさ) */
+        #mania-wrapper #video-background, #mania-wrapper #image-background {
+            display: none;
+            filter: brightness(var(--background-brightness));
+        }
         #mania-wrapper #app-container { z-index: 2; position: relative; display: flex; align-items: center; justify-content: center; width: 100%; height: 100%; }
         #mania-wrapper #controls-panel {
             width: 95%;
@@ -108,7 +148,7 @@
             grid-template-rows: auto 1fr auto auto auto;
             gap: 20px 25px;
             align-items: flex-start;
-            transform: scale(0.80); /* ▼▼▼ 変更点 ▼▼▼ */
+            transform: scale(0.75); /* ▼▼▼ 変更点 ▼▼▼ */
         }
         #mania-wrapper .panel-column { display: flex; flex-direction: column; gap: 20px; min-height: 350px; }
         #mania-wrapper #beatmap-library-selector { width: 100%; background-color: #2a344d; color: var(--panel-text); border: 1px solid var(--panel-border); border-radius: 6px; padding: 8px; height: 190px; }
@@ -284,32 +324,6 @@
          /* --- Mania Results Rank Style END --- */
 
         /* --- osu!taiko Styles (Scoped) --- */
-	/* --- Taiko Countdown Style START --- */
-	#taiko-wrapper #taiko-countdown-overlay {
-    /*
-      .overlay スタイルは mania / taiko 共通で z-index: 200 を持っているため、
-      taiko-game-container 内の他の要素(z-index: 20-25)より必ず手前に表示されます。
-      そのため、ここでの z-index 指定は不要です。
-    */
-    background-color: rgba(0, 0, 0, 0.6);
-    display: none; /* JavaScriptで制御するために最初は非表示 */
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    position: fixed; /* .overlayの基本スタイルを確実に適用 */
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-}
-
-#taiko-wrapper #taiko-countdown-text {
-    font-size: 8em;
-    font-weight: bold;
-    color: white; /* 文字色を白に指定 */
-    text-shadow: 0 0 20px rgba(0, 0, 0, 0.7);
-}
-	/* --- Taiko Countdown Style END --- */
         #taiko-wrapper {
             --panel-bg: #1f2940;
             --panel-text: #e0e5f0;
@@ -318,28 +332,29 @@
             --disabled-color: #555c6f;
         }
         #taiko-wrapper #app-container { display: flex; align-items: center; justify-content: center; width: 100%; height: 100%; }
-        #taiko-wrapper #controls-panel { 
-            width: 75%; 
-            max-width: 1600px; /* Increased max-width for new layout */
-            background-color: var(--panel-bg); 
-            border: 1px solid var(--panel-border); 
-            padding: 25px; 
-            border-radius: 12px; 
-            box-shadow: 0 10px 30px rgba(0,0,0,0.4); 
-            color: var(--panel-text); 
-            display: grid; 
-            grid-template-columns: 1fr 1fr; 
+        #taiko-wrapper #controls-panel {
+            width: 1200px;
+            height: 980px;
+            font-size: 14px; /* ★追加点: パネル内の基準フォントサイズを小さくする */
+            background-color: var(--panel-bg);
+            border: 1px solid var(--panel-border);
+            padding: 25px;
+            border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.4);
+            color: var(--panel-text);
+            display: grid;
+            grid-template-columns: 1fr 1fr;
             grid-template-rows: auto 1fr auto auto;
-            gap:  10px 20px; 
-            align-items: start; 
-            transform: scale(0.80); /* ▼▼▼ 変更点 ▼▼▼ */
-	    height: 1000px; /* ← この行を追加します */
+            gap: 10px 20px;
+            align-items: start;
+            transform: scale(0.85);
+            box-sizing: border-box;
         }
         #taiko-wrapper .panel-column-left, #taiko-wrapper .panel-column-right {
             display: flex;
             flex-direction: column;
             gap: 50px;
-	    min-height: 500px; /* ← この行を追加します */
+	    min-height: 200px; /* ← この行を追加します */
         }
         #taiko-wrapper .panel-column-left { grid-column: 1; grid-row: 2; }
         #taiko-wrapper .panel-column-right { grid-column: 2; grid-row: 2; }
@@ -386,8 +401,7 @@
 
 
         #taiko-wrapper #taiko-game-container { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: #000; overflow: hidden; display: none; z-index: 10; }
-        #taiko-wrapper #taiko-background-video { position: absolute; top: -7.2%; left: 50%; transform: translate(-50.01%, -50%); min-width: 213%; min-height: 100%; width: auto; height: auto; object-fit: cover; z-index: 1; opacity: 1; }
-        #taiko-wrapper #taiko-background-image { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); min-width: 100%; min-height: 100%; width: auto; height: auto; object-fit: cover; z-index: 1; opacity: 1; }
+        
         #taiko-wrapper #taiko-playfield { position: absolute; top: 50%; left: 0; right: 0; height: 180px; transform: translateY(calc(-50% - 58px)); background-color: rgba(18, 18, 18, 0.85); z-index: 10; box-shadow: 0 5px 25px rgba(0,0,0,0.3); border-radius: 0; }
         #taiko-wrapper #game-canvas { display: block; width: 100%; height: 100%; }
         #taiko-wrapper .grid-item-full { grid-column: 1 / -1; }
@@ -456,7 +470,28 @@
         #taiko-wrapper #combo { font-size: 4.5em; line-height: 1; }
         #taiko-wrapper #combo-label { display: none; }
         #taiko-wrapper #taiko-judgment-text { position: absolute; top: calc(50% - 180px); left: 390px; transform: translateX(-50%); font-size: 2.5em; font-weight: bold; opacity: 0; z-index: 22; padding: 5px 20px; border-radius: 4px; color: white; text-align: center; text-shadow: 0 0 8px #000, 0 0 8px #000; animation: taiko-judgment-anim-new 0.4s ease-out; pointer-events: none; }
-        @keyframes taiko-judgment-anim-new { 0% { transform: translateX(-50%) translateY(10px) scale(0.9); opacity: 0; } 25% { transform: translateX(-50%) translateY(0) scale(1.05); opacity: 1; } 80% { transform: translateX(-50%) translateY(0) scale(1); opacity: 1; } 100% { transform: translateX(-50%) translateY(0) scale(1); opacity: 0; } }
+        @keyframes taiko-judgment-anim-new {
+    /* 開始: 少し下から現れる */
+    0% {
+        transform: translateX(-50%) translateY(5px);
+        opacity: 1;
+    }
+    /* 頂点: 高さを5pxに調整 */
+    20% {
+        transform: translateX(-50%) translateY(-3px); /* ← この行を変更 */
+        opacity: 1;
+    }
+    /* 着地 & 静止: 本来の位置にピタッと収まり、そのまま表示を維持 */
+    35%, 90% {
+        transform: translateX(-50%) translateY(0);
+        opacity: 1;
+    }
+    /* 終了: その場で消える */
+    100% {
+        transform: translateX(-50%) translateY(0);
+        opacity: 0;
+    }
+}
         #taiko-wrapper #progress-container { display: none; } /* Hide original progress bar */
         #taiko-wrapper .overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.85); color: white; display: none; flex-direction: column; align-items: center; justify-content: center; z-index: 200; }
         #taiko-wrapper .overlay-menu {
@@ -488,7 +523,17 @@
         #taiko-wrapper #results-ka { color: white; }
         #taiko-wrapper #results-fuka { color: #dda0dd; }
         #taiko-wrapper #drum-display { position: absolute; width: 120px; height: 120px; top: 50%; left: 120px; transform: translateY(calc(-50% - 58px)); z-index: 15; pointer-events: none; }
-        #taiko-wrapper .drum-body { width: 100%; height: 100%; background-color: #d2b48c; border: 12px solid #a0522d; border-radius: 50%; box-sizing: border-box; position: absolute; }
+        #taiko-wrapper .drum-body { width: 100%; height: 100%; background-color: #FFFFFF; border: 12px solid #FFFFFF; border-radius: 50%; box-sizing: border-box; position: absolute;box-shadow: inset 0 0 0 2px rgba(0, 0, 0, 0.3); }
+#taiko-wrapper .drum-body::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 2px; /* 線の太さ */
+            height: 100%; /* 線の高さ */
+            background-color: rgba(0, 0, 0, 0.3); /* 線の色（少し透明な黒） */
+        }
         #taiko-wrapper .drum-hit-area { position: absolute; width: 100%; height: 100%; top: 0; left: 0; border-radius: 50%; box-sizing: border-box; opacity: 0; transition: opacity 0.1s linear; }
         #taiko-wrapper .drum-hit-area.active { opacity: 1; transition: none; }
         #taiko-wrapper #drum-don-left, #taiko-wrapper #drum-don-right { width: calc(100% - 24px); height: calc(100% - 24px); top: 12px; left: 12px; background-color: rgba(255, 77, 109, 0.8); }
@@ -563,13 +608,13 @@
         /* 円の位置を個別に調整するためのCSS */
         #mania-wrapper #mania-gameplay-progress-pie {
             position: relative;
-            top: 2px;  /* 上下位置: プラスの値で下に、マイナスの値で上に移動 */
-            left: 5px; /* 左右位置: プラスの値で右に、マイナスの値で左に移動 */
+            top: 0px;  /* 上下位置: プラスの値で下に、マイナスの値で上に移動 */
+            left: 0px; /* 左右位置: プラスの値で右に、マイナスの値で左に移動 */
         }
         #taiko-wrapper #taiko-gameplay-progress-pie {
             position: relative;
-            top: 2px;  /* 上下位置: プラスの値で下に、マイナスの値で上に移動 */
-            left: 25px; /* 左右位置: プラスの値で右に、マイナスの値で左に移動 */
+            top: 0px;  /* 上下位置: プラスの値で下に、マイナスの値で上に移動 */
+            left: 0px; /* 左右位置: プラスの値で右に、マイナスの値で左に移動 */
         }
 
         /* ショートカットキー設定UIのスタイル */
@@ -708,7 +753,7 @@
                     <div id="song-title">譜面を選択してください</div>
                     <div id="song-artist" style="font-size: 0.9em; color: #a0a8c0;"></div>
                 </div>
-                <p class="grid-item-full">※ WキーまたはESCキーでポーズ / ESC長押しでフルスクリーン解除 /  made by 🦭まさきたん@近鉄好きの人🦭</p>
+                <p class="grid-item-full">※ WキーまたはESCキーでポーズ / ESC長押しでフルスクリーン解除</p>
             </div>
         </div>
         <div id="game-container" class="game-container">
@@ -863,7 +908,7 @@
                         </div>
                          <div class="control-group">
                             <label for="taiko-offset-input">譜面オフセット (ms)</label>
-                            <input type="number" id="taiko-offset-input" value="0" step="1">
+                            <input type="number" id="taiko-offset-input" value="0" step="0.5">
                         </div>
                          <div class="control-group">
                             <label for="taiko-individual-offset-input">個別譜面オフセット (ms)</label>
@@ -941,10 +986,10 @@
                 <!-- Bottom Buttons -->
                 <div id="buttons-group" class="grid-item-full">
                     <button id="taiko-start-button" disabled>ゲーム開始 (Space)</button>
-                    <button id="switch-to-mania-button" class="control-button">Mania Playerへ (M)</button>
+                    <button id="switch-to-mania-button" class="control-button">Mania Playerへ</button>
                 </div>
                 
-                <p class="grid-item-full">※ WキーまたはESCキーでポーズ / ESC長押しでフルスクリーン解除 / made by 🦭まさきたん@近鉄好きの人🦭</p>
+                <p class="grid-item-full">※ WキーまたはESCキーでポーズ / ESC長押しでフルスクリーン解除©MASAKI_TAIKO</p>
                 
                 <!-- Hidden file input -->
                 <input type="file" id="taiko-osz-file" accept=".osz" multiple>
@@ -1098,8 +1143,6 @@
     let escTimer = null;
     let isEscHeld = false;
     const LONG_PRESS_DURATION = 1000; // 1秒
-    
-    let isRetryOnCooldown = false; // リトライキーのクールダウン管理用フラグ
 
     function switchToMania() {
         document.getElementById('game-selector').style.display = 'none';
@@ -1159,6 +1202,14 @@
     });
 
     document.addEventListener('keydown', (e) => {
+        // ▼▼▼ 修正点：文字入力中かどうかを判定 ▼▼▼
+        const activeElement = document.activeElement;
+        const isTyping = activeElement && (
+            activeElement.tagName === 'INPUT' || 
+            activeElement.tagName === 'TEXTAREA' || 
+            activeElement.isContentEditable
+        );
+
         // --- ポーズキー (W または Esc) の処理 ---
         if ((e.key.toUpperCase() === 'W' || e.key === 'Escape') && !e.repeat) {
              e.preventDefault();
@@ -1168,27 +1219,29 @@
 
         // --- リトライキーの処理 ---
         if (e.key.toUpperCase() === shortcutKeys.retry.toUpperCase() && !e.repeat) {
+            // ▼▼▼ 修正点：文字入力中ならショートカットを無効化 ▼▼▼
+            if (isTyping) return;
+
             e.preventDefault();
 
-            // クールダウン中であれば、ここで処理を完全に中断する
             if (isRetryOnCooldown) {
                 return;
             }
 
-            // クールダウンを開始する
             isRetryOnCooldown = true;
-            // ▼ 変更点 ▼
             setTimeout(() => {
-                isRetryOnCooldown = false; // 3秒後にクールダウンを解除
-            }, 3000); // 2000ミリ秒から3000ミリ秒（3秒）に変更
+                isRetryOnCooldown = false;
+            }, 3000);
 
-            // 実際のリトライ処理を実行
             if (activeGame === 'mania') ManiaGame.retryGameExternal();
             if (activeGame === 'taiko') TaikoGame.retryGameExternal();
         }
 
         // --- メニューキーの処理 (こちらはクールダウンなし) ---
         if (e.key.toUpperCase() === shortcutKeys.menu.toUpperCase() && !e.repeat) {
+            // ▼▼▼ 修正点：文字入力中ならショートカットを無効化 ▼▼▼
+            if (isTyping) return;
+            
             e.preventDefault();
             if (activeGame === 'mania') ManiaGame.returnToControlsExternal();
             if (activeGame === 'taiko') TaikoGame.returnToControlsExternal();
@@ -1862,6 +1915,7 @@
         
         function handleKeydown(e) {
             if (activeGame !== 'mania' || e.repeat) return;
+	    e.preventDefault();
             if (!isGameRunning || isPaused || isAutoPlay) return; 
             const laneIndex = activeKeys.indexOf(e.key.toUpperCase());
             if (laneIndex === -1 || keyState[laneIndex]) return; 
@@ -2114,7 +2168,6 @@
     // --- osu!taiko Game Logic (Scoped) ---
     const TaikoGame = (() => {
         const root = document.getElementById('taiko-wrapper');
-        // ... (TaikoGameのJavaScriptコードは変更なしなので省略) ...
         const dom = {
             appContainer: root.querySelector('#app-container'),
             gameContainer: root.querySelector('#taiko-game-container'),
@@ -2188,7 +2241,7 @@
         const BASE_SCROLL_SPEED = 6;
         let uiScrollSpeed = BASE_SCROLL_SPEED;
         const HIT_WINDOW_PERFECT = 25, HIT_WINDOW_GOOD = 70, HIT_WINDOW_BAD = 100;
-        const EARLY_MISS_WINDOW = 100; // 早すぎミスを判定する猶予時間(ms)
+        const EARLY_MISS_WINDOW = 100;
         const JUDGE_POINT_X = 390;
         let audioContext;
         let donSoundBuffer = null, katsuSoundBuffer = null;
@@ -2229,8 +2282,8 @@
         function initAudioContext() { if (!audioContext) { try { audioContext = new (window.AudioContext || window.webkitAudioContext)(); if (audioContext.state === 'suspended') { audioContext.resume(); } } catch (e) { console.error("Web Audio API is not supported in this browser"); } } document.body.removeEventListener('click', initAudioContext, true); document.body.removeEventListener('keydown', initAudioContext, true); }
         document.body.addEventListener('click', initAudioContext, true);
         document.body.addEventListener('keydown', initAudioContext, true);
-        function saveSettings() { try { const settings = { speed: dom.speedSlider.value, offset: dom.offsetInput.value, videoOffset: dom.videoOffsetInput.value, seOffset: dom.seOffsetInput.value, keys: KEYS, autoPlay: dom.autoPlayCheckbox.checked, singleHandBigNote: dom.singleHandBigNoteCheckbox.checked, autoSE: dom.autoSeCheckbox.checked, laneOpacity: dom.laneOpacitySlider.value, bgBrightness: dom.bgBrightnessSlider.value, laneCover: dom.laneCoverSlider.value }; localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings)); } catch (e) { console.error("Failed to save settings:", e); } }
-        function loadSettings() { const savedSettings = localStorage.getItem(SETTINGS_KEY); if (savedSettings) { try { const settings = JSON.parse(savedSettings); if (settings.speed !== undefined) dom.speedSlider.value = settings.speed; if (settings.offset !== undefined) dom.offsetInput.value = settings.offset; if (settings.videoOffset !== undefined) dom.videoOffsetInput.value = settings.videoOffset; if (settings.seOffset !== undefined) dom.seOffsetInput.value = settings.seOffset; if (settings.keys) { KEYS = settings.keys; for (const keyId in KEYS) { const elId = `key-${keyId.replace('_', '-')}`; const el = root.querySelector(`#${elId}`); if (el) el.textContent = KEYS[keyId]; } } if (settings.autoPlay !== undefined) dom.autoPlayCheckbox.checked = settings.autoPlay; if (settings.singleHandBigNote !== undefined) dom.singleHandBigNoteCheckbox.checked = settings.singleHandBigNote; if (settings.autoSE !== undefined) dom.autoSeCheckbox.checked = settings.autoSE; if (settings.laneOpacity !== undefined) dom.laneOpacitySlider.value = settings.laneOpacity; if (settings.bgBrightness !== undefined) dom.bgBrightnessSlider.value = settings.bgBrightness; if (settings.laneCover !== undefined) dom.laneCoverSlider.value = settings.laneCover; } catch (e) { console.error("Failed to load settings:", e); localStorage.removeItem(SETTINGS_KEY); } } }
+        function saveSettings() { try { const settings = { offset: dom.offsetInput.value, videoOffset: dom.videoOffsetInput.value, seOffset: dom.seOffsetInput.value, keys: KEYS, autoPlay: dom.autoPlayCheckbox.checked, singleHandBigNote: dom.singleHandBigNoteCheckbox.checked, autoSE: dom.autoSeCheckbox.checked, laneOpacity: dom.laneOpacitySlider.value, bgBrightness: dom.bgBrightnessSlider.value, laneCover: dom.laneCoverSlider.value }; localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings)); } catch (e) { console.error("Failed to save settings:", e); } }
+        function loadSettings() { const savedSettings = localStorage.getItem(SETTINGS_KEY); if (savedSettings) { try { const settings = JSON.parse(savedSettings); if (settings.offset !== undefined) dom.offsetInput.value = settings.offset; if (settings.videoOffset !== undefined) dom.videoOffsetInput.value = settings.videoOffset; if (settings.seOffset !== undefined) dom.seOffsetInput.value = settings.seOffset; if (settings.keys) { KEYS = settings.keys; for (const keyId in KEYS) { const elId = `key-${keyId.replace('_', '-')}`; const el = root.querySelector(`#${elId}`); if (el) el.textContent = KEYS[keyId]; } } if (settings.autoPlay !== undefined) dom.autoPlayCheckbox.checked = settings.autoPlay; if (settings.singleHandBigNote !== undefined) dom.singleHandBigNoteCheckbox.checked = settings.singleHandBigNote; if (settings.autoSE !== undefined) dom.autoSeCheckbox.checked = settings.autoSE; if (settings.laneOpacity !== undefined) dom.laneOpacitySlider.value = settings.laneOpacity; if (settings.bgBrightness !== undefined) dom.bgBrightnessSlider.value = settings.bgBrightness; if (settings.laneCover !== undefined) dom.laneCoverSlider.value = settings.laneCover; } catch (e) { console.error("Failed to load settings:", e); localStorage.removeItem(SETTINGS_KEY); } } }
         
         function getTaikoBeatmapSettingsKey() {
             if (currentSongId && songInfo && songInfo.version) {
@@ -2246,6 +2299,7 @@
             let settings = JSON.parse(localStorage.getItem('taikoPlayerBeatmapSettings')) || {};
             settings[key] = {
                 individualOffset: dom.individualOffsetInput.value,
+                speed: dom.speedSlider.value,
                 backgroundChoice: dom.backgroundSelect.value
             };
             localStorage.setItem('taikoPlayerBeatmapSettings', JSON.stringify(settings));
@@ -2254,16 +2308,23 @@
         function loadTaikoBeatmapSpecificSettings() {
             const key = getTaikoBeatmapSettingsKey();
             let individualOffset = 0;
+            let speed = 0; // デフォルト値をスライダーの中央(x1.0)に
             let backgroundChoice = 'video';
             if (key) {
                 const settings = JSON.parse(localStorage.getItem('taikoPlayerBeatmapSettings')) || {};
                 const saved = settings[key];
                 if (typeof saved === 'object' && saved !== null) {
                     individualOffset = saved.individualOffset || 0;
+                    if (saved.speed !== undefined && saved.speed !== null) {
+                        speed = saved.speed;
+                    }
                     backgroundChoice = saved.backgroundChoice || 'video';
                 }
             }
             dom.individualOffsetInput.value = individualOffset;
+            dom.speedSlider.value = speed;
+            updateSpeed();
+
             if (dom.backgroundSelectWrapper.style.display === 'block') {
                 dom.backgroundSelect.value = backgroundChoice;
                 selectedBackgroundType = backgroundChoice;
@@ -2533,7 +2594,29 @@
             }
             checkReadyState();
         }
-        function resetGameAndFiles(fullReset = true) { resetGame(); if (availableBackgrounds.video) URL.revokeObjectURL(availableBackgrounds.video); if (availableBackgrounds.image) URL.revokeObjectURL(availableBackgrounds.image); availableBackgrounds = { video: null, image: null }; updateBackgroundSelector(); dom.saveSongToPcButton.disabled = true; dom.individualOffsetInput.value = 0; if (fullReset) { fileContent = null; osz_zip = null; osz_beatmaps = []; beatmapLoaded = false; audioLoaded = false; dom.beatmapSelectorContainer.style.display = 'none'; dom.beatmapSelector.innerHTML = ''; dom.songTitleElement.textContent = '譜面を選択してください'; dom.songArtistElement.textContent = ''; dom.savedSongsList.value = ''; currentSongId = null; } checkReadyState(); }
+        function resetGameAndFiles(fullReset = true) {
+            resetGame();
+            if (availableBackgrounds.video) URL.revokeObjectURL(availableBackgrounds.video);
+            if (availableBackgrounds.image) URL.revokeObjectURL(availableBackgrounds.image);
+            availableBackgrounds = { video: null, image: null };
+            updateBackgroundSelector();
+            dom.saveSongToPcButton.disabled = true;
+            dom.individualOffsetInput.value = 0;
+            if (fullReset) {
+                fileContent = null;
+                osz_zip = null;
+                osz_beatmaps = [];
+                beatmapLoaded = false;
+                audioLoaded = false;
+                dom.beatmapSelectorContainer.style.display = 'none';
+                dom.beatmapSelector.innerHTML = '';
+                dom.songTitleElement.textContent = '譜面を選択してください';
+                dom.songArtistElement.textContent = '';
+                dom.savedSongsList.value = '';
+                currentSongId = null;
+            }
+            checkReadyState();
+        }
         function checkReadyState() { dom.startButton.disabled = !(beatmapLoaded && audioLoaded); }
         function updateBackgroundSelector() { const selector = dom.backgroundSelect; const wrapper = dom.backgroundSelectWrapper; selector.innerHTML = ''; const addOption = (value, text) => { const option = document.createElement('option'); option.value = value; option.textContent = text; selector.appendChild(option); }; let hasOptions = false; if (availableBackgrounds.video || availableBackgrounds.image) { addOption('none', '背景なし'); if (availableBackgrounds.video) addOption('video', '動画'); if (availableBackgrounds.image) addOption('image', '画像'); hasOptions = true; } if (hasOptions) { wrapper.style.display = 'block'; if (availableBackgrounds.video) { selector.value = 'video'; selectedBackgroundType = 'video'; } else if (availableBackgrounds.image) { selector.value = 'image'; selectedBackgroundType = 'image'; } } else { wrapper.style.display = 'none'; selectedBackgroundType = 'none'; } }
         function updateSpeed() { const val = parseFloat(dom.speedSlider.value); const displayVal = (1.0 + val / 6.0).toFixed(1); dom.speedLabel.textContent = `スクロール速度 (x${displayVal})`; uiScrollSpeed = BASE_SCROLL_SPEED + val; if (uiScrollSpeed < 1) uiScrollSpeed = 1; }
@@ -2722,7 +2805,11 @@
                 }
             }
             dom.ctx.clearRect(0, 0, dom.canvas.width, dom.canvas.height);
-            drawGameArea(isGoGoNow);
+            
+            drawJudgmentFrame();
+            if (isGoGoNow) {
+                drawGameArea(true);
+            }
 
             if (laneCoverPercentage > 0) {
                 const visibleWidth = dom.canvas.width * (1 - laneCoverPercentage / 100);
@@ -2755,7 +2842,42 @@
                 showResults();
             }
         }
-        function drawGameArea(isGoGo) { const y = dom.canvas.height / 2; if (isGoGo) { const fireGradient = dom.ctx.createLinearGradient(0, 0, 0, dom.canvas.height); fireGradient.addColorStop(0, "rgba(255, 100, 0, 0.3)"); fireGradient.addColorStop(0.5, "rgba(255, 69, 0, 0.2)"); fireGradient.addColorStop(1, "rgba(255, 100, 0, 0.3)"); dom.ctx.fillStyle = fireGradient; dom.ctx.fillRect(0, 0, dom.canvas.width, dom.canvas.height); } const judgeCircleRadius = dom.canvas.height * 0.4; dom.ctx.fillStyle = '#ffc0cb'; dom.ctx.beginPath(); dom.ctx.arc(JUDGE_POINT_X, y, judgeCircleRadius, 0, Math.PI * 2); dom.ctx.fill(); dom.ctx.fillStyle = '#d2b48c'; dom.ctx.beginPath(); dom.ctx.arc(JUDGE_POINT_X, y, judgeCircleRadius * 0.8, 0, Math.PI * 2); dom.ctx.fill(); dom.ctx.strokeStyle = '#a0522d'; dom.ctx.lineWidth = judgeCircleRadius * 0.15; dom.ctx.beginPath(); dom.ctx.arc(JUDGE_POINT_X, y, judgeCircleRadius * 0.9, 0, Math.PI * 2); dom.ctx.stroke(); dom.ctx.strokeStyle = '#fff'; dom.ctx.lineWidth = 3; dom.ctx.beginPath(); dom.ctx.arc(JUDGE_POINT_X, y, judgeCircleRadius * 0.5, 0, Math.PI * 2); dom.ctx.stroke(); }
+
+        function drawJudgmentFrame() {
+            const y = dom.canvas.height / 2;
+            const ctx = dom.ctx;
+            const normalNoteRadius = (dom.canvas.height / 2) * 0.41;
+            const bigNoteRadius = (dom.canvas.height / 2) * 0.65;
+            const centerCircleRadius = (dom.canvas.height / 2) * 0.35;
+
+            ctx.strokeStyle = '#666666';
+            ctx.lineWidth = 4;
+            ctx.beginPath();
+            ctx.arc(JUDGE_POINT_X, y, bigNoteRadius, 0, Math.PI * 2);
+            ctx.stroke();
+
+            ctx.strokeStyle = '#CCCCCC';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.arc(JUDGE_POINT_X, y, normalNoteRadius, 0, Math.PI * 2);
+            ctx.stroke();
+
+            ctx.fillStyle = '#777777';
+            ctx.beginPath();
+            ctx.arc(JUDGE_POINT_X, y, centerCircleRadius, 0, Math.PI * 2);
+            ctx.fill();
+        }
+
+        function drawGameArea(isGoGo) {
+            if (isGoGo) {
+                const fireGradient = dom.ctx.createLinearGradient(0, 0, 0, dom.canvas.height);
+                fireGradient.addColorStop(0, "rgba(255, 100, 0, 0.3)");
+                fireGradient.addColorStop(0.5, "rgba(255, 69, 0, 0.2)");
+                fireGradient.addColorStop(1, "rgba(255, 100, 0, 0.3)");
+                dom.ctx.fillStyle = fireGradient;
+                dom.ctx.fillRect(0, 0, dom.canvas.width, dom.canvas.height);
+            }
+        }
         function drawBarLines(elapsedTime) {
             const pixelMultiplier = uiScrollSpeed * 0.1;
             dom.ctx.strokeStyle = '#FFFFFF';
@@ -2791,28 +2913,39 @@
                     const endX = JUDGE_POINT_X + timeToEnd * note.scrollSpeed * pixelMultiplier;
                     if (endX < JUDGE_POINT_X - 50 || startX > dom.canvas.width + 50) continue;
 
-                    const barHeight = note.isBig ? y * 0.9 : y * 0.9;
-                    const radius = barHeight / 2;
-                    const BORDER_WIDTH = 4;
+                    const barHeight = note.isBig ? y * 0.8 : y * 0.8;
+                    const headRadius = barHeight / 2;
 
-                    drawCapsule(dom.ctx, startX, endX, y, radius, BLACK_BORDER);
-                    drawCapsule(dom.ctx, startX, endX, y, radius - (BORDER_WIDTH / 2), BEIGE_RING);
-                    drawCapsule(dom.ctx, startX, endX, y, radius - BORDER_WIDTH, '#FFC700');
+                    // ▼▼▼ ここを変更 ▼▼▼
+                    // 棒の太さを調整するためのスケール（倍率）
+                    const BAR_THICKNESS_SCALE = 1.046; // ← この数値を 1.0 に変更（またはそれ以上）
 
+                    const barRadius = headRadius * BAR_THICKNESS_SCALE;
+                    
+                    const BLACK_BORDER_THICKNESS = 2;
+                    const WHITE_BORDER_THICKNESS = 6;
+
+                    // 長い棒（カプセル）部分の描画
+                    drawCapsule(dom.ctx, startX, endX, y, barRadius, BLACK_BORDER);
+                    drawCapsule(dom.ctx, startX, endX, y, barRadius - BLACK_BORDER_THICKNESS, BEIGE_RING);
+                    drawCapsule(dom.ctx, startX, endX, y, barRadius - BLACK_BORDER_THICKNESS - WHITE_BORDER_THICKNESS, '#FFC700');
+
+                    // 先頭の丸い部分の描画
                     dom.ctx.fillStyle = BLACK_BORDER;
                     dom.ctx.beginPath();
-                    dom.ctx.arc(startX, y, radius, 0, Math.PI * 2);
+                    dom.ctx.arc(startX, y, headRadius, 0, Math.PI * 2);
                     dom.ctx.fill();
 
                     dom.ctx.fillStyle = BEIGE_RING;
                     dom.ctx.beginPath();
-                    dom.ctx.arc(startX, y, radius - (BORDER_WIDTH / 2), 0, Math.PI * 2);
+                    dom.ctx.arc(startX, y, headRadius - BLACK_BORDER_THICKNESS, 0, Math.PI * 2);
                     dom.ctx.fill();
 
                     dom.ctx.fillStyle = '#FFC700';
                     dom.ctx.beginPath();
-                    dom.ctx.arc(startX, y, radius - BORDER_WIDTH, 0, Math.PI * 2);
+                    dom.ctx.arc(startX, y, headRadius - BLACK_BORDER_THICKNESS - WHITE_BORDER_THICKNESS, 0, Math.PI * 2);
                     dom.ctx.fill();
+                
 
                 } else if (note.type === 'balloon') {
                      const timeToEnd = note.endTime - elapsedTime;
@@ -2825,7 +2958,8 @@
                     }
                     if (currentX < -radius) continue;
 
-                    const BORDER_WIDTH = 4;
+                    const BLACK_BORDER_THICKNESS = 2;
+                    const WHITE_BORDER_THICKNESS = 6;
                     const ORANGE_FILL = '#F98025';
 
                     dom.ctx.fillStyle = BLACK_BORDER;
@@ -2835,12 +2969,12 @@
 
                     dom.ctx.fillStyle = BEIGE_RING;
                     dom.ctx.beginPath();
-                    dom.ctx.arc(currentX, y, radius - (BORDER_WIDTH / 2), 0, Math.PI * 2);
+                    dom.ctx.arc(currentX, y, radius - BLACK_BORDER_THICKNESS, 0, Math.PI * 2);
                     dom.ctx.fill();
 
                     dom.ctx.fillStyle = ORANGE_FILL;
                     dom.ctx.beginPath();
-                    dom.ctx.arc(currentX, y, radius - BORDER_WIDTH, 0, Math.PI * 2);
+                    dom.ctx.arc(currentX, y, radius - BLACK_BORDER_THICKNESS - WHITE_BORDER_THICKNESS, 0, Math.PI * 2);
                     dom.ctx.fill();
                     
                     const remainingHits = note.hitsRequired - note.hitsMade;
@@ -2859,8 +2993,10 @@
                     if (startX > dom.canvas.width + 50 || startX < JUDGE_POINT_X - 50) continue;
                     
                     const color = note.type === 'don' ? '#F83838' : '#46B6B6';
-                    const baseRadius = note.isBig ? y * 0.6 : y * 0.45;
-                    const BORDER_WIDTH = 4;
+                    const baseRadius = note.isBig ? y * 0.65 : y * 0.42;
+                    
+                    const BLACK_BORDER_THICKNESS = 2;
+                    const WHITE_BORDER_THICKNESS = 6;
 
                     dom.ctx.fillStyle = BLACK_BORDER;
                     dom.ctx.beginPath();
@@ -2869,12 +3005,12 @@
 
                     dom.ctx.fillStyle = BEIGE_RING;
                     dom.ctx.beginPath();
-                    dom.ctx.arc(startX, y, baseRadius - (BORDER_WIDTH / 2), 0, Math.PI * 2);
+                    dom.ctx.arc(startX, y, baseRadius - BLACK_BORDER_THICKNESS, 0, Math.PI * 2);
                     dom.ctx.fill();
 
                     dom.ctx.fillStyle = color;
                     dom.ctx.beginPath();
-                    dom.ctx.arc(startX, y, baseRadius - BORDER_WIDTH, 0, Math.PI * 2);
+                    dom.ctx.arc(startX, y, baseRadius - BLACK_BORDER_THICKNESS - WHITE_BORDER_THICKNESS, 0, Math.PI * 2);
                     dom.ctx.fill();
                 }
             }
@@ -2901,6 +3037,9 @@
         
         function handleKeydown(e) {
             if (activeGame !== 'taiko' || e.repeat || !isGameRunning || isPaused || isAutoPlay) return;
+            
+            e.preventDefault();
+
             const key = e.key.toUpperCase();
             let hitKeyId = null;
             for (const id in KEYS) {
@@ -3075,25 +3214,36 @@
                 if (isPaused) {
                     const buttons = dom.pauseOverlay.querySelectorAll('.overlay-button');
                     if (buttons.length === 0) return;
-                    
-                    if (e.key === 'ArrowUp') {
-                        e.preventDefault();
-                        selectedPauseIndex = (selectedPauseIndex - 1 + buttons.length) % buttons.length;
-                        updatePauseSelection();
-                    } else if (e.key === 'ArrowDown') {
-                        e.preventDefault();
-                        selectedPauseIndex = (selectedPauseIndex + 1) % buttons.length;
-                        updatePauseSelection();
-                    } else if (e.key === 'Enter') {
-                        e.preventDefault();
-                        buttons[selectedPauseIndex].click();
+
+                    // キー入力のハンドリングをswitch文に変更して可読性を向上
+                    switch (e.key) {
+                        case 'ArrowUp':
+                            e.preventDefault();
+                            selectedPauseIndex = (selectedPauseIndex - 1 + buttons.length) % buttons.length;
+                            updatePauseSelection();
+                            break;
+                        case 'ArrowDown':
+                            e.preventDefault();
+                            selectedPauseIndex = (selectedPauseIndex + 1) % buttons.length;
+                            updatePauseSelection();
+                            break;
+                        case 'Enter':
+                            e.preventDefault();
+                            buttons[selectedPauseIndex].click();
+                            break;
+                        // ▼▼▼ この部分を追加 ▼▼▼
+                        case 'ArrowLeft':
+                        case 'ArrowRight':
+                            e.preventDefault(); // 左右キーのデフォルト動作をキャンセルしてUIのずれを防ぐ
+                            break;
+                        // ▲▲▲ 追加部分ここまで ▲▲▲
                     }
                 } else if (isGameRunning && e.code === 'Space') {
                     e.preventDefault();
                 } else if (!isGameRunning && e.code === 'Space' && !dom.startButton.disabled) {
                     e.preventDefault();
                     startGame();
-                } else if (!isGameRunning && e.key.toUpperCase() === 'M') {
+                } else if (!isGameRunning && e.key.toUpperCase() === '' && !isTyping) {
                     e.preventDefault();
                     switchToMania();
                 }
@@ -3197,12 +3347,14 @@
                 initKeyConfig();
                 setupFileListeners();
                 loadSettings();
-                updateSpeed();
                 updateLaneOpacity();
                 updateBgBrightness();
                 updateLaneCover();
                 dom.startButton.addEventListener('click', startGame);
-                dom.speedSlider.addEventListener('input', () => { updateSpeed(); saveSettings(); });
+                dom.speedSlider.addEventListener('input', () => {
+                    updateSpeed();
+                    saveTaikoBeatmapSpecificSettings();
+                });
                 dom.offsetInput.addEventListener('change', saveSettings);
                 dom.videoOffsetInput.addEventListener('change', saveSettings);
                 dom.seOffsetInput.addEventListener('change', saveSettings);
@@ -3233,7 +3385,6 @@
             },
             togglePauseExternal: togglePause,
             retryGameExternal: function() {
-                // ゲームがプレイ中(ポーズ中含む)、またはリザルト画面が表示されている場合にリトライを実行
                 if (isGameRunning || isPaused || dom.resultsOverlay.style.display === 'flex') {
                     retryGame();
                 }
