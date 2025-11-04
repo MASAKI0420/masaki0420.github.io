@@ -1142,6 +1142,8 @@
     let shouldReEnterFullscreen = false;
     let escTimer = null;
     let isEscHeld = false;
+    // ▼▼▼ 修正点1: isRetryOnCooldown 変数をグローバルスコープで宣言 ▼▼▼
+    let isRetryOnCooldown = false;
     const LONG_PRESS_DURATION = 1000; // 1秒
 
     function switchToMania() {
@@ -1202,7 +1204,6 @@
     });
 
     document.addEventListener('keydown', (e) => {
-        // ▼▼▼ 修正点：文字入力中かどうかを判定 ▼▼▼
         const activeElement = document.activeElement;
         const isTyping = activeElement && (
             activeElement.tagName === 'INPUT' || 
@@ -1219,15 +1220,11 @@
 
         // --- リトライキーの処理 ---
         if (e.key.toUpperCase() === shortcutKeys.retry.toUpperCase() && !e.repeat) {
-            // ▼▼▼ 修正点：文字入力中ならショートカットを無効化 ▼▼▼
             if (isTyping) return;
-
             e.preventDefault();
-
             if (isRetryOnCooldown) {
                 return;
             }
-
             isRetryOnCooldown = true;
             setTimeout(() => {
                 isRetryOnCooldown = false;
@@ -1239,9 +1236,7 @@
 
         // --- メニューキーの処理 (こちらはクールダウンなし) ---
         if (e.key.toUpperCase() === shortcutKeys.menu.toUpperCase() && !e.repeat) {
-            // ▼▼▼ 修正点：文字入力中ならショートカットを無効化 ▼▼▼
             if (isTyping) return;
-            
             e.preventDefault();
             if (activeGame === 'mania') ManiaGame.returnToControlsExternal();
             if (activeGame === 'taiko') TaikoGame.returnToControlsExternal();
@@ -2160,8 +2155,17 @@
                 initializeShortcutKeySetup('mania-shortcut-retry', 'mania-shortcut-menu');
             },
             togglePauseExternal: togglePause,
-            retryGameExternal: function() { if (isGameRunning) retryGame(); },
-            returnToControlsExternal: function() { if (isGameRunning) returnToControls(); }
+            // ▼▼▼ 修正点2: Maniaモードでもポーズ画面やリザルト画面からリトライできるように修正 ▼▼▼
+            retryGameExternal: function() { 
+                if (isGameRunning || isPaused || dom.resultsOverlay.style.display === 'flex') {
+                    retryGame();
+                }
+            },
+            returnToControlsExternal: function() { 
+                if (isGameRunning || isPaused || dom.resultsOverlay.style.display === 'flex') {
+                    returnToControls();
+                }
+            }
         };
     })();
 
