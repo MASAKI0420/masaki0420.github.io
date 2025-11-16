@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <title>計算トレーニング</title>
-    <!-- ▼▼▼ PWA対応 - アイコンをCanva風のデザインに変更＆PWAの安定化 ▼▼▼ -->
+    <!-- ▼▼▼ PWA対応 - アイコンのサイズを増強し、PWAの安定化をさらに図る ▼▼▼ -->
     <meta name="theme-color" content="#3498db"/>
     <link rel="manifest" href="data:application/manifest+json;charset=utf-8,{
         &quot;name&quot;: &quot;計算トレーニング&quot;,
@@ -28,10 +28,15 @@
                 &quot;src&quot;: &quot;data:image/svg+xml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHZpZXdCb3g9JzAgMCAxNDQgMTQ0Jz48cmVjdCB3aWR0aD0nMTQ0JyBoZWlnaHQ9JzE0NCcgcng9JzI1JyBmaWxsPScjMzQ5OGRiJy8+PHJlY3QgeD0nMzAnIHk9JzQ1JyB3aWR0aD0nOTAnIGhlaWdodD0nMTgnIHJ4PSczJyBmaWxsPScjZjRmN2Y5Jy8+PGcgdHJhbnNmb3JtPSd0cmFuc2xhdGUoMzYsIDc1KSBzY2FsZSgwLjQpIHJvdGF0ZSgwKScgZmlsbD0nI2Y0ZjdmOSc+PHJlY3Qgd2lkdG0nODAnIGhlaWdodD0nODAnIHJlY3QgeD0nMCcgeT0nMCcgcng9JzEwJy8+PHJlY3Qgd2lkdGgnODAnIGhlaWdodD0nODAnIHJlY3QgeD0nOTAnIHk9JzAnIHJ4PScxMCcvPjxyZWN0IHdpZHRoPSc4MCcgaGVpZ2h0PSc4MCcgcmVjdCB4PScxODAnIHk9JzAnIHJ4PScxMCcvPjxyZWN0IHdpZHRoPSc4MCcgaGVpZ2h0PSc4MCcgcmVjdCB4PScwJyB5PSc5MCcgcmE9JzEwJy8+PHJlY3Qgd2lkdGgnODAnIGhlaWdodD0nODAnIHJlY3QgeD0nOTAnIHk9JzkwJyByYTEwJy8+PHJlY3Qgd2lkdGgnODAnIGhlaWdodD0nODAnIHJlY3QgeD0nMTgwJyB5PSc5MCcgcmE9JzEwJy8+PHJlY3Qgd2lkdGgnMjcwJyBoZWlnaHQ9JzgwJyByZWN0IHg9JzAnIHk9JzE4MCcgcmN4PScxMCcvPjwvZz48L3N2ZyA+&quot;,
                 &quot;type&quot;: &quot;image/svg+xml&quot;,
                 &quot;sizes&quot;: &quot;144x144&quot;
+            },
+            {
+                &quot;src&quot;: &quot;data:image/svg+xml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHZpZXdCb3g9JzAgMCAxMDI0IDEwMjQnIGZpbGw9JyMzNDk4ZGInPjxyZWN0IHdpZHRoPScxMDI0JyBoZWlnaHQ9JzEwMjQnIHJ4PScyMDAnIGZpbGw9J3doaXRlJy8+PHJlY3QgeD0nMjAwJyB5PSczMDAnIHdpZHRoPSc2MjQnIGhlaWdodD0nMTIwJyByeD0nMTAnIGZpbGw9JyMzNDk4ZGInLz48ZyB0cmFuc2Zvcm09J3RyYW5zbGF0ZSgyNDAsIDUwMCkgc2NhbGUoMS4yKSByb3RhdGUoMCknIGZpbGw9JyMzNDk4ZGInPjxyZWN0IHdpZHRoPSc4MCcgaGVpZ2h0PSc4MCcgcmVjdCB4PScwJyB5PScwJyByeD0nMTAnLz48cmVjdCB3aWR0aD0nODAnIGhlaWdodD0nODAnIHJlY3QgeD0nOTAnIHk9JzAnIHJ4PScxMCcvPjxyZWN0IHdpZHRoPSc4MCcgaGVpZ2h0PSc4MCcgcmVjdCB4PScxODAnIHk9JzAnIHJ4PScxMCcvPjxyZWN0IHdpZHRoPSc4MCcgaGVpZ2h0PSc4MCcgcmVjdCB4PScyNzAnIHk9JzAnIHJ4PScxMCcvPjxyZWN0IHdpZHRoPSc4MCcgaGVpZ2h0PSc4MCcgcmVjdCB4PScwJyB5PSc5MCcgcmE9JzEwJy8+PHJlY3Qgd2lkdGg9JzgwJyBoZWlnaHQ9JzgwJyByZWN0IHg9JzkwJyB5PSc5MCcgcmE9JzEwJy8+PHJlY3Qgd2lkdGg9JzgwJyBoZWlnaHQ9JzgwJyByZWN0IHg9JzE4MCcgeT0nOTAnIHJhPScxMCcvPjxyZWN0IHdpZHRoPSc4MCcgaGVpZ2h0PSc4MCcgcmVjdCB4PScyNzAnIHk9JzkwJyByYTEwJy8+PHJlY3Qgd2lkdGg9JzgwJyBoZWlnaHQ9JzgwJyByZWN0IHg9JzAnIHk9JzE4MCcgcmN4PScxMCcvPjxyZWN0IHdpZHRoPSc4MCcgaGVpZ2h0PSc4MCcgcmVjdCB4PSc5MCcgeT0nMTgwJyByY3g9JzEwJy8+PHJlY3Qgd2lkdGg9JzgwJyBoZWlnaHQ9JzgwJyByZWN0IHg9JzE4MCcgeT0nMTgwJyByY3g9JzEwJy8+PHJlY3Qgd2lkdGg9JzgwJyBoZWlnaHQ9JzgwJyByZWN0IHg9JzI3MCcgeT0nMTgwJyByY3g9JzEwJy8+PC9nPjwvcyA+&quot;,
+                &quot;type&quot;: &quot;image/svg+xml&quot;,
+                &quot;sizes&quot;: &quot;1024x1024&quot;
             }
         ]
     }">
-    <!-- ▲▲▲ PWA対応 - アイコンをCanva風のデザインに変更＆PWAの安定化 ▲▲▲ -->
+    <!-- ▲▲▲ PWA対応 - アイコンのサイズを増強し、PWAの安定化をさらに図る ▲▲▲ -->
     <style>
         :root {
             --primary-color: #3498db;
@@ -460,10 +465,11 @@
     function setupPWA() {
         // Service Workerのキャッシュ名
         const CACHE_NAME = 'calculation-trainer-v1';
-        // キャッシュ対象はルートパスのみ（Base64はブラウザが内部でキャッシュしてくれることを期待）
+        // キャッシュ対象はルートパスのみ
         const urlsToCache = [
-            '.', // このHTMLファイル自体
-            '/', // ルート
+            './数学.html', // ファイル名が明らかなので追加
+            '/', // ルートパス
+            '.', // カレントディレクトリ
         ];
 
         // Service Workerのコードをシンプル化し、互換性を高めます
@@ -471,20 +477,22 @@
             const CACHE_NAME = '${CACHE_NAME}';
             const urlsToCache = ${JSON.stringify(urlsToCache)};
             
+            // インストール: アセットをキャッシュ
             self.addEventListener('install', (event) => {
               event.waitUntil(
                 caches.open(CACHE_NAME)
                   .then((cache) => {
                     console.log('Opened cache and pre-caching assets');
                     return cache.addAll(urlsToCache).catch((err) => {
-                         // エラーが発生しても処理を継続
-                         console.warn('Cache addAll failed. Check if resources are fetchable.', err);
+                         console.warn('Cache addAll failed. Continuing.', err);
+                         // Note: Base64 URIはキャッシュに追加できないためエラーを無視
                     });
                   })
                   .then(() => self.skipWaiting())
               );
             });
 
+            // アクティベート: 古いキャッシュを削除
             self.addEventListener('activate', (event) => {
               const cacheWhitelist = [CACHE_NAME];
               event.waitUntil(
@@ -500,7 +508,7 @@
               );
             });
 
-            // Network-First with Cache fallback: オフライン対応のためFetchイベントを追加
+            // フェッチ: Network-First with Cache fallback（オフライン対応の基本）
             self.addEventListener('fetch', (event) => {
               event.respondWith(
                 fetch(event.request).catch(() => caches.match(event.request))
@@ -511,7 +519,8 @@
         const sw_url = URL.createObjectURL(sw_blob);
         
         if ('serviceWorker' in navigator) {
-            // スコープを明示的にルートに設定
+            // Service Workerを明示的にルートスコープで登録
+            // GitHub Pagesではルートスコープはレポジトリのルートを指すことに注意
             navigator.serviceWorker.register(sw_url, { scope: './' })
               .then(reg => console.log('Service Worker registered successfully. Scope: ', reg.scope))
               .catch(err => console.log('Service Worker registration failed: ', err));
@@ -533,8 +542,8 @@
                     installBtn.style.display = 'none';
                 }
             } else {
-                // PWA非対応環境、またはブラウザがインストール要件を満たしていない場合のメッセージ
-                alert('アプリのインストールプロンプトを表示できませんでした。PWAの要件（HTTPS接続やService Workerの完全な動作）が満たされているか確認し、ブラウザのメニューから「ホーム画面に追加」などを試してください。');
+                // 画像で表示されていたアラートをそのまま表示
+                alert('このブラウザではアプリのインストール機能が利用できないか、既にインストールされています。ブラウザのメニューから「ホーム画面に追加」などを試してください。');
             }
         });
     }
