@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <title>計算トレーニング</title>
-    <!-- ▼▼▼ PWA対応 - アイコンをCanva風のデザインに変更 ▼▼▼ -->
+    <!-- ▼▼▼ PWA対応 - アイコンをCanva風のデザインに変更＆PWAの安定化 ▼▼▼ -->
     <meta name="theme-color" content="#3498db"/>
     <link rel="manifest" href="data:application/manifest+json;charset=utf-8,{
         &quot;name&quot;: &quot;計算トレーニング&quot;,
@@ -23,10 +23,15 @@
                 &quot;src&quot;: &quot;data:image/svg+xml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHZpZXdCb3g9JzAgMCA1MTIgNTEyJz48cmVjdCB3aWR0aD0nNTEyJyBoZWlnaHQ9JzUxMicgcng9JzEwMCcgZmlsbD0nIzM0OThkYicvPjxyZWN0IHg9JzEwMCcgeT0nMTUwJyB3aWR0aD0nMzEyJyBoZWlnaHQ9JzYwJyByeD0nMTAnIGZpbGw9JyNmNGY3ZjknLz48ZyB0cmFuc2Zvcm09J3RyYW5zbGF0ZSgxMjAsIDI1MCkgc2NhbGUoMC42KSByb3RhdGUoMCknIGZpbGw9JyNmNGY3ZjknPjxyZWN0IHdpZHRoPSc4MCcgaGVpZ2h0PSc4MCcgcmVjdCB4PScwJyB5PScwJyByeD0nMTAnLz48cmVjdCB3aWR0aD0nODAnIGhlaWdodD0nODAnIHJlY3QgeD0nOTAnIHk9JzAnIHJ4PScxMCcvPjxyZWN0IHdpZHRoPSc4MCcgaGVpZ2h0PSc4MCcgcmVjdCB4PScxODAnIHk9JzAnIHJ4PScxMCcvPjxyZWN0IHdpZHRoPSc4MCcgaGVpZ2h0PSc4MCcgcmVjdCB4PScwJyB5PSc5MCcgcmE9JzEwJy8+PHJlY3Qgd2lkdGg9JzgwJyBoZWlnaHQ9JzgwJyByZWN0IHg9JzkwJyB5PSc5MCcgcmE9JzEwJy8+PHJlY3Qgd2lkdGg9JzgwJyBoZWlnaHQ9JzgwJyByZWN0IHg9JzE4MCcgeT0nOTAnIHJhPScxMCcvPjxyZWN0IHdpZHRoPScyNzAnIGhlaWdodD0nODAnIHJlY3QgeD0nMCcgeT0nMTgwJyByY3g9JzEwJy8+PC9nPjwvcyA+&quot;,
                 &quot;type&quot;: &quot;image/svg+xml&quot;,
                 &quot;sizes&quot;: &quot;192x192&quot;
+            },
+            {
+                &quot;src&quot;: &quot;data:image/svg+xml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHZpZXdCb3g9JzAgMCAxNDQgMTQ0Jz48cmVjdCB3aWR0aD0nMTQ0JyBoZWlnaHQ9JzE0NCcgcng9JzI1JyBmaWxsPScjMzQ5OGRiJy8+PHJlY3QgeD0nMzAnIHk9JzQ1JyB3aWR0aD0nOTAnIGhlaWdodD0nMTgnIHJ4PSczJyBmaWxsPScjZjRmN2Y5Jy8+PGcgdHJhbnNmb3JtPSd0cmFuc2xhdGUoMzYsIDc1KSBzY2FsZSgwLjQpIHJvdGF0ZSgwKScgZmlsbD0nI2Y0ZjdmOSc+PHJlY3Qgd2lkdG0nODAnIGhlaWdodD0nODAnIHJlY3QgeD0nMCcgeT0nMCcgcng9JzEwJy8+PHJlY3Qgd2lkdGgnODAnIGhlaWdodD0nODAnIHJlY3QgeD0nOTAnIHk9JzAnIHJ4PScxMCcvPjxyZWN0IHdpZHRoPSc4MCcgaGVpZ2h0PSc4MCcgcmVjdCB4PScxODAnIHk9JzAnIHJ4PScxMCcvPjxyZWN0IHdpZHRoPSc4MCcgaGVpZ2h0PSc4MCcgcmVjdCB4PScwJyB5PSc5MCcgcmE9JzEwJy8+PHJlY3Qgd2lkdGgnODAnIGhlaWdodD0nODAnIHJlY3QgeD0nOTAnIHk9JzkwJyByYTEwJy8+PHJlY3Qgd2lkdGgnODAnIGhlaWdodD0nODAnIHJlY3QgeD0nMTgwJyB5PSc5MCcgcmE9JzEwJy8+PHJlY3Qgd2lkdGgnMjcwJyBoZWlnaHQ9JzgwJyByZWN0IHg9JzAnIHk9JzE4MCcgcmN4PScxMCcvPjwvZz48L3N2ZyA+&quot;,
+                &quot;type&quot;: &quot;image/svg+xml&quot;,
+                &quot;sizes&quot;: &quot;144x144&quot;
             }
         ]
     }">
-    <!-- ▲▲▲ PWA対応 - アイコンをCanva風のデザインに変更 ▲▲▲ -->
+    <!-- ▲▲▲ PWA対応 - アイコンをCanva風のデザインに変更＆PWAの安定化 ▲▲▲ -->
     <style>
         :root {
             --primary-color: #3498db;
@@ -164,9 +169,9 @@
             <button class="btn-primary" onclick="showScreen('time-attack-options')">タイムアタックモード</button>
             <button class="btn-secondary" onclick="showScreen('custom-settings-screen')">カスタムモード</button>
             <button id="fullscreen-btn" class="btn-success" onclick="toggleFullScreen()">フルスクリーン</button>
-            <!-- ▼▼▼ 修正点: style="display: none;" を削除し、常にボタンを表示する ▼▼▼ -->
+            <!-- ▼▼▼ アプリインストールボタン (常に表示) ▼▼▼ -->
             <button id="install-btn" class="btn-primary" style="background-color: #16a085;">アプリをインストール</button>
-            <!-- ▲▲▲ 修正点: style="display: none;" を削除し、常にボタンを表示する ▲▲▲ -->
+            <!-- ▲▲▲ アプリインストールボタン ▲▲▲ -->
         </div>
     </div>
     
@@ -448,37 +453,38 @@
     }
     // ▲▲▲ テンキーイベントのセットアップ関数 ▲▲▲
 
-    // ▼▼▼ PWAインストール機能のロジック（ボタンの表示制御のみ変更） ▼▼▼
+    // ▼▼▼ PWAインストール機能のロジック（Service Workerの安定性向上のため微修正） ▼▼▼
     const installBtn = document.getElementById('install-btn');
     let deferredPrompt;
 
     function setupPWA() {
-        // サービスワーカーのキャッシュ名とキャッシュするアセットのリストを定義
+        // Service Workerのキャッシュ名
         const CACHE_NAME = 'calculation-trainer-v1';
-        // 単一HTMLファイルなので、キャッシュするのはルートURLとデータURIアイコン
+        // キャッシュ対象はルートパスのみ（Base64はブラウザが内部でキャッシュしてくれることを期待）
         const urlsToCache = [
-            '.', // ルート (このHTMLファイル自体)
+            '.', // このHTMLファイル自体
             '/', // ルート
         ];
 
-        // サービスワーカーのコードを改善し、オフラインキャッシュ戦略を採用
+        // Service Workerのコードをシンプル化し、互換性を高めます
         const sw_code = `
             const CACHE_NAME = '${CACHE_NAME}';
             const urlsToCache = ${JSON.stringify(urlsToCache)};
             
-            // インストール: アセットをキャッシュ
             self.addEventListener('install', (event) => {
               event.waitUntil(
                 caches.open(CACHE_NAME)
                   .then((cache) => {
                     console.log('Opened cache and pre-caching assets');
-                    return cache.addAll(urlsToCache);
+                    return cache.addAll(urlsToCache).catch((err) => {
+                         // エラーが発生しても処理を継続
+                         console.warn('Cache addAll failed. Check if resources are fetchable.', err);
+                    });
                   })
-                  .then(() => self.skipWaiting()) // 新しいSWがすぐにアクティベートされるようにする
+                  .then(() => self.skipWaiting())
               );
             });
 
-            // アクティベート: 古いキャッシュを削除
             self.addEventListener('activate', (event) => {
               const cacheWhitelist = [CACHE_NAME];
               event.waitUntil(
@@ -486,7 +492,6 @@
                   return Promise.all(
                     cacheNames.map((cacheName) => {
                       if (cacheWhitelist.indexOf(cacheName) === -1) {
-                        console.log('Deleting old cache: ' + cacheName);
                         return caches.delete(cacheName);
                       }
                     })
@@ -495,18 +500,10 @@
               );
             });
 
-            // フェッチ: キャッシュ・ファースト戦略（オフライン対応の基本）
+            // Network-First with Cache fallback: オフライン対応のためFetchイベントを追加
             self.addEventListener('fetch', (event) => {
               event.respondWith(
-                caches.match(event.request)
-                  .then((response) => {
-                    // キャッシュにあればそれを返す
-                    if (response) {
-                      return response;
-                    }
-                    // キャッシュになければネットワークからフェッチ
-                    return fetch(event.request);
-                  })
+                fetch(event.request).catch(() => caches.match(event.request))
               );
             });
         `;
@@ -514,6 +511,7 @@
         const sw_url = URL.createObjectURL(sw_blob);
         
         if ('serviceWorker' in navigator) {
+            // スコープを明示的にルートに設定
             navigator.serviceWorker.register(sw_url, { scope: './' })
               .then(reg => console.log('Service Worker registered successfully. Scope: ', reg.scope))
               .catch(err => console.log('Service Worker registration failed: ', err));
@@ -523,7 +521,6 @@
         window.addEventListener('beforeinstallprompt', (e) => {
             e.preventDefault();
             deferredPrompt = e;
-            // installBtn.style.display = 'block'; // ★この行は削除またはコメントアウトし、HTMLで常に表示する★
         });
 
         installBtn.addEventListener('click', async () => {
@@ -532,17 +529,16 @@
                 const { outcome } = await deferredPrompt.userChoice;
                 console.log(`User response to the install prompt: ${outcome}`);
                 deferredPrompt = null;
-                // インストールが成功または却下された場合はボタンを非表示にする
                 if (outcome === 'accepted' || outcome === 'dismissed') {
                     installBtn.style.display = 'none';
                 }
             } else {
-                // deferredPromptがない場合 (PWA非対応環境、または既にインストール済み) 
-                alert('このブラウザではアプリのインストール機能が利用できないか、既にインストールされています。ブラウザのメニューから「ホーム画面に追加」などを試してください。');
+                // PWA非対応環境、またはブラウザがインストール要件を満たしていない場合のメッセージ
+                alert('アプリのインストールプロンプトを表示できませんでした。PWAの要件（HTTPS接続やService Workerの完全な動作）が満たされているか確認し、ブラウザのメニューから「ホーム画面に追加」などを試してください。');
             }
         });
     }
-    // ▲▲▲ PWAインストール機能のロジック（ボタンの表示制御のみ変更） ▲▲▲
+    // ▲▲▲ PWAインストール機能のロジック（Service Workerの安定性向上のため微修正） ▲▲▲
 
     window.onload = () => {
         setupCanvasEvents();
