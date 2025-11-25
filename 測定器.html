@@ -1,0 +1,486 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Final BPM Analyzer</title>
+    <style>
+        :root {
+            --bg: #000000;
+            --card: #111111;
+            --text: #ffffff;
+            --accent-auto: #00e0ff;
+            --accent-tap: #ff3d81;
+        }
+        body {
+            background-color: var(--bg);
+            color: var(--text);
+            font-family: 'Helvetica Neue', Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+            box-sizing: border-box;
+            user-select: none;
+        }
+
+        h1 { font-weight: 100; letter-spacing: 2px; color: #777; }
+
+        .container {
+            width: 100%;
+            max-width: 600px;
+            background: var(--card);
+            border: 1px solid #222;
+            border-radius: 16px;
+            padding: 30px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.8);
+        }
+
+        .drop-zone {
+            border: 2px dashed #333;
+            border-radius: 10px;
+            padding: 30px;
+            cursor: pointer;
+            transition: 0.3s;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        .drop-zone:hover { border-color: var(--accent-auto); }
+        
+        audio { width: 100%; margin: 10px 0; }
+        
+        #waveform-container {
+            position: relative;
+            margin-bottom: 20px;
+        }
+        #waveform, #beat-markers {
+            position: absolute;
+            top: 0; left: 0;
+            width: 100%;
+            height: 100px;
+        }
+        #waveform { background-color: #000; border-radius: 4px; z-index: 1; }
+        #beat-markers { z-index: 2; pointer-events: none; }
+        .canvas-wrapper { height: 100px; }
+        .info-text { font-size: 0.8rem; color: #666; text-align: right; margin-top: 5px; }
+
+
+        .bpm-section {
+            background: #000;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
+            text-align: center;
+            position: relative;
+        }
+        .bpm-label { font-size: 0.8rem; color: #777; letter-spacing: 2px; }
+        .bpm-value {
+            font-size: 5rem;
+            font-weight: bold;
+            line-height: 1;
+            font-variant-numeric: tabular-nums;
+            margin: 5px 0;
+            transition: color 0.3s;
+            cursor: pointer;
+            border-radius: 10px;
+            outline: none;
+        }
+        .bpm-value.auto { color: var(--accent-auto); }
+        .bpm-value.tap { color: var(--accent-tap); }
+        .bpm-value:focus { box-shadow: 0 0 0 3px var(--accent-auto); }
+        
+        .progress-container {
+            position: absolute;
+            bottom: 5px; left: 10px; right: 10px;
+        }
+        .status-text {
+            font-size: 0.8rem;
+            color: #888;
+            height: 1.2em;
+            margin-bottom: 4px;
+        }
+        .progress-track {
+            width: 100%;
+            height: 3px;
+            background: #333;
+            border-radius: 2px;
+            overflow: hidden;
+        }
+        .progress-bar {
+            width: 0%;
+            height: 100%;
+            background: var(--accent-auto);
+            transition: width 0.2s ease-out;
+        }
+
+        #tap-btn {
+            background: #222; border: 1px solid #444; color: #fff; width: 100%;
+            padding: 15px; font-size: 1.2rem; font-weight: bold; border-radius: 8px;
+            cursor: pointer; transition: 0.1s; margin-bottom: 20px;
+        }
+        #tap-btn:active { background: var(--accent-tap); transform: scale(0.98); }
+
+        .controls {
+            display: grid; grid-template-columns: 1fr 1fr; gap: 10px;
+            border-top: 1px solid #333; padding-top: 20px;
+        }
+        .ctrl-btn {
+            background: #282828; border: 1px solid #444; color: #eee;
+            padding: 12px; border-radius: 8px; font-size: 0.9rem; cursor: pointer;
+        }
+        #metro-btn.active-metro { background: #fff; color: #000; font-weight: bold; }
+        .volume-control {
+            grid-column: 1 / -1; display: flex; align-items: center;
+            justify-content: center; gap: 10px; margin-top: 10px;
+            font-size: 0.9rem; color: #888;
+        }
+        input[type="range"] { accent-color: #fff; }
+    </style>
+</head>
+<body>
+
+    <h1>Final BPM Analyzer</h1>
+
+    <div class="container">
+        <div class="drop-zone" id="drop-zone">
+            <p style="margin:0;">🎵 音楽ファイルを選択</p>
+            <input type="file" id="file-input" accept="audio/*" style="display:none;">
+        </div>
+
+        <audio id="audio-player" controls></audio>
+        
+        <div id="waveform-container">
+            <div class="canvas-wrapper">
+                <canvas id="waveform"></canvas>
+                <canvas id="beat-markers"></canvas>
+            </div>
+            <div class="info-text">赤い線は算出されたBPMのビートグリッドです</div>
+        </div>
+
+        <div class="bpm-section">
+            <div class="bpm-label" id="bpm-label">BPM</div>
+            <div class="bpm-value auto" id="bpm-display" tabindex="0" title="クリックして矢印キーで微調整">--.--</div>
+            
+            <div class="progress-container">
+                <div class="status-text" id="status-text">ファイルを選択してください</div>
+                <div class="progress-track">
+                    <div class="progress-bar" id="progress-bar"></div>
+                </div>
+            </div>
+        </div>
+
+        <button id="tap-btn">TAP (Space Key)</button>
+        
+        <div class="controls">
+            <button id="metro-btn" class="ctrl-btn">🔊 メトロノーム</button>
+            <button id="sync-btn" class="ctrl-btn">🔄 頭出し (Sync)</button>
+            <div class="volume-control">
+                <span>Click Vol:</span>
+                <input type="range" id="metro-vol" min="0" max="100" value="70">
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const dropZone = document.getElementById('drop-zone');
+        const fileInput = document.getElementById('file-input');
+        const audioPlayer = document.getElementById('audio-player');
+        const bpmDisplay = document.getElementById('bpm-display');
+        const bpmLabel = document.getElementById('bpm-label');
+        const tapBtn = document.getElementById('tap-btn');
+        const metroBtn = document.getElementById('metro-btn');
+        const syncBtn = document.getElementById('sync-btn');
+        const volSlider = document.getElementById('metro-vol');
+        const waveformCanvas = document.getElementById('waveform');
+        const beatMarkersCanvas = document.getElementById('beat-markers');
+        const wfCtx = waveformCanvas.getContext('2d');
+        const bmCtx = beatMarkersCanvas.getContext('2d');
+        const statusText = document.getElementById('status-text');
+        const progressBar = document.getElementById('progress-bar');
+        
+        let audioCtx;
+        let currentBpm = 120.00;
+        let tapTimes = [];
+        let isMetroPlaying = false;
+        let nextNoteTime = 0.0;
+        let timerID = null;
+
+        async function initAudioContext() {
+            if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            if (audioCtx.state === 'suspended') await audioCtx.resume();
+        }
+
+        dropZone.addEventListener('click', () => fileInput.click());
+        fileInput.addEventListener('change', (e) => handleFile(e.target.files[0]));
+        dropZone.addEventListener('dragover', (e) => e.preventDefault());
+        dropZone.addEventListener('drop', async (e) => {
+            e.preventDefault();
+            await initAudioContext();
+            handleFile(e.dataTransfer.files[0]);
+        });
+
+        async function handleFile(file) {
+            if (!file) return;
+            await initAudioContext();
+            stopMetronome();
+            
+            bpmDisplay.textContent = "--.--";
+            statusText.textContent = "ファイルを読み込み中...";
+            progressBar.style.transition = 'none';
+            progressBar.style.width = '0%';
+            wfCtx.clearRect(0, 0, waveformCanvas.width, waveformCanvas.height);
+            bmCtx.clearRect(0, 0, beatMarkersCanvas.width, beatMarkersCanvas.height);
+            
+            const url = URL.createObjectURL(file);
+            audioPlayer.src = url;
+
+            try {
+                const arrayBuffer = await file.arrayBuffer();
+                statusText.textContent = "デコード中...";
+                const audioBuffer = await audioCtx.decodeAudioData(arrayBuffer);
+                
+                statusText.textContent = "冒頭30秒間を解析中...";
+                progressBar.style.transition = 'width 30s linear';
+                progressBar.style.width = '100%';
+
+                setTimeout(() => {
+                    const result = analyzeBPM(audioBuffer);
+                    if (result && result.bpm) {
+                        updateBPM(result.bpm, 'auto');
+                        drawWaveform(audioBuffer, result.peaks, result.bpm); // Pass BPM for grid drawing
+                        statusText.textContent = "解析完了";
+                    } else {
+                        updateBPM(120.00, 'tap'); // Fallback to 120 if analysis fails
+                        drawWaveform(audioBuffer, []);
+                        statusText.textContent = "解析失敗。手動で調整してください。";
+                    }
+                }, 30000);
+
+            } catch (err) {
+                console.error(err);
+                statusText.textContent = "エラーが発生しました";
+                progressBar.style.width = '0%';
+            }
+        }
+
+        async function handleTap(e) {
+            if (e.type === 'keydown' && e.code !== 'Space') return;
+            if (e.type === 'keydown') e.preventDefault();
+            await initAudioContext();
+
+            tapBtn.classList.add('active-tap');
+            setTimeout(() => tapBtn.classList.remove('active-tap'), 100);
+
+            const now = Date.now();
+            if (tapTimes.length > 0 && now - tapTimes[tapTimes.length - 1] > 2000) tapTimes = [];
+            
+            tapTimes.push(now);
+            if (tapTimes.length > 8) tapTimes.shift();
+
+            if (tapTimes.length >= 2) {
+                let intervals = [];
+                for (let i = 1; i < tapTimes.length; i++) {
+                    intervals.push(tapTimes[i] - tapTimes[i - 1]);
+                }
+                const avgInterval = intervals.reduce((a, b) => a + b) / intervals.length;
+                const tappedBpm = 60000 / avgInterval;
+                updateBPM(tappedBpm, 'tap');
+            }
+        }
+        
+        tapBtn.addEventListener('mousedown', handleTap);
+        window.addEventListener('keydown', handleTap);
+
+        function updateBPM(newBpm, source) {
+            currentBpm = newBpm;
+            bpmDisplay.textContent = newBpm.toFixed(2);
+            
+            if (source === 'auto') {
+                bpmDisplay.className = 'bpm-value auto';
+                bpmLabel.textContent = "AUTO BPM";
+            } else if (source === 'tap') {
+                bpmDisplay.className = 'bpm-value tap';
+                bpmLabel.textContent = "TAP/MANUAL BPM";
+            }
+        }
+        
+        bpmDisplay.addEventListener('keydown', (e) => {
+            if (e.key !== 'ArrowUp' && e.key !== 'ArrowDown') return;
+            e.preventDefault();
+            let newBpm = currentBpm + (e.key === 'ArrowUp' ? 0.01 : -0.01);
+            if (newBpm < 10) newBpm = 10;
+            updateBPM(parseFloat(newBpm.toFixed(2)), 'tap');
+        });
+
+        // --- ★ Final Revised BPM Analysis Algorithm ---
+        function analyzeBPM(buffer) {
+            const originalData = buffer.getChannelData(0);
+            const sampleRate = buffer.sampleRate;
+            
+            const analysisDuration = 30;
+            const analysisLength = Math.min(originalData.length, sampleRate * analysisDuration);
+            const data = originalData.slice(0, analysisLength);
+
+            // 1. Peak Detection
+            const peaks = [];
+            const groupSize = Math.floor(sampleRate / 2);
+            for (let i = 0; i < data.length; i += groupSize) {
+                let max = 0;
+                for (let j = 0; j < groupSize && i + j < data.length; j++) {
+                    const val = Math.abs(data[i + j]);
+                    if (val > max) max = val;
+                }
+                if (max > 0.1) {
+                    const threshold = max * 0.7;
+                    for (let j = 0; j < groupSize && i + j < data.length; j++) {
+                        if (Math.abs(data[i + j]) > threshold) {
+                            peaks.push(i + j);
+                            j += Math.floor(sampleRate * 0.2);
+                        }
+                    }
+                }
+            }
+            if (peaks.length < 15) return null;
+
+            // 2. Interval Histogram
+            const histogram = {};
+            peaks.forEach((peak, index) => {
+                for (let i = 1; i < 15; i++) {
+                    const neighbor = peaks[index + i];
+                    if (!neighbor) break;
+                    const dist = neighbor - peak;
+                    const bpm = (60 * sampleRate) / dist;
+                    if (bpm >= 60 && bpm <= 240) {
+                        const key = Math.round(bpm * 10) / 10;
+                        if (!histogram[key]) histogram[key] = 0;
+                        histogram[key]++;
+                    }
+                }
+            });
+
+            // 3. Candidate Grouping & Scoring
+            const candidates = Object.keys(histogram).map(k => ({ bpm: parseFloat(k), count: histogram[k] }))
+                                     .sort((a, b) => b.count - a.count);
+            if (candidates.length === 0) return null;
+
+            candidates.forEach(cand => {
+                cand.score = cand.count;
+                candidates.forEach(other => {
+                    if (Math.abs(cand.bpm / 2 - other.bpm) < 1.5 || Math.abs(cand.bpm * 2 - other.bpm) < 1.5) {
+                        cand.score += other.count * 0.5;
+                    }
+                });
+            });
+
+            // 4. Select Best Candidate
+            const topCandidate = candidates.sort((a, b) => b.score - a.score)[0];
+            let bestBpm = topCandidate.bpm;
+
+            // Prefer tempos in the 90-180 range
+            if (bestBpm < 90) {
+                const doubleTempoCand = candidates.find(c => Math.abs(c.bpm - bestBpm * 2) < 2.0 && c.score > topCandidate.score * 0.2);
+                if (doubleTempoCand) bestBpm *= 2;
+            } else if (bestBpm > 180) {
+                const halfTempoCand = candidates.find(c => Math.abs(c.bpm - bestBpm / 2) < 2.0 && c.score > topCandidate.score * 0.2);
+                if (halfTempoCand) bestBpm /= 2;
+            }
+            
+            return { bpm: bestBpm, peaks: peaks };
+        }
+
+        // --- ★ Revised Waveform & Beat Grid Drawing ---
+        function drawWaveform(buffer, peaks, bpm) {
+            const width = waveformCanvas.width = beatMarkersCanvas.width = waveformCanvas.clientWidth;
+            const height = waveformCanvas.height = beatMarkersCanvas.height = waveformCanvas.clientHeight;
+            const data = buffer.getChannelData(0);
+            const step = Math.ceil(data.length / width);
+            const amp = height / 2;
+
+            wfCtx.clearRect(0, 0, width, height);
+            wfCtx.strokeStyle = '#666';
+            wfCtx.lineWidth = 1;
+            wfCtx.beginPath();
+            for (let i = 0; i < width; i++) {
+                let min = 1.0, max = -1.0;
+                for (let j = 0; j < step; j++) {
+                    const datum = data[(i * step) + j];
+                    if (datum < min) min = datum;
+                    if (datum > max) max = datum;
+                }
+                wfCtx.moveTo(i, (1 + min) * amp);
+                wfCtx.lineTo(i, (1 + max) * amp);
+            }
+            wfCtx.stroke();
+
+            // Draw Beat Grid Markers
+            bmCtx.clearRect(0, 0, width, height);
+            if (!bpm || bpm <= 0 || !peaks || peaks.length === 0) return;
+
+            bmCtx.strokeStyle = 'rgba(255, 0, 0, 0.7)';
+            bmCtx.lineWidth = 1;
+            bmCtx.beginPath();
+            
+            const secondsPerBeat = 60 / bpm;
+            const samplesPerBeat = secondsPerBeat * buffer.sampleRate;
+            // Use the first detected peak as the anchor to align the grid
+            const firstPeak = peaks[0];
+            
+            // Draw forward from the anchor
+            for (let i = firstPeak; i < data.length; i += samplesPerBeat) {
+                const x = (i / data.length) * width;
+                bmCtx.moveTo(x, 0);
+                bmCtx.lineTo(x, height);
+            }
+            // Draw backward from the anchor to fill the intro
+            for (let i = firstPeak - samplesPerBeat; i >= 0; i -= samplesPerBeat) {
+                const x = (i / data.length) * width;
+                bmCtx.moveTo(x, 0);
+                bmCtx.lineTo(x, height);
+            }
+            bmCtx.stroke();
+        }
+
+        // --- Metronome ---
+        metroBtn.addEventListener('click', async () => { await initAudioContext(); isMetroPlaying ? stopMetronome() : startMetronome(); });
+        syncBtn.addEventListener('click', async () => { await initAudioContext(); if (isMetroPlaying) nextNoteTime = audioCtx.currentTime + 0.05; else startMetronome(); });
+
+        function startMetronome() {
+            isMetroPlaying = true;
+            metroBtn.classList.add('active-metro');
+            nextNoteTime = audioCtx.currentTime + 0.05;
+            scheduler();
+        }
+
+        function stopMetronome() {
+            isMetroPlaying = false;
+            metroBtn.classList.remove('active-metro');
+            clearTimeout(timerID);
+        }
+
+        function scheduler() {
+            while (nextNoteTime < audioCtx.currentTime + 0.1) {
+                playClick(nextNoteTime);
+                nextNoteTime += 60.0 / currentBpm;
+            }
+            if (isMetroPlaying) timerID = setTimeout(scheduler, 25.0);
+        }
+        
+        function playClick(time) {
+            if (!audioCtx) return;
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            osc.type = 'triangle';
+            osc.frequency.setValueAtTime(1200, time);
+            osc.frequency.exponentialRampToValueAtTime(600, time + 0.05);
+            gain.gain.setValueAtTime(volSlider.value / 100, time);
+            gain.gain.exponentialRampToValueAtTime(0.001, time + 0.08);
+            osc.start(time);
+            osc.stop(time + 0.1);
+        }
+    </script>
+</body>
+</html>
