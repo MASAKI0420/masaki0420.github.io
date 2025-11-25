@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>多形式対応 音声ファイル変換器</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            background-color: #f0f2f5;
+            margin: 0;
+            padding: 1rem;
+            box-sizing: border-box;
+        }
+        .container {
+            background: white;
+            padding: 2.5rem;
+            border-radius: 12px;
+            box-shadow: 0 6px 20px rgba(0,0,0,0.08);
+            text-align: center;
+            width: 100%;
+            max-width: 600px;
+        }
+        h1 {
+            color: #1c1e21;
+            margin-bottom: 1rem;
+        }
+        p {
+            color: #606770;
+            margin-bottom: 2rem;
+        }
+        .control-group {
+            margin-bottom: 1.5rem;
+        }
+        label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: bold;
+            color: #4b4f56;
+        }
+        input[type="file"], select {
+            width: 100%;
+            padding: 0.8rem;
+            border-radius: 6px;
+            border: 1px solid #ccd0d5;
+            font-size: 1rem;
+        }
+        button {
+            background-color: #1877f2;
+            color: white;
+            border: none;
+            padding: 0.9rem 1.8rem;
+            border-radius: 6px;
+            font-size: 1.1rem;
+            font-weight: bold;
+            cursor: pointer;
+            width: 100%;
+            transition: background-color 0.3s;
+        }
+        button:disabled {
+            background-color: #e4e6eb;
+            color: #bcc0c4;
+            cursor: not-allowed;
+        }
+        button:hover:not(:disabled) {
+            background-color: #166fe5;
+        }
+        #status {
+            margin-top: 1.5rem;
+            font-weight: bold;
+            color: #1c1e21;
+        }
+        #progress-bar {
+            width: 100%;
+            height: 10px;
+            margin-top: 1rem;
+            display: none;
+        }
+        #download-link-container a {
+            display: inline-block;
+            margin-top: 1rem;
+            background-color: #42b72a;
+            color: white;
+            padding: 0.9rem 1.8rem;
+            text-decoration: none;
+            border-radius: 6px;
+            font-weight: bold;
+            transition: background-color 0.3s;
+        }
+        #download-link-container a:hover {
+             background-color: #36a420;
+        }
+    </style>
+    <!-- ffmpeg.wasm ライブラリを読み込みます -->
+    <script src="https://unpkg.com/@ffmpeg/ffmpeg@0.10.1/dist/ffmpeg.min.js"></script>
+</head>
+<body>
+
+    <div class="container">
+        <h1>多形式対応 音声ファイル変換器</h1>
+        <p>変換したい音声ファイルと、出力形式を選択してください。</p>
+
+        <div class="control-group">
+            <label for="file-input">1. 音声ファイルを選択</label>
+            <input type="file" id="file-input" accept="audio/*">
+        </div>
+
+        <div class="control-group">
+            <label for="output-format">2. 変換後の形式を選択</label>
+            <select id="output-format">
+                <option value="mp3">MP3</option>
+                <option value="wav">WAV</option>
+                <option value="aac">AAC</option>
+                <option value="ogg">OGG (Vorbis)</option>
+                <option value="flac">FLAC</option>
+                <option value="m4a">M4A</option>
+            </select>
+        </div>
+
+        <button id="convert-button" disabled>変換開始</button>
+
+        <p id="status">FFmpegをロード中... (初回は時間がかかります)</p>
+        <progress id="progress-bar" max="100" value="0"></progress>
+        <div id="download-link-container"></div>
+    </div>
+
+    <script>
+        // DOM要素を取得
+        const fileInput = document.getElementById('file-input');
+        const formatSelect = document.getElementById('output-format');
+        const convertButton = document.getElementById('convert-button');
+        const statusElement = document.getElementById('status');
+        const progressBar = document.getElementById('progress-bar');
+        const downloadContainer = document.getElementById('download-link-container');
+
+        const { createFFmpeg, fetchFile } = FFmpeg;
+        const ffmpeg = createFFmpeg({
+            log: true, // コンソールにログを出力する場合はtrue
+            corePath: 'https://unpkg.com/@ffmpeg/core@0.10.0/dist/ffmpeg-core.js',
+        });
+
+        let inputFile = null;
+
+        // 初期化処理
+        const initialize = async () => {
+            try {
+                await ffmpeg.load();
+                statusElement.textContent = '準備完了です。ファイルを選択してください。';
+                // ファイルが選択されていればボタンを有効化
+                if (fileInput.files.length > 0) {
+                   convertButton.disabled = false;
+                }
+            } catch (error) {
+                statusElement.textContent = 'FFmpegのロードに失敗しました。ページを再読み込みしてください。';
+                console.error(error);
+            }
+        };
+        initialize();
+
+        // ファイルが選択されたときの処理
+        fileInput.addEventListener('change', (event) => {
+            inputFile = event.target.files[0];
+            if (inputFile && ffmpeg.isLoaded()) {
+                convertButton.disabled = false;
+                statusElement.textContent = `ファイル: ${inputFile.name}`;
+                downloadContainer.innerHTML = '';
+            } else {
+                convertButton.disabled = true;
+            }
+        });
+
+        // 変換ボタンがクリックされたときの処理
+        convertButton.addEventListener('click', async () => {
+            if (!inputFile) {
+                alert('ファイルが選択されていません。');
+                return;
+            }
+
+            // UIを処理中の状態に更新
+            convertButton.disabled = true;
+            statusElement.textContent = '変換準備中...';
+            progressBar.style.display = 'block';
+            progressBar.value = 0;
+            downloadContainer.innerHTML = '';
+
+            try {
+                const outputFormat = formatSelect.value;
+                const inputFilename = inputFile.name;
+                const outputFilename = `${inputFilename.substring(0, inputFilename.lastIndexOf('.')) || inputFilename}.${outputFormat}`;
+
+                // 1. ffmpegの仮想ファイルシステムにファイルを書き込む
+                ffmpeg.FS('writeFile', inputFilename, await fetchFile(inputFile));
+
+                // 2. 進捗コールバックを設定
+                ffmpeg.setProgress(({ ratio }) => {
+                    statusElement.textContent = `変換中... ${Math.round(ratio * 100)}%`;
+                    progressBar.value = ratio * 100;
+                });
+
+                // 3. FFmpegコマンドを実行
+                await ffmpeg.run('-i', inputFilename, outputFilename);
+
+                // 4. 変換されたファイルを仮想ファイルシステムから読み出す
+                const data = ffmpeg.FS('readFile', outputFilename);
+
+                // 5. ダウンロードリンクを生成
+                const blob = new Blob([data.buffer], { type: `audio/${outputFormat}` });
+                const url = URL.createObjectURL(blob);
+                
+                const downloadLink = document.createElement('a');
+                downloadLink.href = url;
+                downloadLink.download = outputFilename;
+                downloadLink.textContent = `変換完了！「${outputFilename}」をダウンロード`;
+                
+                downloadContainer.appendChild(downloadLink);
+                statusElement.textContent = '変換が完了しました。';
+
+            } catch (error) {
+                statusElement.textContent = `エラーが発生しました: ${error.message}`;
+                console.error(error);
+            } finally {
+                // UIをリセット
+                convertButton.disabled = false;
+                progressBar.style.display = 'none';
+                fileInput.value = '';
+                inputFile = null;
+            }
+        });
+    </script>
+
+</body>
+</html>
