@@ -1,0 +1,569 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TJA Maker Pro: Metronome Edition 🥁</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/music-tempo/1.0.3/music-tempo.min.js"></script>
+    <style>
+        :root {
+            --primary: #ff4757;
+            --bg: #f1f2f6;
+            --text: #333;
+            --lane-bg: #333;
+            --cmd-color: #8e44ad;
+        }
+
+        body {
+            font-family: "Helvetica Neue", Arial, sans-serif;
+            background-color: var(--bg);
+            color: var(--text);
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        h1 { margin: 0 0 20px 0; color: var(--primary); text-shadow: 1px 1px 0 #fff; }
+
+        .container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            max-width: 1200px;
+            width: 100%;
+        }
+
+        /* --- Preview Area --- */
+        .preview-container {
+            grid-column: 1 / -1;
+            background: #222;
+            border-radius: 8px;
+            padding: 10px;
+            text-align: center;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+            border: 2px solid #555;
+        }
+
+        canvas {
+            background: transparent;
+            width: 100%;
+            height: 160px;
+            display: block;
+        }
+
+        .player-controls {
+            margin-top: 10px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+
+        .status-text {
+            color: #bdc3c7;
+            font-size: 0.9em;
+            min-width: 150px;
+            text-align: left;
+        }
+
+        .btn-play { background-color: #2ed573; padding: 8px 30px; font-size: 1.1em; }
+        .btn-stop { background-color: #ff6b81; padding: 8px 20px; }
+        
+        .btn-metro { 
+            background-color: #57606f; 
+            padding: 8px 15px;
+            font-size: 0.9em;
+            border: 2px solid #777;
+        }
+        .btn-metro.active {
+            background-color: #ffa502;
+            color: black;
+            border-color: #ff9f43;
+            box-shadow: 0 0 8px #ffa502;
+        }
+
+        button:disabled { background-color: #95a5a6; cursor: not-allowed; opacity: 0.6; }
+
+        /* --- Editor & Settings --- */
+        .panel {
+            background: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+        }
+
+        .row { display: flex; gap: 10px; }
+        .row > div { flex: 1; }
+        
+        label { display: block; font-weight: bold; font-size: 0.8em; margin-bottom: 4px; }
+        input[type="text"], input[type="number"], select { 
+            width: 100%; padding: 6px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; 
+        }
+        
+        .file-input-wrapper {
+            border: 2px dashed #ccc;
+            padding: 10px;
+            background: #fafafa;
+            border-radius: 4px;
+            margin-bottom: 15px;
+        }
+
+        /* BPM Tools */
+        .bpm-tools { display: flex; gap: 5px; margin-top: 5px; }
+        .btn-auto-bpm { background-color: #e67e22; font-size: 0.8em; flex: 1; }
+        .btn-tap-bpm { background-color: #34495e; font-size: 0.8em; flex: 1; }
+
+        /* Buttons */
+        .toolbar-buttons { display: flex; gap: 4px; flex-wrap: wrap; margin-bottom: 10px; }
+        button { border: none; border-radius: 4px; color: white; cursor: pointer; padding: 5px 10px; font-weight: bold; transition: 0.2s; }
+        button:hover { opacity: 0.8; }
+
+        .btn-don { background: #ff4757; }
+        .btn-kat { background: #3742fa; }
+        .btn-don-big { background: #ff4757; border: 2px solid #7c1e27; }
+        .btn-kat-big { background: #3742fa; border: 2px solid #192085; }
+        .btn-roll { background: #ffa502; color: #000; }
+        .btn-cmd { background: var(--cmd-color); font-size: 0.8em; }
+
+        textarea {
+            width: 100%; height: 350px; font-family: monospace; 
+            background: #fffbfb; border: 2px solid var(--primary); padding: 10px; box-sizing: border-box;
+        }
+
+        #outputPreview { background: #2f3640; color: #f5f6fa; border: none; height: 150px; }
+        .cmd-input-group { display: flex; align-items: center; background: #eee; padding: 2px; border-radius: 4px; }
+        .cmd-input-group input { width: 50px; margin-right: 2px; }
+
+    </style>
+</head>
+<body>
+
+    <h1>TJA Maker Pro 🥁</h1>
+
+    <!-- Preview Area -->
+    <div class="preview-container">
+        <canvas id="gameCanvas" width="800" height="160"></canvas>
+        <div class="player-controls">
+            <button id="btnPlay" class="btn-play" onclick="startPreview()" disabled>▶ 再生</button>
+            <button id="btnStop" class="btn-stop" onclick="stopPreview()">■ 停止</button>
+            <button id="btnMetro" class="btn-metro" onclick="toggleMetro()">⏰ メトロノーム: OFF</button>
+            <span id="musicStatus" class="status-text">🎵 音楽ファイル待ち...</span>
+        </div>
+    </div>
+
+    <div class="container">
+        <!-- Editor -->
+        <div class="panel">
+            <h2>1. 基本設定・音楽</h2>
+            
+            <div class="file-input-wrapper">
+                <label style="color:#e74c3c;">♪ 音楽ファイル選択 (mp3, ogg, wav)</label>
+                <input type="file" id="audioFileInput" accept="audio/*">
+            </div>
+
+            <div class="row">
+                <div><label>TITLE</label><input type="text" id="title" value="New Song"></div>
+                <div>
+                    <label>BPM</label>
+                    <input type="number" id="bpm" value="120" step="0.01">
+                    <div class="bpm-tools">
+                        <button class="btn-auto-bpm" onclick="autoDetectBpm()">⚡ 自動検出</button>
+                        <button class="btn-tap-bpm" id="btnTap">👆 TAP (手動)</button>
+                    </div>
+                </div>
+                <div><label>OFFSET (秒)</label><input type="number" id="offset" value="-0.05" step="0.01"></div>
+            </div>
+
+            <h2 style="margin-top:20px;">2. 譜面入力</h2>
+            <div class="toolbar-buttons">
+                <button class="btn-don" onclick="insert('1')">ドン</button>
+                <button class="btn-kat" onclick="insert('2')">カッ</button>
+                <button class="btn-don-big" onclick="insert('3')">大ドン</button>
+                <button class="btn-kat-big" onclick="insert('4')">大カッ</button>
+                <button class="btn-roll" onclick="insert('5')">連打</button>
+                <button class="btn-roll" onclick="insert('8')">終</button>
+                <button class="btn-cmd" style="background:#555;" onclick="insert('0')">空</button>
+                <button class="btn-cmd" style="background:#333;" onclick="insert(',\n')">小節線(,)</button>
+            </div>
+            <div class="toolbar-buttons">
+                <button class="btn-cmd" onclick="insertLine('#GOGOTIME')">GoGo開始</button>
+                <button class="btn-cmd" onclick="insertLine('#GOGOEND')">GoGo終了</button>
+                <div class="cmd-input-group">
+                    <input type="number" id="val-bpm" placeholder="140">
+                    <button class="btn-cmd" onclick="insertParam('#BPMCHANGE', 'val-bpm')">BPM変</button>
+                </div>
+                <div class="cmd-input-group">
+                    <input type="text" id="val-measure" placeholder="4/4" style="width:40px;">
+                    <button class="btn-cmd" onclick="insertParam('#MEASURE', 'val-measure')">拍子</button>
+                </div>
+                <div class="cmd-input-group">
+                    <input type="number" id="val-scroll" placeholder="1.2" step="0.1">
+                    <button class="btn-cmd" onclick="insertParam('#SCROLL', 'val-scroll')">HS</button>
+                </div>
+            </div>
+
+            <textarea id="chartInput" spellcheck="false" oninput="updateTjaText()">
+#SCROLL 1.0
+#MEASURE 4/4
+10101010,
+#GOGOTIME
+#SCROLL 1.2
+20202020,
+11223344,
+#GOGOEND
+#SCROLL 1.0
+10000000,
+</textarea>
+        </div>
+
+        <!-- Output -->
+        <div class="panel">
+            <h2>3. 出力</h2>
+            <label>TJAファイル内容</label>
+            <textarea id="outputPreview" readonly></textarea>
+            <div style="text-align: center; margin-top:10px;">
+                <button class="btn-play" style="background:#2980b9;" onclick="downloadTja()">ダウンロード (.tja)</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- Setup Elements ---
+        const inputs = {
+            title: document.getElementById('title'),
+            bpm: document.getElementById('bpm'),
+            offset: document.getElementById('offset'),
+            chart: document.getElementById('chartInput'),
+            out: document.getElementById('outputPreview')
+        };
+        const fileInput = document.getElementById('audioFileInput');
+        const statusText = document.getElementById('musicStatus');
+        const btnPlay = document.getElementById('btnPlay');
+        const btnTap = document.getElementById('btnTap');
+        const btnMetro = document.getElementById('btnMetro');
+
+        let audioCtx;
+        let musicBuffer = null;
+        let musicSource = null;
+        let isMetroOn = false;
+
+        // --- Editor Logic ---
+        function insert(txt) {
+            const el = inputs.chart;
+            const [s, e] = [el.selectionStart, el.selectionEnd];
+            el.setRangeText(txt, s, e, 'end');
+            updateTjaText();
+        }
+        function insertLine(cmd) { insert((inputs.chart.value.slice(-1) === '\n' ? '' : '\n') + cmd + '\n'); }
+        function insertParam(cmd, id) { 
+            const val = document.getElementById(id).value;
+            if(val) insertLine(`${cmd} ${val}`);
+        }
+
+        function updateTjaText() {
+            let waveName = fileInput.files[0] ? fileInput.files[0].name : "music.ogg";
+            let tja = `TITLE:${inputs.title.value}\nBPM:${inputs.bpm.value}\nWAVE:${waveName}\nOFFSET:${inputs.offset.value}\nCOURSE:Oni\nLEVEL:8\n\n#START\n${inputs.chart.value}`;
+            if(!tja.endsWith('\n')) tja += '\n';
+            tja += '#END';
+            inputs.out.value = tja;
+        }
+
+        function downloadTja() {
+            const blob = new Blob([inputs.out.value], {type: "text/plain;charset=utf-8"});
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = `${inputs.title.value || 'fumen'}.tja`;
+            a.click();
+        }
+
+        // --- BPM Tools ---
+        function autoDetectBpm() {
+            if (!musicBuffer) { alert("音楽ファイルを選択してください。"); return; }
+            statusText.innerText = "⚡ BPM解析中...";
+            setTimeout(() => {
+                try {
+                    const mt = new MusicTempo(musicBuffer.getChannelData(0));
+                    let detected = Math.round(parseFloat(mt.tempo) * 100) / 100;
+                    if(confirm(`BPM ${detected} が検出されました。適用しますか？`)) {
+                        inputs.bpm.value = detected;
+                        updateTjaText();
+                    }
+                    statusText.innerText = "✅ 解析完了";
+                } catch (e) { alert("解析失敗"); statusText.innerText = "❌ 解析エラー"; }
+            }, 100);
+        }
+
+        let tapTimes = [];
+        btnTap.addEventListener('click', recordTap);
+        document.addEventListener('keydown', (e) => {
+            if (e.code === 'Space' && document.activeElement.tagName !== 'TEXTAREA' && document.activeElement.tagName !== 'INPUT') {
+                e.preventDefault(); recordTap();
+                btnTap.style.backgroundColor = "#fff";
+                setTimeout(() => btnTap.style.backgroundColor = "#34495e", 50);
+            }
+        });
+        function recordTap() {
+            const now = performance.now();
+            if (tapTimes.length > 0 && now - tapTimes[tapTimes.length - 1] > 2000) tapTimes = [];
+            tapTimes.push(now);
+            if (tapTimes.length > 4) {
+                let intervals = [];
+                for (let i = 1; i < tapTimes.length; i++) intervals.push(tapTimes[i] - tapTimes[i-1]);
+                const bpm = 60000 / (intervals.reduce((a, b) => a + b) / intervals.length);
+                inputs.bpm.value = Math.round(bpm * 100) / 100;
+                updateTjaText();
+                btnTap.innerText = `BPM: ${inputs.bpm.value}`;
+            } else btnTap.innerText = `Tap! (${tapTimes.length})`;
+        }
+
+        // --- Audio & Metronome ---
+        function initAudio() {
+            if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        }
+
+        fileInput.addEventListener('change', async function(e) {
+            if (e.target.files.length === 0) return;
+            statusText.innerText = "⏳ 読み込み中...";
+            btnPlay.disabled = true;
+            initAudio();
+            const buffer = await e.target.files[0].arrayBuffer();
+            try {
+                musicBuffer = await audioCtx.decodeAudioData(buffer);
+                statusText.innerText = "✅ 音楽準備OK";
+                btnPlay.disabled = false;
+                if(inputs.title.value === "New Song") inputs.title.value = e.target.files[0].name.replace(/\.[^/.]+$/, "");
+                updateTjaText();
+            } catch(err) { statusText.innerText = "❌ 読込失敗"; }
+        });
+
+        function toggleMetro() {
+            isMetroOn = !isMetroOn;
+            btnMetro.innerText = isMetroOn ? "⏰ メトロノーム: ON" : "⏰ メトロノーム: OFF";
+            btnMetro.classList.toggle("active", isMetroOn);
+        }
+
+        function playSound(type) {
+            if (!audioCtx) return;
+            const now = audioCtx.currentTime;
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+
+            if (type === 'metro_high') { // Measure start
+                osc.frequency.setValueAtTime(1200, now);
+                osc.type = 'square';
+                gain.gain.setValueAtTime(0.15, now);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.05);
+                osc.start(now); osc.stop(now + 0.05);
+            } else if (type === 'metro_low') { // Beat
+                osc.frequency.setValueAtTime(800, now);
+                osc.type = 'square';
+                gain.gain.setValueAtTime(0.1, now);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.05);
+                osc.start(now); osc.stop(now + 0.05);
+            } else if (type === 'don') {
+                osc.frequency.setValueAtTime(150, now);
+                osc.frequency.exponentialRampToValueAtTime(0.01, now + 0.15);
+                gain.gain.setValueAtTime(0.8, now);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.15);
+                osc.start(now); osc.stop(now + 0.2);
+            } else {
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(300, now);
+                osc.frequency.exponentialRampToValueAtTime(0.01, now + 0.1);
+                gain.gain.setValueAtTime(0.6, now);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.1);
+                osc.start(now); osc.stop(now + 0.2);
+            }
+        }
+
+        // --- TJA Parser & Loop ---
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        let animationId, startTime = 0, isPlaying = false;
+        const HIT_X = 150, Y_POS = 80, BASE_SPEED = 200;
+
+        function parseTJA() {
+            const lines = inputs.chart.value.split('\n');
+            const startBpm = parseFloat(inputs.bpm.value) || 120;
+            const offset = parseFloat(inputs.offset.value) || 0;
+            let currentTime = -offset;
+            let currentBpm = startBpm;
+            let currentScroll = 1.0;
+            let measureRatio = 1.0; // 4/4 = 1.0
+            
+            let parsedNotes = [];
+            let parsedClicks = [];
+
+            lines.forEach(line => {
+                line = line.trim();
+                if (!line) return;
+                if (line.startsWith('#')) {
+                    const parts = line.split(' ');
+                    const cmd = parts[0];
+                    const val = parseFloat(parts[1]);
+                    if (cmd === '#BPMCHANGE' && !isNaN(val)) currentBpm = val;
+                    if (cmd === '#SCROLL' && !isNaN(val)) currentScroll = val;
+                    if (cmd === '#MEASURE') {
+                        const frac = parts[1].split('/');
+                        if (frac.length === 2) measureRatio = parseFloat(frac[0]) / parseFloat(frac[1]);
+                    }
+                    return;
+                }
+                if (line.endsWith(',')) {
+                    // Note generation
+                    const data = line.slice(0, -1);
+                    const len = data.length;
+                    const measureTime = (60 / currentBpm) * 4 * measureRatio;
+                    
+                    if (len > 0) {
+                        const timePerChar = measureTime / len;
+                        for (let i = 0; i < len; i++) {
+                            const char = data[i];
+                            if (char !== '0') {
+                                let type = ['2','4'].includes(char) ? 'kat' : 'don';
+                                let color = type === 'don' ? '#ff4757' : '#3742fa';
+                                if (['5','6','7'].includes(char)) color = '#ffa502';
+                                parsedNotes.push({
+                                    time: currentTime + (i * timePerChar),
+                                    type: type, char: char, scroll: currentScroll, color: color, isBig: ['3','4'].includes(char), played: false
+                                });
+                            }
+                        }
+                    }
+
+                    // Metronome generation (Quarter notes based on Measure)
+                    // beatsPerMeasure = 4 * measureRatio. e.g. 4/4->4, 3/4->3
+                    const beatsPerMeasure = 4 * measureRatio;
+                    const timePerBeat = 60 / currentBpm;
+                    
+                    for(let b = 0; b < beatsPerMeasure; b++) {
+                        // Prevent adding clicks that go beyond this measure's duration (simple safeguard)
+                        if (b * timePerBeat < measureTime) {
+                            parsedClicks.push({
+                                time: currentTime + (b * timePerBeat),
+                                type: b === 0 ? 'metro_high' : 'metro_low',
+                                played: false
+                            });
+                        }
+                    }
+
+                    currentTime += measureTime;
+                }
+            });
+            return { notes: parsedNotes, clicks: parsedClicks };
+        }
+
+        function loop() {
+            if (!isPlaying) return;
+            
+            // Draw BG
+            ctx.fillStyle = '#222';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.fillStyle = '#444';
+            ctx.fillRect(0, Y_POS - 30, canvas.width, 60);
+            
+            // Draw Hit Point
+            ctx.beginPath();
+            ctx.arc(HIT_X, Y_POS, 26, 0, Math.PI * 2);
+            ctx.strokeStyle = '#fff';
+            ctx.lineWidth = 3;
+            ctx.stroke();
+
+            const now = audioCtx.currentTime - startTime;
+            const data = window.currentData;
+
+            // Process Metronome
+            if (isMetroOn) {
+                data.clicks.forEach(click => {
+                    if (click.time <= now && !click.played) {
+                        click.played = true;
+                        // Avoid playing if too old (e.g. at start)
+                        if (now - click.time < 0.1) playSound(click.type);
+                    }
+                });
+            }
+
+            // Process Notes
+            data.notes.forEach(note => {
+                const timeDiff = note.time - now;
+                const x = HIT_X + (timeDiff * BASE_SPEED * note.scroll);
+                
+                // Audio Hit
+                if (timeDiff <= 0 && !note.played) {
+                    note.played = true;
+                    if (['1','2','3','4'].includes(note.char)) {
+                        playSound(note.type);
+                        ctx.fillStyle = '#fff';
+                        ctx.beginPath();
+                        ctx.arc(HIT_X, Y_POS, 22, 0, Math.PI * 2);
+                        ctx.fill();
+                    }
+                }
+                
+                // Draw
+                if (x > -50 && x < canvas.width + 50) {
+                    ctx.beginPath();
+                    let radius = note.isBig ? 22 : 15;
+                    ctx.arc(x, Y_POS, radius, 0, Math.PI * 2);
+                    ctx.fillStyle = note.color;
+                    ctx.fill();
+                    ctx.strokeStyle = '#fff';
+                    ctx.lineWidth = 2;
+                    ctx.stroke();
+                }
+            });
+
+            // Auto stop
+            const lastNoteTime = data.notes.length ? data.notes[data.notes.length-1].time : 0;
+            if (data.notes.length > 0 && now > lastNoteTime + 2) {
+                stopPreview();
+                return;
+            }
+            animationId = requestAnimationFrame(loop);
+        }
+
+        function startPreview() {
+            initAudio();
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+            stopPreview();
+
+            window.currentData = parseTJA();
+            if (window.currentData.notes.length === 0) return;
+
+            startTime = audioCtx.currentTime + 0.1;
+            isPlaying = true;
+
+            if (musicBuffer) {
+                musicSource = audioCtx.createBufferSource();
+                musicSource.buffer = musicBuffer;
+                const musicGain = audioCtx.createGain();
+                musicGain.gain.value = 0.7; 
+                musicSource.connect(musicGain);
+                musicGain.connect(audioCtx.destination);
+                musicSource.start(startTime);
+            }
+            loop();
+            btnPlay.disabled = true;
+        }
+
+        function stopPreview() {
+            isPlaying = false;
+            cancelAnimationFrame(animationId);
+            if (musicSource) { try { musicSource.stop(); } catch(e){} musicSource = null; }
+            ctx.fillStyle = '#222';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            btnPlay.disabled = musicBuffer ? false : true;
+        }
+
+        updateTjaText();
+    </script>
+</body>
+</html>
