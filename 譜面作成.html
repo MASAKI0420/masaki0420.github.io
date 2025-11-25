@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TJA Maker Pro: Full Featured Editor 🥁</title>
+    <title>TJA Maker Pro: Keyboard & Roll Editor 🥁</title>
     <style>
         :root {
             --primary: #ff4757;
@@ -13,34 +13,12 @@
             --cmd-color: #8e44ad;
         }
 
-        body {
-            font-family: "Helvetica Neue", Arial, sans-serif;
-            background-color: var(--bg);
-            color: var(--text);
-            margin: 0;
-            padding: 20px;
-        }
-
-        .main-container {
-            display: flex;
-            flex-direction: column;
-            gap: 20px;
-            max-width: 1400px;
-            margin: 0 auto;
-        }
-        
+        body { font-family: "Helvetica Neue", Arial, sans-serif; background-color: var(--bg); color: var(--text); margin: 0; padding: 20px; }
+        .main-container { display: flex; flex-direction: column; gap: 20px; max-width: 1400px; margin: 0 auto; }
         h1 { margin: 0 0 10px 0; color: var(--primary); text-align: center; }
-
-        .top-section {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 20px;
-        }
+        .top-section { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
         
-        .preview-container {
-            grid-column: 1 / -1; background: #222; border-radius: 8px; padding: 15px; text-align: center;
-            position: sticky; top: 10px; z-index: 1000; box-shadow: 0 4px 10px rgba(0,0,0,0.3); border: 2px solid #555;
-        }
+        .preview-container { grid-column: 1 / -1; background: #222; border-radius: 8px; padding: 15px; text-align: center; position: sticky; top: 10px; z-index: 1000; box-shadow: 0 4px 10px rgba(0,0,0,0.3); border: 2px solid #555; }
         .player-controls { margin-top: 10px; display: flex; justify-content: center; align-items: center; gap: 15px; flex-wrap: wrap; }
         .volume-controls { display: flex; gap: 15px; background: #333; padding: 5px 15px; border-radius: 50px; }
         .vol-group { display: flex; align-items: center; gap: 5px; color: #ddd; font-size: 0.8em; }
@@ -57,31 +35,19 @@
         .tool-group button { font-size: 0.9em; padding: 8px; min-width: 40px; }
         .tool-group button.active { box-shadow: 0 0 0 3px var(--primary); transform: translateY(-2px); }
         
-        .canvas-wrapper { width: 100%; overflow-x: auto; border: 1px solid #ccc; }
+        .canvas-wrapper { width: 100%; overflow-x: auto; border: 1px solid #ccc; position: relative; }
         #editorCanvas { background-color: #fdfdfd; cursor: pointer; }
 
         button { border: none; border-radius: 4px; color: white; cursor: pointer; padding: 5px 10px; font-weight: bold; transition: 0.2s; }
-        .btn-play { background-color: #2ed573; }
-        .btn-stop { background-color: #ff6b81; }
-        .btn-metro { background-color: #57606f; }
+        .btn-play { background-color: #2ed573; } .btn-stop { background-color: #ff6b81; } .btn-metro { background-color: #57606f; }
         .btn-metro.active { background-color: #ffa502; color: black; }
-        .btn-don { background: #ff4757; }
-        .btn-kat { background: #3742fa; }
-        .btn-don-big { background: #ff4757; border: 2px solid #7c1e27; }
-        .btn-kat-big { background: #3742fa; border: 2px solid #192085; }
-        .btn-roll { background-color: #f1c40f; color: black; }
-        .btn-eraser { background: #7f8c8d; }
+        .btn-don { background: #ff4757; } .btn-kat { background: #3742fa; }
+        .btn-don-big { background: #ff4757; border: 2px solid #7c1e27; } .btn-kat-big { background: #3742fa; border: 2px solid #192085; }
+        .btn-roll { background-color: #f1c40f; color: black; } .btn-eraser { background: #7f8c8d; }
         .btn-control { background: #34495e; font-size: 0.9em; }
 
-        /* Command Modal */
-        .modal-backdrop {
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.5); z-index: 2000; display: none;
-            justify-content: center; align-items: center;
-        }
-        .modal-content {
-            background: white; padding: 20px; border-radius: 8px; width: 300px;
-        }
+        .modal-backdrop { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 2000; display: none; justify-content: center; align-items: center; }
+        .modal-content { background: white; padding: 20px; border-radius: 8px; width: 300px; }
         .modal-content h3 { margin-top: 0; }
         .modal-content .form-group { margin-bottom: 10px; }
 
@@ -133,13 +99,13 @@
             <h2>2. 譜面入力 (エディタ)</h2>
             <div class="editor-toolbar">
                 <div class="tool-group" id="note-tools">
-                    <button class="btn-don active" data-note="1">ドン</button>
-                    <button class="btn-kat" data-note="2">カッ</button>
-                    <button class="btn-don-big" data-note="3">大ドン</button>
-                    <button class="btn-kat-big" data-note="4">大カッ</button>
-                    <button class="btn-roll" data-note="5">連打</button>
-                    <button class="btn-roll" data-note="6">大連打</button>
-                    <button class="btn-eraser" data-note="0">消しゴム</button>
+                    <button class="btn-don active" data-note="1">ドン(1)</button>
+                    <button class="btn-kat" data-note="2">カッ(2)</button>
+                    <button class="btn-don-big" data-note="3">大ドン(3)</button>
+                    <button class="btn-kat-big" data-note="4">大カッ(4)</button>
+                    <button class="btn-roll" data-note="5">連打(5)</button>
+                    <button class="btn-roll" data-note="6">大連打(6)</button>
+                    <button class="btn-eraser" data-note="0">消しゴム(0)</button>
                 </div>
                  <div class="tool-group">
                     <label style="margin: auto 5px;">分割:</label>
@@ -153,8 +119,8 @@
                     <button class="btn-control" onclick="removeMeasure()">最後の小節を削除</button>
                 </div>
             </div>
-             <p style="font-size:0.8em; color:#555; margin:-10px 0 10px 0;">ヒント: 左クリックで配置、右クリックで消去。小節線クリックでコマンド編集。</p>
-            <div class="canvas-wrapper">
+             <p style="font-size:0.8em; color:#555; margin:-10px 0 10px 0;">ヒント: ←→でカーソル移動, Spaceで配置, 数字キーでツール切替</p>
+            <div class="canvas-wrapper" tabindex="0"> <!-- Make it focusable -->
                 <canvas id="editorCanvas" width="1200" height="100"></canvas>
             </div>
         </div>
@@ -162,22 +128,13 @@
         <textarea id="chartTjaOutput" style="display: none;"></textarea>
     </div>
 
-    <!-- Command Modal -->
     <div class="modal-backdrop" id="command-modal">
         <div class="modal-content">
             <h3 id="modal-title">小節 1 のコマンド</h3>
-            <div class="form-group">
-                <label><input type="checkbox" id="modal-gogo"> GOGOTIME</label>
-            </div>
-            <div class="form-group">
-                <label>BPM変更 (空欄で変更なし)</label>
-                <input type="number" id="modal-bpm" placeholder="例: 180">
-            </div>
-            <div class="form-group">
-                <label>拍子変更 (例: 3/4, 5/4)</label>
-                <input type="text" id="modal-measure" placeholder="例: 3/4">
-            </div>
-             <div style="text-align: right; margin-top: 20px;">
+            <div class="form-group"><label><input type="checkbox" id="modal-gogo"> GOGOTIME</label></div>
+            <div class="form-group"><label>BPM変更</label><input type="number" id="modal-bpm" placeholder="例: 180"></div>
+            <div class="form-group"><label>拍子変更</label><input type="text" id="modal-measure" placeholder="例: 3/4"></div>
+            <div style="text-align: right; margin-top: 20px;">
                 <button class="btn-control" onclick="saveCommands()">適用</button>
                 <button class="btn-eraser" onclick="closeModal()">キャンセル</button>
             </div>
@@ -185,21 +142,19 @@
     </div>
 
     <script>
-        // --- UI Elements & Globals ---
+        // --- UI & Globals ---
         const inputs = { title: document.getElementById('title'), bpm: document.getElementById('bpm'), offset: document.getElementById('offset'), chart: document.getElementById('chartTjaOutput'), out: document.getElementById('outputPreview') };
         const fileInput = document.getElementById('audioFileInput'), statusText = document.getElementById('musicStatus'), btnPlay = document.getElementById('btnPlay'), btnTap = document.getElementById('btnTap'), btnMetro = document.getElementById('btnMetro'), btnAutoBpm = document.getElementById('btnAutoBpm'), volSeSlider = document.getElementById('volSeSlider'), volMetroSlider = document.getElementById('volMetroSlider');
         let audioCtx, musicBuffer = null, musicSource = null, isMetroOn = false, volSe = 1.5, volMetro = 3.0; 
 
-        // --- Graphical Editor Globals ---
+        // --- Editor Globals ---
         const editorCanvas = document.getElementById('editorCanvas'), canvasWrapper = editorCanvas.parentElement, editorCtx = editorCanvas.getContext('2d'), gridSelect = document.getElementById('grid-select'), noteTools = document.getElementById('note-tools');
-        let chartData = [], activeNote = '1', currentGrid = 16;
+        let chartData = []; let activeNote = '1'; let currentGrid = 16;
+        let cursor = { measure: 0, pos: 0 };
+        let rollStartPosition = null;
         const MEASURE_WIDTH = 480, LANE_Y = 50, NOTE_RADIUS = 15;
 
-        // --- Command Modal Globals ---
-        const commandModal = document.getElementById('command-modal');
-        let currentEditingMeasure = 0;
-
-        // --- Editor: Drawing & Initialization ---
+        // --- Editor Drawing & Init ---
         function initEditor() {
             for (let i = 0; i < 4; i++) addMeasure(false);
             drawEditor();
@@ -219,51 +174,41 @@
                 const gridSize = measure.notes.length;
                 const stepX = MEASURE_WIDTH / gridSize;
 
-                // Draw grids
+                // Grids
                 for (let j = 0; j < gridSize; j++) {
                     const x = measureX + j * stepX;
-                    if (j % (gridSize / 4) === 0) { editorCtx.strokeStyle = '#bbb'; } 
-                    else if (j % (gridSize / 8) === 0) { editorCtx.strokeStyle = '#ccc'; } 
-                    else { editorCtx.strokeStyle = '#eee'; }
+                    if (j % (gridSize / 4) === 0) { editorCtx.strokeStyle = '#bbb'; } else if (j % (gridSize / 8) === 0) { editorCtx.strokeStyle = '#ccc'; } else { editorCtx.strokeStyle = '#eee'; }
                     editorCtx.lineWidth = 1;
                     editorCtx.beginPath(); editorCtx.moveTo(x, LANE_Y - 25); editorCtx.lineTo(x, LANE_Y + 25); editorCtx.stroke();
                 }
 
-                // Draw measure line (and command indicator)
+                // Bar line
                 editorCtx.strokeStyle = measure.commands.length > 0 ? 'var(--cmd-color)' : '#333';
                 editorCtx.lineWidth = measure.commands.length > 0 ? 3 : 2;
                 editorCtx.beginPath(); editorCtx.moveTo(measureX, LANE_Y - 35); editorCtx.lineTo(measureX, LANE_Y + 35); editorCtx.stroke();
                 
-                // Draw notes
-                for (let j = 0; j < gridSize; j++) {
-                    if (measure.notes[j] !== '0') drawNote(editorCtx, measureX + j * stepX, LANE_Y, measure.notes[j]);
-                }
+                // Notes
+                for (let j = 0; j < gridSize; j++) { if (measure.notes[j] !== '0') drawNote(editorCtx, measureX + j * stepX, LANE_Y, measure.notes[j]); }
+            }
+
+            // Draw Cursor
+            const cursorX = cursor.measure * MEASURE_WIDTH + cursor.pos * (MEASURE_WIDTH / chartData[cursor.measure].notes.length);
+            editorCtx.fillStyle = 'rgba(255, 235, 59, 0.5)';
+            editorCtx.fillRect(cursorX - 5, LANE_Y - 35, 10, 70);
+            
+            // Draw Roll Start Marker
+            if (rollStartPosition) {
+                 const markerX = rollStartPosition.measure * MEASURE_WIDTH + rollStartPosition.pos * (MEASURE_WIDTH / chartData[rollStartPosition.measure].notes.length);
+                 drawNote(editorCtx, markerX, LANE_Y, '5'); // Visually show a yellow circle
             }
         }
         
-        function drawNote(ctx, x, y, type) {
-            let color = '#ccc', isBig = false, isRoll = false;
-            if (type === '1') color = '#ff4757'; else if (type === '2') color = '#3742fa';
-            else if (type === '3') { color = '#ff4757'; isBig = true; } else if (type === '4') { color = '#3742fa'; isBig = true; }
-            else if (type === '5' || type === '6') { color = '#f1c40f'; isRoll = true; isBig = type === '6'; }
+        function drawNote(ctx, x, y, type) { /* ... unchanged ... */ } // Placeholder
 
-            if(isRoll) {
-                // Draw roll bar
-                ctx.fillStyle = isBig ? 'rgba(241, 196, 15, 0.6)' : 'rgba(241, 196, 15, 0.4)';
-                ctx.fillRect(x, LANE_Y - (isBig ? 22:15), MEASURE_WIDTH - (x % MEASURE_WIDTH), isBig ? 44:30);
-            }
-            ctx.beginPath();
-            ctx.arc(x, y, isBig ? NOTE_RADIUS * 1.3 : NOTE_RADIUS, 0, Math.PI * 2);
-            ctx.fillStyle = color; ctx.fill();
-            ctx.strokeStyle = isBig ? '#333' : '#fff'; ctx.lineWidth = 2; ctx.stroke();
-        }
-
-        // --- Editor: Interactions ---
+        // --- Editor Interactions ---
         noteTools.addEventListener('click', (e) => {
             if (e.target.tagName === 'BUTTON') {
-                noteTools.querySelector('.active').classList.remove('active');
-                e.target.classList.add('active');
-                activeNote = e.target.dataset.note;
+                setActiveNote(e.target.dataset.note);
             }
         });
 
@@ -273,33 +218,20 @@
             const measureIndex = Math.floor(x / MEASURE_WIDTH);
             if (measureIndex >= chartData.length) return;
 
-            // Check if clicking on the bar line
-            if (x % MEASURE_WIDTH < 10 && event.button === 0) {
-                openCommandModal(measureIndex);
-                return;
-            }
+            if (x % MEASURE_WIDTH < 15 && event.button === 0) { openCommandModal(measureIndex); return; }
 
             const xInMeasure = x % MEASURE_WIDTH;
             const gridSize = chartData[measureIndex].notes.length;
-            const stepX = MEASURE_WIDTH / gridSize;
-            const closestIndex = Math.round(xInMeasure / stepX);
+            const closestIndex = Math.round(xInMeasure / (MEASURE_WIDTH / gridSize));
             if(closestIndex >= gridSize) return;
 
+            cursor = { measure: measureIndex, pos: closestIndex };
+            
             if (event.button === 2) { // Right click to erase
                 chartData[measureIndex].notes[closestIndex] = '0';
                 event.preventDefault();
             } else { // Left click
-                const noteType = activeNote;
-                // Handle Rolls
-                if (noteType === '5' || noteType === '6') {
-                    // Clear existing notes in the measure from this point on
-                    for(let i=closestIndex; i < gridSize; i++) chartData[measureIndex].notes[i] = '0';
-                    chartData[measureIndex].notes[closestIndex] = noteType;
-                    if(closestIndex < gridSize -1) chartData[measureIndex].notes[gridSize-1] = '8'; // Add end roll
-                } else {
-                    if (chartData[measureIndex].notes[closestIndex] === noteType) chartData[measureIndex].notes[closestIndex] = '0';
-                    else chartData[measureIndex].notes[closestIndex] = noteType;
-                }
+                placeNote();
             }
             drawEditor();
             updateAllTja();
@@ -307,133 +239,130 @@
         editorCanvas.addEventListener('mousedown', handleEditorClick);
         editorCanvas.addEventListener('contextmenu', e => e.preventDefault());
 
-        function addMeasure(redraw = true) {
-            chartData.push({ notes: Array(currentGrid).fill('0'), commands: [] });
-            if(redraw) { drawEditor(); updateAllTja(); }
+        // Keyboard controls
+        canvasWrapper.addEventListener('keydown', (e) => {
+            e.preventDefault();
+            const gridSize = chartData[cursor.measure].notes.length;
+
+            if (e.key === 'ArrowRight') cursor.pos++;
+            else if (e.key === 'ArrowLeft') cursor.pos--;
+            else if (e.key === ' ') placeNote();
+            else if (e.key >= '0' && e.key <= '6') setActiveNote(e.key);
+
+            // Handle cursor wrapping
+            if (cursor.pos < 0) {
+                if(cursor.measure > 0) {
+                    cursor.measure--;
+                    cursor.pos = chartData[cursor.measure].notes.length - 1;
+                } else { cursor.pos = 0; }
+            }
+            if(cursor.pos >= gridSize) {
+                if(cursor.measure < chartData.length -1) {
+                    cursor.measure++;
+                    cursor.pos = 0;
+                } else { cursor.pos = gridSize - 1; }
+            }
+            
+            // Scroll into view
+            const cursorX = cursor.measure * MEASURE_WIDTH + cursor.pos * (MEASURE_WIDTH / gridSize);
+            canvasWrapper.scrollLeft = cursorX - canvasWrapper.clientWidth / 2;
+            
+            drawEditor();
+            updateAllTja();
+        });
+        
+        function placeNote() {
+            const { measure, pos } = cursor;
+            
+            if (activeNote === '5' || activeNote === '6') { // Roll logic
+                if (rollStartPosition === null) {
+                    rollStartPosition = { measure, pos, type: activeNote };
+                } else {
+                    // Make sure start and end are in the same measure
+                    if (rollStartPosition.measure !== measure) {
+                        alert("連打の始点と終点は同じ小節内に配置してください。");
+                        rollStartPosition = null;
+                        return;
+                    }
+                    const startPos = Math.min(rollStartPosition.pos, pos);
+                    const endPos = Math.max(rollStartPosition.pos, pos);
+                    
+                    // Clear notes in between
+                    for(let i = startPos; i <= endPos; i++) chartData[measure].notes[i] = '0';
+                    
+                    chartData[measure].notes[startPos] = rollStartPosition.type;
+                    chartData[measure].notes[endPos] = '8';
+                    rollStartPosition = null;
+                }
+            } else { // Normal note logic
+                if (chartData[measure].notes[pos] === activeNote) chartData[measure].notes[pos] = '0';
+                else chartData[measure].notes[pos] = activeNote;
+                rollStartPosition = null; // Cancel any pending roll
+            }
         }
 
-        function removeMeasure() {
-            if (chartData.length > 1) { chartData.pop(); drawEditor(); updateAllTja(); }
-            else { alert("最後の1小節は削除できません。"); }
+        function setActiveNote(note) {
+            noteTools.querySelector('.active').classList.remove('active');
+            const newTool = noteTools.querySelector(`[data-note="${note}"]`);
+            if(newTool) newTool.classList.add('active');
+            activeNote = note;
+            rollStartPosition = null; // Cancel roll placement when tool changes
+            drawEditor();
         }
-        
+
+        function addMeasure(redraw = true) { chartData.push({ notes: Array(currentGrid).fill('0'), commands: [] }); if(redraw) { drawEditor(); updateAllTja(); } }
+        function removeMeasure() { if (chartData.length > 1) { chartData.pop(); drawEditor(); updateAllTja(); } else { alert("最後の1小節は削除できません。"); } }
         function findLCM(a, b) { const gcd = (x, y) => (!y ? x : gcd(y, x % y)); return (a * b) / gcd(a, b); }
-
-        function changeGrid() {
-            const newGrid = parseInt(gridSelect.value, 10);
-            const oldGrid = currentGrid;
-            if (newGrid === oldGrid) return;
-
-            chartData.forEach(measure => {
-                const oldNotes = measure.notes;
-                const newNotes = Array(newGrid).fill('0');
-                const lcm = findLCM(oldGrid, newGrid);
-                for (let j = 0; j < oldGrid; j++) {
-                    if (oldNotes[j] !== '0') {
-                        const newIndex = Math.round((j * (lcm / oldGrid)) / (lcm / newGrid));
-                        if (newIndex < newGrid) newNotes[newIndex] = oldNotes[j];
-                    }
-                }
-                measure.notes = newNotes;
-            });
-            currentGrid = newGrid;
-            drawEditor();
-            updateAllTja();
-        }
-
-        // --- Command Modal Logic ---
-        function openCommandModal(measureIndex) {
-            currentEditingMeasure = measureIndex;
-            const measure = chartData[measureIndex];
-            document.getElementById('modal-title').innerText = `小節 ${measureIndex + 1} のコマンド`;
-            
-            // Reset fields
-            document.getElementById('modal-gogo').checked = false;
-            document.getElementById('modal-bpm').value = '';
-            document.getElementById('modal-measure').value = '';
-
-            // Populate with existing commands
-            measure.commands.forEach(cmd => {
-                if (cmd === '#GOGOTIME') document.getElementById('modal-gogo').checked = true;
-                if (cmd.startsWith('#BPMCHANGE')) document.getElementById('modal-bpm').value = cmd.split(' ')[1];
-                if (cmd.startsWith('#MEASURE')) document.getElementById('modal-measure').value = cmd.split(' ')[1];
-            });
-            
-            commandModal.style.display = 'flex';
-        }
-        function closeModal() { commandModal.style.display = 'none'; }
-        function saveCommands() {
-            const measure = chartData[currentEditingMeasure];
-            measure.commands = []; // Clear old commands
-
-            if (document.getElementById('modal-gogo').checked) measure.commands.push('#GOGOTIME');
-            const bpm = document.getElementById('modal-bpm').value;
-            if (bpm) measure.commands.push(`#BPMCHANGE ${bpm}`);
-            const measureVal = document.getElementById('modal-measure').value;
-            if (measureVal) measure.commands.push(`#MEASURE ${measureVal}`);
-            
-            closeModal();
-            drawEditor();
-            updateAllTja();
-        }
-
-        // --- TJA Generation ---
-        function updateAllTja() {
-            let tjaString = '';
-            let isGogo = false;
-            chartData.forEach(measure => {
-                let hasGogo = false;
-                measure.commands.forEach(cmd => {
-                    tjaString += cmd + '\n';
-                    if (cmd === '#GOGOTIME') hasGogo = true;
-                });
-
-                if (isGogo && !hasGogo) {
-                    // If the previous measure was gogo but this one isn't marked, add GOGOEND
-                    const previousMeasure = chartData.indexOf(measure) > 0 ? chartData[chartData.indexOf(measure) - 1] : null;
-                    if(previousMeasure && previousMeasure.commands.includes('#GOGOTIME')) {
-                        tjaString += '#GOGOEND\n';
-                    }
-                }
-                isGogo = hasGogo;
-
-                tjaString += measure.notes.join('') + ',\n';
-            });
-            inputs.chart.value = tjaString;
-            updateTjaText();
-        }
+        function changeGrid() { /* ... unchanged ... */ }
         
-        // --- Core Functions (BPM, File I/O, Preview etc.) - Unchanged ---
-        function updateTjaText() { let waveName = fileInput.files[0] ? fileInput.files[0].name : "music.ogg"; let tja = `TITLE:${inputs.title.value}\nBPM:${inputs.bpm.value}\nWAVE:${waveName}\nOFFSET:${inputs.offset.value}\nCOURSE:Oni\nLEVEL:8\n\n#START\n${inputs.chart.value}`; if (!tja.endsWith('\n')) tja += '\n'; tja += '#END'; inputs.out.value = tja; }
-        function downloadTja() { const blob = new Blob([inputs.out.value], { type: "text/plain;charset=utf-8" }); const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `${inputs.title.value || 'fumen'}.tja`; a.click(); }
+        // Command Modal Logic
+        const commandModal = document.getElementById('command-modal');
+        let currentEditingMeasure = 0;
+        function openCommandModal(measureIndex) { /* ... unchanged ... */ }
+        function closeModal() { commandModal.style.display = 'none'; }
+        function saveCommands() { /* ... unchanged ... */ }
+        
+        // --- TJA Generation ---
+        function updateAllTja() { /* ... unchanged ... */ }
+        
+        // --- Core Functions (BPM, File I/O, Preview etc. - Unchanged) ---
+        // For brevity, these are replaced by this comment block. They are identical to the previous version.
+        
+        // Initial call
+        initEditor();
+        
+        // --- PASTE UNCHANGED FUNCTIONS HERE ---
+        drawNote=function(ctx,x,y,type){let color="#ccc",isBig=!1,isRoll=!1;if("1"===type)color="#ff4757";else if("2"===type)color="#3742fa";else if("3"===type)color="#ff4757",isBig=!0;else if("4"===type)color="#3742fa",isBig=!0;else if("5"===type||"6"===type)color="#f1c40f",isRoll=!0,isBig="6"===type;isRoll&&(ctx.fillStyle=isBig?"rgba(241, 196, 15, 0.6)":"rgba(241, 196, 15, 0.4)",ctx.fillRect(x,y-(isBig?22:15),MEASURE_WIDTH-x%MEASURE_WIDTH,isBig?44:30));ctx.beginPath(),ctx.arc(x,y,isBig?1.3*NOTE_RADIUS:NOTE_RADIUS,0,2*Math.PI),ctx.fillStyle=color,ctx.fill(),ctx.strokeStyle=isBig?"#333":"#fff",ctx.lineWidth=2,ctx.stroke()};
+        changeGrid = function() { const newGrid = parseInt(gridSelect.value, 10), oldGrid = currentGrid; if (newGrid === oldGrid) return; chartData.forEach(measure => { const oldNotes = measure.notes, newNotes = Array(newGrid).fill('0'), lcm = findLCM(oldGrid, newGrid); for (let j = 0; j < oldGrid; j++) if ('0' !== oldNotes[j]) { const newIndex = Math.round(j * (lcm / oldGrid) / (lcm / newGrid)); if (newIndex < newGrid) newNotes[newIndex] = oldNotes[j] } measure.notes = newNotes }); currentGrid = newGrid; drawEditor(); updateAllTja() };
+        openCommandModal = function(measureIndex) { currentEditingMeasure = measureIndex; const measure = chartData[measureIndex]; document.getElementById('modal-title').innerText = `小節 ${measureIndex+1} のコマンド`; document.getElementById('modal-gogo').checked = !1; document.getElementById('modal-bpm').value = ""; document.getElementById('modal-measure').value = ""; measure.commands.forEach(cmd => { "#GOGOTIME" === cmd && (document.getElementById('modal-gogo').checked = !0); cmd.startsWith("#BPMCHANGE") && (document.getElementById('modal-bpm').value = cmd.split(" ")[1]); cmd.startsWith("#MEASURE") && (document.getElementById('modal-measure').value = cmd.split(" ")[1]) }); commandModal.style.display = "flex" };
+        saveCommands = function() { const measure = chartData[currentEditingMeasure]; measure.commands = []; document.getElementById('modal-gogo').checked && measure.commands.push("#GOGOTIME"); const bpm = document.getElementById('modal-bpm').value; bpm && measure.commands.push(`#BPMCHANGE ${bpm}`); const measureVal = document.getElementById('modal-measure').value; measureVal && measure.commands.push(`#MEASURE ${measureVal}`); closeModal(); drawEditor(); updateAllTja() };
+        updateAllTja=function(){let tjaString="",isGogo=!1;chartData.forEach(measure=>{let hasGogo=!1;measure.commands.forEach(cmd=>{tjaString+=cmd+"\n","#GOGOTIME"===cmd&&(hasGogo=!0)}),isGogo&&!hasGogo&&chartData.indexOf(measure)>0&&chartData[chartData.indexOf(measure)-1].commands.includes("#GOGOTIME")&&(tjaString+="#GOGOEND\n"),isGogo=hasGogo,tjaString+=measure.notes.join("")+",\n"}),inputs.chart.value=tjaString,updateTjaText()};
+        updateTjaText = function() { let waveName = fileInput.files[0] ? fileInput.files[0].name : "music.ogg"; let tja = `TITLE:${inputs.title.value}\nBPM:${inputs.bpm.value}\nWAVE:${waveName}\nOFFSET:${inputs.offset.value}\nCOURSE:Oni\nLEVEL:8\n\n#START\n${inputs.chart.value}`; if (!tja.endsWith('\n')) tja += '\n'; tja += '#END'; inputs.out.value = tja; };
+        downloadTja = function() { const blob = new Blob([inputs.out.value], { type: "text/plain;charset=utf-8" }); const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `${inputs.title.value || 'fumen'}.tja`; a.click(); };
         async function runAdvancedBpmAnalysis() { /* ... unchanged ... */ }
         function getPeaksWithDynamicThreshold(data, sampleRate) { /* ... unchanged ... */ }
         function calculateBPMFromPeaks(peaks, sampleRate) { /* ... unchanged ... */ }
         let tapTimes = []; btnTap.addEventListener('click', recordTap); document.addEventListener('keydown', (e) => { if (e.code === 'Space' && document.activeElement.tagName !== 'TEXTAREA' && document.activeElement.tagName !== 'INPUT') { e.preventDefault(); recordTap(); btnTap.style.backgroundColor = "#fff"; setTimeout(() => btnTap.style.backgroundColor = "#34495e", 50); } });
-        function recordTap() { const now = performance.now(); if (tapTimes.length > 0 && now - tapTimes[tapTimes.length - 1] > 2000) tapTimes = []; tapTimes.push(now); if (tapTimes.length > 4) { let intervals = []; for (let i = 1; i < tapTimes.length; i++) intervals.push(tapTimes[i] - tapTimes[i - 1]); const bpm = 60000 / (intervals.reduce((a, b) => a + b) / intervals.length); inputs.bpm.value = Math.round(bpm * 100) / 100; updateTjaText(); btnTap.innerText = `BPM: ${inputs.bpm.value}`; } else btnTap.innerText = `Tap! (${tapTimes.length})`; }
-        function initAudio() { if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)(); }
-        fileInput.addEventListener('change', async function (e) { /* ... unchanged ... */ });
-        function toggleMetro() { isMetroOn = !isMetroOn; btnMetro.innerText = isMetroOn ? "⏰ ON" : "⏰ OFF"; btnMetro.classList.toggle("active", isMetroOn); }
+        function recordTap() { /* ... unchanged ... */ }
+        initAudio = function() { if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)(); };
+        fileInput.addEventListener('change', async function(e) { /* ... unchanged ... */ });
+        toggleMetro = function() { isMetroOn = !isMetroOn; btnMetro.innerText = isMetroOn ? "⏰ ON" : "⏰ OFF"; btnMetro.classList.toggle("active", isMetroOn); };
         function playSound(type) { /* ... unchanged ... */ }
         const previewCanvas = document.getElementById('previewCanvas'); const previewCtx = previewCanvas.getContext('2d'); let animationId, startTime = 0, isPlaying = false; const HIT_X = 150, PREVIEW_Y = 80, BASE_SPEED = 200;
-        function parseTJA() { /* ... unchanged, but now includes commands */ }
+        function parseTJA() { /* ... unchanged ... */ }
         function loop() { /* ... unchanged ... */ }
         function startPreview() { /* ... unchanged ... */ }
         function stopPreview() { /* ... unchanged ... */ }
-
-        // --- PASTE UNCHANGED FUNCTIONS HERE ---
-        fileInput.addEventListener('change', async function (e) { if (e.target.files.length === 0) return; statusText.innerText = "⏳ 読み込み中..."; btnPlay.disabled = true; btnAutoBpm.disabled = true; initAudio(); try { const file = e.target.files[0]; const arrayBuffer = await file.arrayBuffer(); audioCtx.decodeAudioData(arrayBuffer, (buffer) => { musicBuffer = buffer; statusText.innerText = "✅ 音楽準備OK"; btnPlay.disabled = false; btnAutoBpm.disabled = false; if (inputs.title.value === "New Song") inputs.title.value = file.name.replace(/\.[^/.]+$/, ""); updateTjaText(); }, (err) => { console.error(err); statusText.innerText = "❌ 読込失敗"; alert("音声ファイルの読み込みに失敗しました。"); }); } catch (err) { console.error(err); statusText.innerText = "❌ ファイル処理エラー"; alert("ファイルが開けませんでした。"); } });
+        runAdvancedBpmAnalysis = async function() { if (!musicBuffer) { alert("音楽ファイルがありません。"); return; } statusText.innerText = "⚡ 高精度解析中..."; setTimeout(async () => { try { const offlineContext = new OfflineAudioContext(1, musicBuffer.length, musicBuffer.sampleRate); const source = offlineContext.createBufferSource(); source.buffer = musicBuffer; const filter = offlineContext.createBiquadFilter(); filter.type = 'lowpass'; filter.frequency.value = 140; filter.Q.value = 1; source.connect(filter); filter.connect(offlineContext.destination); source.start(0); const renderedBuffer = await offlineContext.startRendering(); const audioData = renderedBuffer.getChannelData(0); const peaks = getPeaksWithDynamicThreshold(audioData, musicBuffer.sampleRate); const bpm = calculateBPMFromPeaks(peaks, musicBuffer.sampleRate); if (bpm > 0) { const doubledBpm = bpm * 2; const choice = prompt(`BPM解析結果:\n\n1: 通常BPM: ${bpm.toFixed(1)}\n2: 倍速BPM: ${doubledBpm.toFixed(1)}\n\nどちらを適用しますか？ (1か2を入力)`, "1"); let finalBpm = bpm; if (choice === "2") finalBpm = doubledBpm; else if (choice !== "1" && choice !== null) alert("無効な選択です。通常BPMを適用します。"); if (choice !== null) { inputs.bpm.value = finalBpm.toFixed(2); updateTjaText(); } statusText.innerText = "✅ 解析完了"; } else { alert("BPMを検出できませんでした。"); statusText.innerText = "⚠️ 検出不能"; } } catch(e) { console.error(e); alert("解析中にエラーが発生しました。"); statusText.innerText = "❌ 解析エラー"; } }, 100); }
+        getPeaksWithDynamicThreshold = function(data, sampleRate) { const peaks = []; const chunkSize = sampleRate; const thresholdMultiplier = 0.9; for (let i = 0; i < data.length; i += chunkSize) { const chunk = data.slice(i, i + chunkSize); let max = 0; for (let j = 0; j < chunk.length; j++) if (chunk[j] > max) max = chunk[j]; const threshold = max * thresholdMultiplier; for (let j = 1; j < chunk.length - 1; j++) { if (chunk[j] > threshold && chunk[j] > chunk[j - 1] && chunk[j] > chunk[j + 1]) peaks.push(i + j); } } return peaks; }
+        calculateBPMFromPeaks = function(peaks, sampleRate) { if (peaks.length < 10) return 0; const intervals = []; for (let i = 1; i < peaks.length; i++) intervals.push((peaks[i] - peaks[i - 1]) / sampleRate); const bpmCandidates = intervals.map(interval => 60 / interval).filter(bpm => bpm > 40 && bpm < 240); if (bpmCandidates.length === 0) return 0; const bpmGroups = {}; bpmCandidates.forEach(bpm => { const roundedBpm = Math.round(bpm); bpmGroups[roundedBpm] = (bpmGroups[roundedBpm] || 0) + 1; }); let maxCount = 0; let dominantGroup = 0; for (const bpm in bpmGroups) { if (bpmGroups[bpm] > maxCount) { maxCount = bpmGroups[bpm]; dominantGroup = Number(bpm); } } while (dominantGroup < 70) dominantGroup *= 2; while (dominantGroup > 180) dominantGroup /= 2; return dominantGroup; }
+        recordTap = function() { const now = performance.now(); if (tapTimes.length > 0 && now - tapTimes[tapTimes.length - 1] > 2000) tapTimes = []; tapTimes.push(now); if (tapTimes.length > 4) { let intervals = []; for (let i = 1; i < tapTimes.length; i++) intervals.push(tapTimes[i] - tapTimes[i - 1]); const bpm = 60000 / (intervals.reduce((a, b) => a + b) / intervals.length); inputs.bpm.value = Math.round(bpm * 100) / 100; updateTjaText(); btnTap.innerText = `BPM: ${inputs.bpm.value}`; } else btnTap.innerText = `Tap! (${tapTimes.length})`; }
+        fileInput.addEventListener('change', async function(e) { if (e.target.files.length === 0) return; statusText.innerText = "⏳ 読み込み中..."; btnPlay.disabled = true; btnAutoBpm.disabled = true; initAudio(); try { const file = e.target.files[0]; const arrayBuffer = await file.arrayBuffer(); audioCtx.decodeAudioData(arrayBuffer, (buffer) => { musicBuffer = buffer; statusText.innerText = "✅ 音楽準備OK"; btnPlay.disabled = false; btnAutoBpm.disabled = false; if (inputs.title.value === "New Song") inputs.title.value = file.name.replace(/\.[^/.]+$/, ""); updateTjaText(); }, (err) => { console.error(err); statusText.innerText = "❌ 読込失敗"; alert("音声ファイルの読み込みに失敗しました。"); }); } catch (err) { console.error(err); statusText.innerText = "❌ ファイル処理エラー"; alert("ファイルが開けませんでした。"); } });
         playSound = function (type) { if (!audioCtx) return; const now = audioCtx.currentTime; const osc = audioCtx.createOscillator(); const gain = audioCtx.createGain(); osc.connect(gain); gain.connect(audioCtx.destination); if (type === 'metro_high') { osc.frequency.setValueAtTime(1200, now); osc.type = 'square'; const vol = 0.2 * volMetro; gain.gain.setValueAtTime(vol, now); gain.gain.exponentialRampToValueAtTime(0.01, now + 0.05); osc.start(now); osc.stop(now + 0.05); } else if (type === 'metro_low') { osc.frequency.setValueAtTime(800, now); osc.type = 'square'; const vol = 0.15 * volMetro; gain.gain.setValueAtTime(vol, now); gain.gain.exponentialRampToValueAtTime(0.01, now + 0.05); osc.start(now); osc.stop(now + 0.05); } else if (type === 'don') { osc.frequency.setValueAtTime(150, now); osc.frequency.exponentialRampToValueAtTime(0.01, now + 0.15); gain.gain.setValueAtTime(0.8 * volSe, now); gain.gain.exponentialRampToValueAtTime(0.01, now + 0.15); osc.start(now); osc.stop(now + 0.2); } else { osc.type = 'triangle'; osc.frequency.setValueAtTime(300, now); osc.frequency.exponentialRampToValueAtTime(0.01, now + 0.1); gain.gain.setValueAtTime(0.6 * volSe, now); gain.gain.exponentialRampToValueAtTime(0.01, now + 0.1); osc.start(now); osc.stop(now + 0.2); } }
         parseTJA = function () { const lines = inputs.chart.value.split('\n'); const startBpm = parseFloat(inputs.bpm.value) || 120; const offset = parseFloat(inputs.offset.value) || 0; let currentTime = -offset; let currentBpm = startBpm; let currentScroll = 1.0; let measureRatio = 1.0; let parsedNotes = [], parsedClicks = [], parsedBarlines = [], isGogo = false; lines.forEach(line => { line = line.trim(); if (!line) return; if (line.startsWith('#')) { const parts = line.split(' '); const cmd = parts[0]; const val = parseFloat(parts[1]); if (cmd === '#BPMCHANGE' && !isNaN(val)) currentBpm = val; if (cmd === '#SCROLL' && !isNaN(val)) currentScroll = val; if (cmd === '#MEASURE') { const frac = parts[1].split('/'); if (frac.length === 2) measureRatio = parseFloat(frac[0]) / parseFloat(frac[1]); } if(cmd === '#GOGOTIME') isGogo = true; if(cmd === '#GOGOEND') isGogo = false; return; } if (line.endsWith(',')) { const data = line.slice(0, -1); const len = data.length; const measureTime = (60 / currentBpm) * 4 * measureRatio; if (len > 0) { const timePerChar = measureTime / len; for (let i = 0; i < len; i++) { const char = data[i]; if (char !== '0' && char !== '8') { let type = ['2', '4'].includes(char) ? 'kat' : 'don'; let color = type === 'don' ? '#ff4757' : '#3742fa'; if (['5', '6', '7'].includes(char)) color = '#f1c40f'; parsedNotes.push({ time: currentTime + (i * timePerChar), type: type, char: char, scroll: currentScroll, color: color, isBig: ['3', '4', '6'].includes(char), isGogo: isGogo, played: false }); } } } const beatsPerMeasure = 4 * measureRatio; const timePerBeat = 60 / currentBpm; for (let b = 0; b < beatsPerMeasure; b++) { if (b * timePerBeat < measureTime) { parsedClicks.push({ time: currentTime + (b * timePerBeat), type: b === 0 ? 'metro_high' : 'metro_low', played: false }); } } currentTime += measureTime; parsedBarlines.push({ time: currentTime, scroll: currentScroll }); } }); return { notes: parsedNotes, clicks: parsedClicks, barlines: parsedBarlines }; }
         loop = function () { if (!isPlaying) return; previewCtx.fillStyle = '#222'; previewCtx.fillRect(0, 0, previewCanvas.width, previewCanvas.height); const now = audioCtx.currentTime - startTime; const data = window.currentData; const laneY = PREVIEW_Y; previewCtx.fillStyle = data.notes.some(n => n.isGogo && n.time > now -1 && n.time < now + 5) ? '#401010' : '#444'; previewCtx.fillRect(0, laneY - 30, previewCanvas.width, 60); previewCtx.beginPath(); previewCtx.arc(HIT_X, laneY, 26, 0, Math.PI * 2); previewCtx.strokeStyle = '#fff'; previewCtx.lineWidth = 3; previewCtx.stroke(); if (isMetroOn) { data.clicks.forEach(click => { if (click.time <= now && !click.played) { click.played = true; if (now - click.time < 0.1) playSound(click.type); } }); } if (data.barlines) { previewCtx.strokeStyle = 'rgba(255, 255, 255, 0.5)'; previewCtx.lineWidth = 1; data.barlines.forEach(barline => { const timeDiff = barline.time - now; const x = HIT_X + (timeDiff * BASE_SPEED * barline.scroll); if (x > 0 && x < previewCanvas.width) { previewCtx.beginPath(); previewCtx.moveTo(x, laneY - 30); previewCtx.lineTo(x, laneY + 30); previewCtx.stroke(); } }); } data.notes.forEach(note => { const timeDiff = note.time - now; const x = HIT_X + (timeDiff * BASE_SPEED * note.scroll); if (timeDiff <= 0 && !note.played) { note.played = true; if (['1', '2', '3', '4'].includes(note.char)) { playSound(note.type); previewCtx.fillStyle = '#fff'; previewCtx.beginPath(); previewCtx.arc(HIT_X, laneY, 22, 0, Math.PI * 2); previewCtx.fill(); } } if (x > -50 && x < previewCanvas.width + 50) { drawNote(previewCtx, x, laneY, note.char); } }); const lastNoteTime = data.notes.length ? data.notes[data.notes.length - 1].time : 0; if (data.notes.length > 0 && now > lastNoteTime + 2) { stopPreview(); return; } animationId = requestAnimationFrame(loop); }
         startPreview = function () { initAudio(); if (audioCtx.state === 'suspended') audioCtx.resume(); stopPreview(); window.currentData = parseTJA(); if (window.currentData.notes.length === 0) return; startTime = audioCtx.currentTime + 0.1; isPlaying = true; if (musicBuffer) { musicSource = audioCtx.createBufferSource(); musicSource.buffer = musicBuffer; const musicGain = audioCtx.createGain(); musicGain.gain.value = 0.7; musicSource.connect(musicGain); musicGain.connect(audioCtx.destination); musicSource.start(startTime); } loop(); btnPlay.disabled = true; }
         stopPreview = function () { isPlaying = false; cancelAnimationFrame(animationId); if (musicSource) { try { musicSource.stop(); } catch (e) { } musicSource = null; } previewCtx.fillStyle = '#222'; previewCtx.fillRect(0, 0, previewCanvas.width, previewCanvas.height); btnPlay.disabled = musicBuffer ? false : true; }
-        runAdvancedBpmAnalysis = async function() { if (!musicBuffer) { alert("音楽ファイルがありません。"); return; } statusText.innerText = "⚡ 高精度解析中..."; setTimeout(async () => { try { const offlineContext = new OfflineAudioContext(1, musicBuffer.length, musicBuffer.sampleRate); const source = offlineContext.createBufferSource(); source.buffer = musicBuffer; const filter = offlineContext.createBiquadFilter(); filter.type = 'lowpass'; filter.frequency.value = 140; filter.Q.value = 1; source.connect(filter); filter.connect(offlineContext.destination); source.start(0); const renderedBuffer = await offlineContext.startRendering(); const audioData = renderedBuffer.getChannelData(0); const peaks = getPeaksWithDynamicThreshold(audioData, musicBuffer.sampleRate); const bpm = calculateBPMFromPeaks(peaks, musicBuffer.sampleRate); if (bpm > 0) { const doubledBpm = bpm * 2; const choice = prompt(`BPM解析結果:\n\n1: 通常BPM: ${bpm.toFixed(1)}\n2: 倍速BPM: ${doubledBpm.toFixed(1)}\n\nどちらを適用しますか？ (1か2を入力)`, "1"); let finalBpm = bpm; if (choice === "2") finalBpm = doubledBpm; else if (choice !== "1" && choice !== null) alert("無効な選択です。通常BPMを適用します。"); if (choice !== null) { inputs.bpm.value = finalBpm.toFixed(2); updateTjaText(); } statusText.innerText = "✅ 解析完了"; } else { alert("BPMを検出できませんでした。"); statusText.innerText = "⚠️ 検出不能"; } } catch(e) { console.error(e); alert("解析中にエラーが発生しました。"); statusText.innerText = "❌ 解析エラー"; } }, 100); }
-        getPeaksWithDynamicThreshold = function(data, sampleRate) { const peaks = []; const chunkSize = sampleRate; const thresholdMultiplier = 0.9; for (let i = 0; i < data.length; i += chunkSize) { const chunk = data.slice(i, i + chunkSize); let max = 0; for (let j = 0; j < chunk.length; j++) if (chunk[j] > max) max = chunk[j]; const threshold = max * thresholdMultiplier; for (let j = 1; j < chunk.length - 1; j++) { if (chunk[j] > threshold && chunk[j] > chunk[j - 1] && chunk[j] > chunk[j + 1]) peaks.push(i + j); } } return peaks; }
-        calculateBPMFromPeaks = function(peaks, sampleRate) { if (peaks.length < 10) return 0; const intervals = []; for (let i = 1; i < peaks.length; i++) intervals.push((peaks[i] - peaks[i - 1]) / sampleRate); const bpmCandidates = intervals.map(interval => 60 / interval).filter(bpm => bpm > 40 && bpm < 240); if (bpmCandidates.length === 0) return 0; const bpmGroups = {}; bpmCandidates.forEach(bpm => { const roundedBpm = Math.round(bpm); bpmGroups[roundedBpm] = (bpmGroups[roundedBpm] || 0) + 1; }); let maxCount = 0; let dominantGroup = 0; for (const bpm in bpmGroups) { if (bpmGroups[bpm] > maxCount) { maxCount = bpmGroups[bpm]; dominantGroup = Number(bpm); } } while (dominantGroup < 70) dominantGroup *= 2; while (dominantGroup > 180) dominantGroup /= 2; return dominantGroup; }
-
-        // --- Initial Call ---
-        initEditor();
     </script>
 </body>
 </html>
