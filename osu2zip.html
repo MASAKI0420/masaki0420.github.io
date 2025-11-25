@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>一括変換＆ダウンロードツール</title>
+    <style>
+        body {
+            font-family: "Helvetica Neue", Arial, sans-serif;
+            background-color: #f0f2f5;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            color: #333;
+        }
+        .container {
+            background: white;
+            padding: 2rem;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            text-align: center;
+            width: 90%;
+            max-width: 550px;
+        }
+        h1 {
+            font-size: 1.5rem;
+            margin-bottom: 1rem;
+            color: #2c3e50;
+        }
+        .drop-zone {
+            border: 3px dashed #cbd5e0;
+            border-radius: 8px;
+            padding: 2.5rem 1rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+            margin-bottom: 1rem;
+        }
+        .drop-zone:hover, .drop-zone.dragover {
+            border-color: #3182ce;
+            background-color: #ebf8ff;
+        }
+        .drop-zone input[type="file"] {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            opacity: 0;
+            cursor: pointer;
+        }
+        /* ボタン群 */
+        .controls {
+            display: none; /* 初期状態は非表示 */
+            margin: 1rem 0;
+            gap: 10px;
+            justify-content: center;
+        }
+        .btn {
+            border: none;
+            padding: 10px 20px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 1rem;
+            font-weight: bold;
+            transition: background 0.2s;
+        }
+        .btn-primary {
+            background-color: #2b6cb0;
+            color: white;
+        }
+        .btn-primary:hover {
+            background-color: #2c5282;
+        }
+        .btn-secondary {
+            background-color: #e2e8f0;
+            color: #4a5568;
+        }
+        .btn-secondary:hover {
+            background-color: #cbd5e0;
+        }
+
+        /* リスト */
+        #fileList {
+            list-style: none;
+            padding: 0;
+            margin-top: 0;
+            text-align: left;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        .file-item {
+            background: #edf2f7;
+            margin-bottom: 0.5rem;
+            padding: 0.6rem 0.8rem;
+            border-radius: 6px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.9rem;
+        }
+        .individual-dl {
+            color: #3182ce;
+            text-decoration: none;
+            font-size: 0.8rem;
+            margin-left: 10px;
+        }
+        .individual-dl:hover {
+            text-decoration: underline;
+        }
+        .note {
+            margin-top: 1.5rem;
+            font-size: 0.8rem;
+            color: #718096;
+            background: #fff;
+            border-top: 1px solid #e2e8f0;
+            padding-top: 1rem;
+            text-align: left;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>拡張子 一括変換ツール (.zipへ)</h1>
+    
+    <div class="drop-zone" id="dropZone">
+        <p>ファイルをここにドラッグ＆ドロップ<br>(複数選択可)</p>
+        <input type="file" id="fileInput" multiple accept=".7z,.osz,.mcz">
+    </div>
+
+    <!-- 一括操作ボタンエリア -->
+    <div id="controls" class="controls">
+        <button id="downloadAllBtn" class="btn btn-primary">すべてダウンロード</button>
+        <button id="clearBtn" class="btn btn-secondary">リセット</button>
+    </div>
+
+    <ul id="fileList"></ul>
+
+    <div class="note">
+        <strong>使い方・注意点：</strong>
+        <ul>
+            <li>「すべてダウンロード」を押すと、ブラウザが複数ファイルのダウンロード許可を求めてくる場合があります。「許可」してください。</li>
+            <li>.osz, .mcz はZip解凍できるようになります。</li>
+            <li>.7z は拡張子が変わるだけです（要専用ソフト）。</li>
+        </ul>
+    </div>
+</div>
+
+<script>
+    const fileInput = document.getElementById('fileInput');
+    const dropZone = document.getElementById('dropZone');
+    const fileList = document.getElementById('fileList');
+    const controls = document.getElementById('controls');
+    const downloadAllBtn = document.getElementById('downloadAllBtn');
+    const clearBtn = document.getElementById('clearBtn');
+
+    // ダウンロード待ちのファイルを格納する配列
+    let downloadQueue = [];
+
+    // ドラッグ＆ドロップの視覚効果
+    dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.classList.add('dragover'); });
+    dropZone.addEventListener('dragleave', () => { dropZone.classList.remove('dragover'); });
+    dropZone.addEventListener('drop', (e) => {
+        e.preventDefault();
+        dropZone.classList.remove('dragover');
+        if (e.dataTransfer.files.length > 0) handleFiles(e.dataTransfer.files);
+    });
+
+    // クリック選択時
+    fileInput.addEventListener('change', () => {
+        if (fileInput.files.length > 0) handleFiles(fileInput.files);
+    });
+
+    // ファイル処理のメイン関数
+    function handleFiles(files) {
+        // 以前のリストをクリアして新しいセットにする（追加式にしたい場合はここを調整）
+        resetData();
+
+        Array.from(files).forEach(file => {
+            const oldName = file.name;
+            // 拡張子チェック
+            if (oldName.match(/\.(7z|osz|mcz)$/i)) {
+                processFile(file);
+            } else {
+                addListItem(oldName, null, "対象外");
+            }
+        });
+
+        // 有効なファイルがあればボタンを表示
+        if (downloadQueue.length > 0) {
+            controls.style.display = 'flex';
+            downloadAllBtn.textContent = `すべてダウンロード (${downloadQueue.length}個)`;
+        }
+        
+        fileInput.value = ''; // 入力リセット
+    }
+
+    function processFile(file) {
+        const newName = file.name.replace(/\.(7z|osz|mcz)$/i, ".zip");
+        const blob = new Blob([file], { type: "application/zip" });
+        const url = URL.createObjectURL(blob);
+
+        // キューに追加
+        downloadQueue.push({ newName, url });
+
+        addListItem(file.name, { newName, url });
+    }
+
+    function addListItem(originalName, resultData, errorMsg) {
+        const li = document.createElement('li');
+        li.className = 'file-item';
+
+        const leftDiv = document.createElement('div');
+        leftDiv.textContent = originalName + (resultData ? " → " + resultData.newName : "");
+        li.appendChild(leftDiv);
+
+        if (resultData) {
+            const a = document.createElement('a');
+            a.href = resultData.url;
+            a.download = resultData.newName;
+            a.className = 'individual-dl';
+            a.textContent = '個別に保存';
+            li.appendChild(a);
+        } else if (errorMsg) {
+            const span = document.createElement('span');
+            span.style.color = 'red';
+            span.textContent = errorMsg;
+            li.appendChild(span);
+        }
+
+        fileList.appendChild(li);
+    }
+
+    // 一括ダウンロード処理
+    downloadAllBtn.addEventListener('click', async () => {
+        if (downloadQueue.length === 0) return;
+
+        // ボタンを一時的に無効化
+        const originalText = downloadAllBtn.textContent;
+        downloadAllBtn.disabled = true;
+        downloadAllBtn.textContent = "ダウンロード中...";
+
+        // ループで順番にダウンロードトリガーを引く
+        for (let i = 0; i < downloadQueue.length; i++) {
+            const file = downloadQueue[i];
+            
+            const a = document.createElement('a');
+            a.href = file.url;
+            a.download = file.newName;
+            document.body.appendChild(a); // Firefox等での互換性のためDOMに追加
+            a.click();
+            document.body.removeChild(a);
+
+            // ブラウザが「連続ダウンロード」と認識してブロックするのを防ぐため少し待つ
+            await new Promise(resolve => setTimeout(resolve, 500)); 
+        }
+
+        downloadAllBtn.disabled = false;
+        downloadAllBtn.textContent = "完了（再度DL）";
+        setTimeout(() => {
+             downloadAllBtn.textContent = originalText;
+        }, 2000);
+    });
+
+    // リセットボタン
+    function resetData() {
+        downloadQueue = [];
+        fileList.innerHTML = '';
+        controls.style.display = 'none';
+    }
+    clearBtn.addEventListener('click', resetData);
+
+</script>
+
+</body>
+</html>
