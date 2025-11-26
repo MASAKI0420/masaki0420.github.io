@@ -6,6 +6,8 @@
     <title>TJA Maker Pro: Import & Safe Grid 🛡️</title>
     <!-- JSZipライブラリ -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <!-- ▼▼▼【追加】文字コード変換ライブラリ (Encoding.js) ▼▼▼ -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/encoding-japanese/2.0.0/encoding.min.js"></script>
     <style>
         :root {
             --primary: #ff4757;
@@ -92,7 +94,6 @@
                     </div>
                 </div>
                 
-                <!-- 修正箇所: サブタイトルとLEVELの入力欄を追加 -->
                 <div style="display: flex; gap: 10px; margin-bottom: 10px;">
                     <div style="flex: 1;"><label>TITLE</label><input type="text" id="title" value="New Song" oninput="updateTjaText()"></div>
                     <div style="flex: 1;"><label>SUBTITLE</label><input type="text" id="subtitle" placeholder="省略可" oninput="updateTjaText()"></div>
@@ -102,7 +103,6 @@
                     <div style="flex: 1;"><label>OFFSET</label><input type="number" id="offset" value="-0.05" step="0.01" oninput="updateTjaText()"></div>
                     <div style="width: 80px;"><label>LEVEL (★)</label><input type="number" id="level" value="8" min="1" max="10" oninput="updateTjaText()"></div>
                 </div>
-                <!-- 修正ここまで -->
 
                  <div style="margin-top: 10px;">
                     <button id="btnAutoBpm" class="btn-control" onclick="runAdvancedBpmAnalysis()" disabled style="width:100%;">⚡ 高精度BPM解析</button>
@@ -112,7 +112,7 @@
                 <h2>3. 保存・出力</h2>
                 <label>TJAファイル内容 (自動生成)</label>
                 <textarea id="outputPreview" readonly style="height: 120px; width: 100%; font-family: monospace;"></textarea>
-                <button class="btn-control" onclick="downloadZip()" style="width: 100%; margin-top: 10px; padding: 10px; background-color: #e67e22;">一括ダウンロード (.zip)</button>
+                <button class="btn-control" onclick="downloadZip()" style="width: 100%; margin-top: 10px; padding: 10px; background-color: #e67e22;">一括ダウンロード (.zip / ANSI)</button>
             </div>
         </div>
 
@@ -168,7 +168,6 @@
 
     <script>
         // --- UI & Globals ---
-        // 修正: inputsにsubtitleとlevelを追加
         const inputs = { 
             title: document.getElementById('title'), 
             subtitle: document.getElementById('subtitle'), 
@@ -500,11 +499,33 @@
             if (e.target.files.length === 0) return;
             const file = e.target.files[0];
             const reader = new FileReader();
+            
             reader.onload = function(evt) {
-                parseAndLoadTja(evt.target.result);
+                const buffer = evt.target.result;
+                let text = "";
+                
+                // 1. まずUTF-8として厳密にデコードを試みる
+                try {
+                    const decoder = new TextDecoder("utf-8", { fatal: true });
+                    text = decoder.decode(buffer);
+                } catch (e) {
+                    // 2. 失敗した場合（Shift_JIS/ANSIの可能性が高い）、Shift_JISでデコード
+                    try {
+                        const decoder = new TextDecoder("shift-jis");
+                        text = decoder.decode(buffer);
+                    } catch (e2) {
+                        console.error("Encoding detection failed", e2);
+                        alert("テキストのエンコード判定に失敗しました。");
+                        return;
+                    }
+                }
+                
+                parseAndLoadTja(text);
                 tjaInput.value = '';
             };
-            reader.readAsText(file);
+            
+            // テキストとしてではなく、バッファとして読み込んでからデコードする
+            reader.readAsArrayBuffer(file);
         });
 
         function parseAndLoadTja(tjaText) {
@@ -512,7 +533,6 @@
                 const titleMatch = tjaText.match(/TITLE:(.*)/i);
                 if(titleMatch) inputs.title.value = titleMatch[1].trim();
                 
-                // 修正: サブタイトルとLEVELの読み込み
                 const subtitleMatch = tjaText.match(/SUBTITLE:(.*)/i);
                 if(subtitleMatch) inputs.subtitle.value = subtitleMatch[1].trim();
 
@@ -602,18 +622,33 @@
             });
             const balloonHeader = balloonHits.length > 0 ? `BALLOON:${balloonHits.join(',')}\n` : '';
 
-            // 修正: SUBTITLEとLEVELを反映
             let tja = `TITLE:${inputs.title.value}\nSUBTITLE:${inputs.subtitle.value}\nBPM:${inputs.bpm.value}\nWAVE:${waveName}\nOFFSET:${inputs.offset.value}\n${balloonHeader}COURSE:Oni\nLEVEL:${inputs.level.value}\n\n#START\n${inputs.chart.value}`;
             if (!tja.endsWith('\n')) tja += '\n';
             tja += '#END';
             inputs.out.value = tja;
         };
         
+        // ▼▼▼【修正】ZIP作成時にTJAをShift_JIS (ANSI) に変換して保存 ▼▼▼
         async function downloadZip() {
             if (!window.JSZip) { alert("JSZip library failed to load."); return; }
+            if (!window.Encoding) { alert("Encoding library failed to load."); return; }
+            
             const zip = new JSZip();
             const title = inputs.title.value || "New Song";
-            zip.file(`${title}.tja`, inputs.out.value);
+            
+            // TJAのテキストを取得
+            const tjaString = inputs.out.value;
+            
+            // Encoding.jsを使ってUnicode文字列をShift_JIS(ANSI)のコード配列に変換
+            const sjisCodeArray = Encoding.convert(Encoding.stringToCode(tjaString), {
+                to: 'SJIS',
+                from: 'UNICODE'
+            });
+            
+            // Uint8Arrayに変換してzipに追加
+            const sjisUint8Array = new Uint8Array(sjisCodeArray);
+            zip.file(`${title}.tja`, sjisUint8Array);
+            
             if (fileInput.files.length > 0) { const file = fileInput.files[0]; zip.file(file.name, file); }
             try { const content = await zip.generateAsync({type: "blob"}); const a = document.createElement('a'); a.href = URL.createObjectURL(content); a.download = `${title}.zip`; a.click(); } catch (err) { console.error(err); alert("ZIP作成エラー"); }
         }
