@@ -6,8 +6,6 @@
     <title>TJA Maker Pro: Import & Safe Grid 🛡️</title>
     <!-- JSZipライブラリ -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
-    <!-- 文字コード変換ライブラリ (Shift_JIS対応用) -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/encoding-japanese/2.0.0/encoding.min.js"></script>
     <style>
         :root {
             --primary: #ff4757;
@@ -94,11 +92,18 @@
                     </div>
                 </div>
                 
-                <div style="display: flex; gap: 10px;">
-                    <div><label>TITLE</label><input type="text" id="title" value="New Song" oninput="updateTjaText()"></div>
-                    <div><label>BPM</label><input type="number" id="bpm" value="120" step="any" oninput="updateTjaText()"></div>
-                    <div><label>OFFSET</label><input type="number" id="offset" value="-0.05" step="0.01" oninput="updateTjaText()"></div>
+                <!-- 修正箇所: サブタイトルとLEVELの入力欄を追加 -->
+                <div style="display: flex; gap: 10px; margin-bottom: 10px;">
+                    <div style="flex: 1;"><label>TITLE</label><input type="text" id="title" value="New Song" oninput="updateTjaText()"></div>
+                    <div style="flex: 1;"><label>SUBTITLE</label><input type="text" id="subtitle" placeholder="省略可" oninput="updateTjaText()"></div>
                 </div>
+                <div style="display: flex; gap: 10px;">
+                    <div style="flex: 1;"><label>BPM</label><input type="number" id="bpm" value="120" step="any" oninput="updateTjaText()"></div>
+                    <div style="flex: 1;"><label>OFFSET</label><input type="number" id="offset" value="-0.05" step="0.01" oninput="updateTjaText()"></div>
+                    <div style="width: 80px;"><label>LEVEL (★)</label><input type="number" id="level" value="8" min="1" max="10" oninput="updateTjaText()"></div>
+                </div>
+                <!-- 修正ここまで -->
+
                  <div style="margin-top: 10px;">
                     <button id="btnAutoBpm" class="btn-control" onclick="runAdvancedBpmAnalysis()" disabled style="width:100%;">⚡ 高精度BPM解析</button>
                 </div>
@@ -150,7 +155,6 @@
     <div class="modal-backdrop" id="command-modal">
         <div class="modal-content">
             <h3 id="modal-title">小節 1 のコマンド</h3>
-            <!-- ▼▼▼【修正】ラベルをGOGOSTARTに変更 ▼▼▼ -->
             <div class="form-group"><label><input type="checkbox" id="modal-gogo"> GOGOSTART</label></div>
             <div class="form-group"><label>BPM変更</label><input type="number" id="modal-bpm" placeholder="例: 180"></div>
             <div class="form-group"><label>拍子変更</label><input type="text" id="modal-measure" placeholder="例: 3/4"></div>
@@ -164,7 +168,16 @@
 
     <script>
         // --- UI & Globals ---
-        const inputs = { title: document.getElementById('title'), bpm: document.getElementById('bpm'), offset: document.getElementById('offset'), chart: document.getElementById('chartTjaOutput'), out: document.getElementById('outputPreview') };
+        // 修正: inputsにsubtitleとlevelを追加
+        const inputs = { 
+            title: document.getElementById('title'), 
+            subtitle: document.getElementById('subtitle'), 
+            bpm: document.getElementById('bpm'), 
+            offset: document.getElementById('offset'), 
+            level: document.getElementById('level'), 
+            chart: document.getElementById('chartTjaOutput'), 
+            out: document.getElementById('outputPreview') 
+        };
         const fileInput = document.getElementById('audioFileInput'), tjaInput = document.getElementById('tjaFileInput'), statusText = document.getElementById('musicStatus');
         const btnPlay = document.getElementById('btnPlay'), btnMetro = document.getElementById('btnMetro'), btnAutoBpm = document.getElementById('btnAutoBpm'), volSeSlider = document.getElementById('volSeSlider'), volMetroSlider = document.getElementById('volMetroSlider');
         let audioCtx, musicBuffer = null, musicSource = null, isMetroOn = false, volSe = 1.5, volMetro = 3.0; 
@@ -299,7 +312,6 @@
         editorCanvas.addEventListener('mousedown', handleEditorClick);
         editorCanvas.addEventListener('contextmenu', e => e.preventDefault());
 
-        // ▼▼▼【修正】キーボードショートカットをGOGOSTARTに変更 ▼▼▼
         canvasWrapper.addEventListener('keydown', (e) => {
             const validToolKeys = ['1', '2', '3', '4', '5', '6', '7', '8'];
             if (document.activeElement === canvasWrapper) e.preventDefault();
@@ -435,7 +447,6 @@
         const commandModal = document.getElementById('command-modal');
         let currentEditingMeasure = 0;
         
-        // ▼▼▼【修正】モーダル表示をGOGOSTARTに対応 ▼▼▼
         function openCommandModal(measureIndex) {
             currentEditingMeasure = measureIndex;
             const measure = chartData[measureIndex];
@@ -458,7 +469,6 @@
         
         function closeModal() { commandModal.style.display = 'none'; }
         
-        // ▼▼▼【修正】コマンド保存をGOGOSTARTに変更 ▼▼▼
         function saveCommands() {
             const measure = chartData[currentEditingMeasure];
             measure.commands = [];
@@ -486,46 +496,34 @@
             updateTjaText();
         }
         
-        // ▼▼▼【修正】TJA読み込み時のANSI(Shift_JIS)対応強化 ▼▼▼
         tjaInput.addEventListener('change', function(e) {
             if (e.target.files.length === 0) return;
             const file = e.target.files[0];
             const reader = new FileReader();
-            
             reader.onload = function(evt) {
-                try {
-                    // encoding.jsを使用してバイナリとして読み込み、ANSI(SJIS)から変換
-                    const buffer = new Uint8Array(evt.target.result);
-                    // 自動判定を試みるが、基本的にはShift_JISとして扱う
-                    const detected = Encoding.detect(buffer);
-                    const fromEnc = (detected === 'UTF8' || detected === 'UTF16') ? detected : 'SJIS';
-                    
-                    const unicodeArray = Encoding.convert(buffer, {
-                        to: 'UNICODE',
-                        from: fromEnc
-                    });
-                    const str = Encoding.codeToString(unicodeArray);
-                    
-                    parseAndLoadTja(str);
-                    tjaInput.value = '';
-                } catch(err) {
-                    console.error(err);
-                    alert("ファイルの読み込みまたはエンコード変換に失敗しました。");
-                }
+                parseAndLoadTja(evt.target.result);
+                tjaInput.value = '';
             };
-            // readAsTextではなくArrayBufferとして読み込む
-            reader.readAsArrayBuffer(file);
+            reader.readAsText(file);
         });
 
-        // ▼▼▼【修正】TJA読み込み時のGOGOSTART解釈を修正 ▼▼▼
         function parseAndLoadTja(tjaText) {
             try {
                 const titleMatch = tjaText.match(/TITLE:(.*)/i);
                 if(titleMatch) inputs.title.value = titleMatch[1].trim();
+                
+                // 修正: サブタイトルとLEVELの読み込み
+                const subtitleMatch = tjaText.match(/SUBTITLE:(.*)/i);
+                if(subtitleMatch) inputs.subtitle.value = subtitleMatch[1].trim();
+
                 const bpmMatch = tjaText.match(/BPM:([0-9.]+)/i);
                 if(bpmMatch) inputs.bpm.value = bpmMatch[1].trim();
+                
                 const offsetMatch = tjaText.match(/OFFSET:([0-9.-]+)/i);
                 if(offsetMatch) inputs.offset.value = offsetMatch[1].trim();
+
+                const levelMatch = tjaText.match(/LEVEL:([0-9]+)/i);
+                if(levelMatch) inputs.level.value = levelMatch[1].trim();
                 
                 const balloonMatch = tjaText.match(/BALLOON:(.*)/i);
                 const balloonHits = balloonMatch ? balloonMatch[1].trim().split(',').map(Number) : [];
@@ -604,32 +602,18 @@
             });
             const balloonHeader = balloonHits.length > 0 ? `BALLOON:${balloonHits.join(',')}\n` : '';
 
-            let tja = `TITLE:${inputs.title.value}\nBPM:${inputs.bpm.value}\nWAVE:${waveName}\nOFFSET:${inputs.offset.value}\n${balloonHeader}COURSE:Oni\nLEVEL:8\n\n#START\n${inputs.chart.value}`;
+            // 修正: SUBTITLEとLEVELを反映
+            let tja = `TITLE:${inputs.title.value}\nSUBTITLE:${inputs.subtitle.value}\nBPM:${inputs.bpm.value}\nWAVE:${waveName}\nOFFSET:${inputs.offset.value}\n${balloonHeader}COURSE:Oni\nLEVEL:${inputs.level.value}\n\n#START\n${inputs.chart.value}`;
             if (!tja.endsWith('\n')) tja += '\n';
             tja += '#END';
             inputs.out.value = tja;
         };
         
-        // ▼▼▼【修正】ZIP保存時にShift_JISへ変換 ▼▼▼
         async function downloadZip() {
             if (!window.JSZip) { alert("JSZip library failed to load."); return; }
-            if (typeof Encoding === "undefined") { alert("Encoding library failed to load."); return; }
-            
             const zip = new JSZip();
             const title = inputs.title.value || "New Song";
-            const tjaText = inputs.out.value;
-
-            // Unicode文字列をShift_JISのバイト配列に変換
-            const unicodeData = Encoding.stringToCode(tjaText);
-            const sjisData = Encoding.convert(unicodeData, {
-                to: 'SJIS',
-                from: 'UNICODE'
-            });
-            const tjaUint8 = new Uint8Array(sjisData);
-            
-            // バイナリデータとしてJSZipに渡す
-            zip.file(`${title}.tja`, tjaUint8);
-
+            zip.file(`${title}.tja`, inputs.out.value);
             if (fileInput.files.length > 0) { const file = fileInput.files[0]; zip.file(file.name, file); }
             try { const content = await zip.generateAsync({type: "blob"}); const a = document.createElement('a'); a.href = URL.createObjectURL(content); a.download = `${title}.zip`; a.click(); } catch (err) { console.error(err); alert("ZIP作成エラー"); }
         }
@@ -646,7 +630,6 @@
 
         const previewCanvas = document.getElementById('previewCanvas'); const previewCtx = previewCanvas.getContext('2d'); let animationId, startTime = 0, isPlaying = false, isPreviewPaused = false; const HIT_X = 150, PREVIEW_Y = 80, BASE_SPEED = 300;
         
-        // ▼▼▼【修正】プレビュー解析をGOGOSTARTに変更 ▼▼▼
         parseTJA = function () {
             const lines = inputs.chart.value.split('\n');
             const startBpm = parseFloat(inputs.bpm.value) || 120;
