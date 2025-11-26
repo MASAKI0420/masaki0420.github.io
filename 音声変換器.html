@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <title>MP3 to OGG Converter (Debug Version)</title>
+    <style>
+        body { font-family: sans-serif; max-width: 600px; margin: 2em auto; padding: 1em; border: 1px solid #ccc; border-radius: 8px; }
+        h1 { text-align: center; }
+        input, button { display: block; width: 100%; padding: 10px; margin-bottom: 1em; box-sizing: border-box; }
+        button { cursor: pointer; background-color: #007bff; color: white; border: none; border-radius: 4px; }
+        button:disabled { background-color: #ccc; cursor: not-allowed; }
+        hr { margin: 2em 0; }
+        #downloadLink { display: none; padding: 15px; text-align: center; background-color: #28a745; color: white; text-decoration: none; border-radius: 4px; }
+        #status { text-align: center; color: #555; min-height: 1.2em; }
+    </style>
+</head>
+<body>
+
+    <h1>MP3 to OGG Converter</h1>
+    <p>MP3ファイルを選択すると、OGG形式に変換します。</p>
+
+    <input type="file" id="fileInput" accept=".mp3">
+    <button id="convertButton" disabled>変換</button>
+    <div id="status"></div>
+    <hr>
+    <a id="downloadLink">変換後のファイルをダウンロード</a>
+
+    <!-- OGGエンコーダーライブラリの読み込み -->
+    <script src="https://cdn.jsdelivr.net/npm/ogg-vorbis-encoder-js@1.1.3/dist/OggVorbisEncoder.min.js"></script>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const fileInput = document.getElementById('fileInput');
+            const convertButton = document.getElementById('convertButton');
+            const downloadLink = document.getElementById('downloadLink');
+            const statusDiv = document.getElementById('status');
+
+            let audioBuffer = null;
+            const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+
+            fileInput.addEventListener('change', (event) => {
+                const file = event.target.files[0];
+                if (!file) return;
+
+                console.log("ファイルが選択されました:", file.name);
+                convertButton.disabled = true;
+                downloadLink.style.display = 'none';
+                statusDiv.textContent = 'ファイルをデコード中...';
+
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    console.log("ファイルの読み込み完了。デコードを開始します...");
+                    audioContext.decodeAudioData(e.target.result)
+                        .then((decodedData) => {
+                            console.log("デコード成功。AudioBufferが作成されました:", decodedData);
+                            audioBuffer = decodedData;
+                            statusDiv.textContent = 'デコード完了。変換ボタンを押してください。';
+                            convertButton.disabled = false;
+                        })
+                        .catch((err) => {
+                            console.error("decodeAudioDataでエラーが発生しました:", err);
+                            alert('ファイルのデコードに失敗しました。F12キーでコンソールを確認してください。');
+                            statusDiv.textContent = 'エラー: ファイルをデコードできませんでした。';
+                        });
+                };
+                reader.onerror = (err) => {
+                    console.error("FileReaderでエラーが発生しました:", err);
+                    alert('ファイルの読み込みに失敗しました。');
+                    statusDiv.textContent = 'エラー: ファイルを読み込めませんでした。';
+                };
+                reader.readAsArrayBuffer(file);
+            });
+
+            convertButton.addEventListener('click', () => {
+                if (!audioBuffer) {
+                    alert('MP3ファイルが正しくデコードされていません。');
+                    return;
+                }
+
+                statusDiv.textContent = 'OGGへエンコード中...';
+                convertButton.disabled = true;
+
+                setTimeout(() => {
+                    try {
+                        console.log("エンコード処理を開始します。AudioBuffer:", audioBuffer);
+                        const encoder = new OggVorbisEncoder(audioBuffer.sampleRate, audioBuffer.numberOfChannels, 0.5);
+                        console.log("OggVorbisEncoderを初期化しました。");
+
+                        const channels = [];
+                        for (let i = 0; i < audioBuffer.numberOfChannels; i++) {
+                            channels.push(audioBuffer.getChannelData(i));
+                        }
+                        encoder.encode(channels);
+                        console.log("エンコード完了。Blobを生成します...");
+
+                        const blob = encoder.finish();
+                        console.log("Blobが生成されました:", blob);
+                        statusDiv.textContent = 'エンコードが完了しました。';
+
+                        const url = URL.createObjectURL(blob);
+                        const originalFileName = fileInput.files[0].name.replace(/\.[^/.]+$/, "");
+                        const newFileName = `${originalFileName}.ogg`;
+
+                        downloadLink.href = url;
+                        downloadLink.download = newFileName;
+                        downloadLink.style.display = 'block';
+                        downloadLink.textContent = `${newFileName} をダウンロード`;
+
+                    } catch (err) {
+                        console.error("エンコード処理でエラーが発生しました:", err);
+                        alert('エンコード中にエラーが発生しました。F12キーでコンソールを確認してください。');
+                        statusDiv.textContent = 'エラー: OGGへのエンコードに失敗しました。';
+                    } finally {
+                        convertButton.disabled = false;
+                    }
+                }, 10);
+            });
+        });
+    </script>
+
+</body>
+</html>
