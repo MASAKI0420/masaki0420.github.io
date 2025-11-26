@@ -67,7 +67,7 @@
         <div class="preview-container">
              <canvas id="previewCanvas" width="800" height="160"></canvas>
             <div class="player-controls">
-                <button id="btnPlay" class="btn-play" onclick="startPreview()" disabled>▶ 再生</button>
+                <button id="btnPlay" class="btn-play" onclick="togglePlayback()" disabled>▶ 再生</button>
                 <button id="btnStop" class="btn-stop" onclick="stopPreview()">■ 停止</button>
                 <button id="btnMetro" class="btn-metro" onclick="toggleMetro()">⏰ OFF</button>
                 <div class="volume-controls">
@@ -148,9 +148,11 @@
     <div class="modal-backdrop" id="command-modal">
         <div class="modal-content">
             <h3 id="modal-title">小節 1 のコマンド</h3>
-            <div class="form-group"><label><input type="checkbox" id="modal-gogo"> GOGOTIME</label></div>
+            <!-- ▼▼▼【修正】ラベルをGOGOSTARTに変更 ▼▼▼ -->
+            <div class="form-group"><label><input type="checkbox" id="modal-gogo"> GOGOSTART</label></div>
             <div class="form-group"><label>BPM変更</label><input type="number" id="modal-bpm" placeholder="例: 180"></div>
             <div class="form-group"><label>拍子変更</label><input type="text" id="modal-measure" placeholder="例: 3/4"></div>
+            <div class="form-group"><label>スクロール速度</label><input type="number" id="modal-scroll" placeholder="例: 1.5" step="0.1"></div>
             <div style="text-align: right; margin-top: 20px;">
                 <button class="btn-control" onclick="saveCommands()">適用</button>
                 <button class="btn-eraser" onclick="closeModal()">キャンセル</button>
@@ -203,10 +205,9 @@
                 editorCtx.beginPath(); editorCtx.moveTo(measureX, LANE_Y - 35); editorCtx.lineTo(measureX, LANE_Y + 35); editorCtx.stroke();
                 
                 drawRollBars(i, measureX, stepX);
-                for (let j = 0; j < gridSize; j++) { if (measure.notes[j] !== '0') drawNote(editorCtx, measureX + j * stepX, LANE_Y, measure.notes[j]); }
+                for (let j = 0; j < gridSize; j++) { if (measure.notes[j].type !== '0') drawNote(editorCtx, measureX + j * stepX, LANE_Y, measure.notes[j]); }
             }
 
-            // カーソル位置の安全チェック
             if (cursor.measure >= chartData.length) cursor.measure = chartData.length - 1;
             const currentMeasureNotes = chartData[cursor.measure].notes;
             if (cursor.pos >= currentMeasureNotes.length) cursor.pos = currentMeasureNotes.length - 1;
@@ -220,8 +221,7 @@
             const notes = chartData[measureIndex].notes;
             let rollStart = -1, rollType = '0';
             for (let i = 0; i < notes.length; i++) {
-                const note = notes[i];
-                // 5:Roll, 6:BigRoll, 7:Balloon の開始をチェック
+                const note = notes[i].type;
                 if ((note === '5' || note === '6' || note === '7') && rollStart === -1) { rollStart = i; rollType = note; }
                 else if (note === '8' && rollStart !== -1) {
                     const startX = measureX + rollStart * stepX;
@@ -230,7 +230,7 @@
                     const isBalloon = rollType === '7';
                     
                     if (isBalloon) {
-                        editorCtx.fillStyle = 'rgba(230, 126, 34, 0.6)'; // オレンジ
+                        editorCtx.fillStyle = 'rgba(230, 126, 34, 0.6)';
                     } else {
                         editorCtx.fillStyle = isBig ? 'rgba(241, 196, 15, 0.6)' : 'rgba(241, 196, 15, 0.4)';
                     }
@@ -241,23 +241,32 @@
             }
         }
         
-        // drawNoteを更新して7(風船)を描画できるように
-        drawNote=function(ctx,x,y,type){
-            let color="#ccc",isBig=!1;
-            "1"===type?color="#ff4757":
-            "2"===type?color="#3742fa":
-            "3"===type?(color="#ff4757",isBig=!0):
-            "4"===type?(color="#3742fa",isBig=!0):
-            "5"===type||"6"===type||"8"===type&&(color="#f1c40f");
-            "7"===type&&(color="#e67e22"); // 風船(オレンジ)
+        drawNote = function(ctx, x, y, noteObj) {
+            const type = noteObj.type;
+            let color = "#ccc", isBig = false;
+            if (type === "1") color = "#ff4757";
+            else if (type === "2") color = "#3742fa";
+            else if (type === "3") { color = "#ff4757"; isBig = true; }
+            else if (type === "4") { color = "#3742fa"; isBig = true; }
+            else if (type === "5" || type === "6" || type === "8") color = "#f1c40f";
+            else if (type === "7") color = "#e67e22";
 
+            const radius = (type === "6" || type === "4" || type === "3") ? 1.3 * NOTE_RADIUS : NOTE_RADIUS;
             ctx.beginPath();
-            ctx.arc(x,y,"6"===type||"4"===type||"3"===type?1.3*NOTE_RADIUS:NOTE_RADIUS,0,2*Math.PI);
-            ctx.fillStyle=color;
+            ctx.arc(x, y, radius, 0, 2 * Math.PI);
+            ctx.fillStyle = color;
             ctx.fill();
-            ctx.strokeStyle="3"===type||"4"===type||"6"===type?"#333":"#fff";
-            ctx.lineWidth=2;
+            ctx.strokeStyle = (type === "3" || type === "4" || type === "6") ? "#333" : "#fff";
+            ctx.lineWidth = 2;
             ctx.stroke();
+
+            if (type === "7" && noteObj.hits) {
+                ctx.fillStyle = '#fff';
+                ctx.font = `bold ${radius * 0.9}px sans-serif`;
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(noteObj.hits, x, y);
+            }
         };
 
         // --- Editor Interactions ---
@@ -276,10 +285,10 @@
 
             cursor = { measure: measureIndex, pos: closestIndex };
             
-            if (event.button === 2) { // Right click to erase
-                chartData[measureIndex].notes[closestIndex] = '0';
+            if (event.button === 2) {
+                chartData[measureIndex].notes[closestIndex] = { type: '0' };
                 event.preventDefault();
-            } else { // Left click
+            } else {
                 placeNote();
             }
             drawEditor();
@@ -288,8 +297,9 @@
         editorCanvas.addEventListener('mousedown', handleEditorClick);
         editorCanvas.addEventListener('contextmenu', e => e.preventDefault());
 
+        // ▼▼▼【修正】キーボードショートカットをGOGOSTARTに変更 ▼▼▼
         canvasWrapper.addEventListener('keydown', (e) => {
-            const validToolKeys = ['1', '2', '3', '4', '5', '6', '7', '8']; // 7を追加
+            const validToolKeys = ['1', '2', '3', '4', '5', '6', '7', '8'];
             if (document.activeElement === canvasWrapper) e.preventDefault();
             
             const measure = chartData[cursor.measure];
@@ -300,10 +310,10 @@
             else if (e.key === ' ') placeNote(); 
             else if (e.key === 'Shift') openCommandModal(cursor.measure);
             else if (e.key === '9') { 
-                if (measure.commands.includes('#GOGOTIME')) {
-                    measure.commands = measure.commands.filter(cmd => cmd !== '#GOGOTIME');
+                if (measure.commands.includes('#GOGOSTART')) {
+                    measure.commands = measure.commands.filter(cmd => cmd !== '#GOGOSTART');
                 } else {
-                    measure.commands.push('#GOGOTIME');
+                    measure.commands.push('#GOGOSTART');
                 }
             } else if (e.key === '0') {
                 if (cursor.pos === 0) {
@@ -316,15 +326,29 @@
                     setActiveNote('0');
                 }
             } else if (e.key === 'Delete' || e.key === 'Backspace') {
-                chartData[cursor.measure].notes[cursor.pos] = '0';
+                chartData[cursor.measure].notes[cursor.pos] = { type: '0' };
             } else if (validToolKeys.includes(e.key)) {
                 setActiveNote(e.key);
             }
             
-            if (cursor.pos < 0) { if(cursor.measure > 0) { cursor.measure--; cursor.pos = chartData[cursor.measure].notes.length - 1; } else { cursor.pos = 0; } }
-            if(cursor.pos >= gridSize) { if(cursor.measure < chartData.length -1) { cursor.measure++; cursor.pos = 0; } else { cursor.pos = gridSize - 1; } }
+            if (cursor.pos < 0) {
+                if (cursor.measure > 0) {
+                    cursor.measure--;
+                    cursor.pos = chartData[cursor.measure].notes.length - 1;
+                } else {
+                    cursor.pos = 0;
+                }
+            } else if (cursor.pos >= gridSize) {
+                if (cursor.measure < chartData.length - 1) {
+                    cursor.measure++;
+                    cursor.pos = 0;
+                } else {
+                    cursor.pos = gridSize - 1;
+                }
+            }
             
-            const cursorX = cursor.measure * MEASURE_WIDTH + cursor.pos * (MEASURE_WIDTH / gridSize);
+            const newGridSize = chartData[cursor.measure].notes.length;
+            const cursorX = cursor.measure * MEASURE_WIDTH + cursor.pos * (MEASURE_WIDTH / newGridSize);
             canvasWrapper.scrollLeft = cursorX - canvasWrapper.clientWidth / 2;
             
             drawEditor();
@@ -333,8 +357,25 @@
         
         function placeNote() {
             const { measure, pos } = cursor;
-            if (chartData[measure].notes[pos] === activeNote) chartData[measure].notes[pos] = '0';
-            else chartData[measure].notes[pos] = activeNote;
+            const currentNote = chartData[measure].notes[pos];
+
+            if (currentNote.type === activeNote) {
+                chartData[measure].notes[pos] = { type: '0' };
+                return;
+            }
+
+            if (activeNote === '7') {
+                const hits = prompt("風船の打数を入力してください:", currentNote.hits || "5");
+                if (hits === null) return; // Cancelled
+                const numHits = parseInt(hits, 10);
+                if (isNaN(numHits) || numHits <= 0) {
+                    alert("無効な数値です。");
+                    return;
+                }
+                chartData[measure].notes[pos] = { type: '7', hits: numHits };
+            } else {
+                chartData[measure].notes[pos] = { type: activeNote };
+            }
         }
 
         function setActiveNote(note) {
@@ -345,32 +386,38 @@
             drawEditor();
         }
 
-        function addMeasure(redraw = true) { chartData.push({ notes: Array(currentGrid).fill('0'), commands: [] }); if(redraw) { drawEditor(); updateAllTja(); } }
+        function addMeasure(redraw = true) { 
+            const newMeasure = { notes: Array(currentGrid).fill(0).map(() => ({ type: '0' })), commands: [] };
+            chartData.push(newMeasure); 
+            if(redraw) { drawEditor(); updateAllTja(); } 
+        }
         function removeMeasure() { if (chartData.length > 1) { chartData.pop(); drawEditor(); updateAllTja(); } else { alert("最後の1小節は削除できません。"); } }
         function findLCM(a, b) { const gcd = (x, y) => (!y ? x : gcd(y, x % y)); return (a * b) / gcd(a, b); }
 
         function changeGrid() { 
             const targetGrid = parseInt(gridSelect.value, 10);
-            const oldGridGlobal = currentGrid;
             
             chartData.forEach(measure => {
                 const oldGrid = measure.notes.length;
+                if (oldGrid === targetGrid) return;
+
                 const oldNotes = measure.notes;
                 let wouldLoseData = false;
                 for(let i=0; i<oldGrid; i++) {
-                    if (oldNotes[i] !== '0') {
+                    if (oldNotes[i].type !== '0') {
                         if ( (i * targetGrid) % oldGrid !== 0 ) {
                             wouldLoseData = true;
                             break;
                         }
                     }
                 }
+
                 let newGridSize = wouldLoseData ? findLCM(oldGrid, targetGrid) : targetGrid;
                 if (newGridSize === oldGrid) return; 
 
-                const newNotes = Array(newGridSize).fill('0');
+                const newNotes = Array(newGridSize).fill(0).map(() => ({ type: '0' }));
                 for (let j = 0; j < oldGrid; j++) {
-                    if (oldNotes[j] !== '0') {
+                    if (oldNotes[j].type !== '0') {
                         const newIndex = Math.round(j * (newGridSize / oldGrid));
                         newNotes[newIndex] = oldNotes[j];
                     }
@@ -385,37 +432,82 @@
         
         const commandModal = document.getElementById('command-modal');
         let currentEditingMeasure = 0;
-        function openCommandModal(measureIndex) { /* ... unchanged ... */ }
+        
+        // ▼▼▼【修正】モーダル表示をGOGOSTARTに対応 ▼▼▼
+        function openCommandModal(measureIndex) {
+            currentEditingMeasure = measureIndex;
+            const measure = chartData[measureIndex];
+
+            document.getElementById('modal-title').innerText = `小節 ${measureIndex + 1} のコマンド`;
+            document.getElementById('modal-gogo').checked = false;
+            document.getElementById('modal-bpm').value = "";
+            document.getElementById('modal-measure').value = "";
+            document.getElementById('modal-scroll').value = "";
+
+            measure.commands.forEach(cmd => {
+                if (cmd === "#GOGOSTART") document.getElementById('modal-gogo').checked = true;
+                else if (cmd.startsWith("#BPMCHANGE")) document.getElementById('modal-bpm').value = cmd.split(" ")[1];
+                else if (cmd.startsWith("#MEASURE")) document.getElementById('modal-measure').value = cmd.split(" ")[1];
+                else if (cmd.startsWith("#SCROLL")) document.getElementById('modal-scroll').value = cmd.split(" ")[1];
+            });
+            
+            commandModal.style.display = "flex";
+        }
+        
         function closeModal() { commandModal.style.display = 'none'; }
-        function saveCommands() { /* ... unchanged ... */ }
         
-        function updateAllTja() { /* ... unchanged ... */ }
+        // ▼▼▼【修正】コマンド保存をGOGOSTARTに変更 ▼▼▼
+        function saveCommands() {
+            const measure = chartData[currentEditingMeasure];
+            measure.commands = [];
+
+            if (document.getElementById('modal-gogo').checked) measure.commands.push("#GOGOSTART");
+            const bpm = document.getElementById('modal-bpm').value;
+            if (bpm) measure.commands.push(`#BPMCHANGE ${bpm}`);
+            const measureVal = document.getElementById('modal-measure').value;
+            if (measureVal) measure.commands.push(`#MEASURE ${measureVal}`);
+            const scroll = document.getElementById('modal-scroll').value;
+            if (scroll) measure.commands.push(`#SCROLL ${scroll}`);
+
+            closeModal();
+            drawEditor();
+            updateAllTja();
+        }
         
-        // --- Core Functions & Imports ---
+        function updateAllTja() {
+            let tjaString = "";
+            chartData.forEach((measure) => {
+                measure.commands.forEach(cmd => { tjaString += cmd + "\n"; });
+                tjaString += measure.notes.map(n => n.type).join("") + ",\n";
+            });
+            inputs.chart.value = tjaString;
+            updateTjaText();
+        }
+        
         tjaInput.addEventListener('change', function(e) {
             if (e.target.files.length === 0) return;
             const file = e.target.files[0];
             const reader = new FileReader();
-            
             reader.onload = function(evt) {
-                const text = evt.target.result;
-                parseAndLoadTja(text);
+                parseAndLoadTja(evt.target.result);
                 tjaInput.value = '';
             };
-            
             reader.readAsText(file);
         });
 
+        // ▼▼▼【修正】TJA読み込み時のGOGOSTART解釈を修正 ▼▼▼
         function parseAndLoadTja(tjaText) {
             try {
                 const titleMatch = tjaText.match(/TITLE:(.*)/i);
                 if(titleMatch) inputs.title.value = titleMatch[1].trim();
-
                 const bpmMatch = tjaText.match(/BPM:([0-9.]+)/i);
                 if(bpmMatch) inputs.bpm.value = bpmMatch[1].trim();
-
                 const offsetMatch = tjaText.match(/OFFSET:([0-9.-]+)/i);
                 if(offsetMatch) inputs.offset.value = offsetMatch[1].trim();
+                
+                const balloonMatch = tjaText.match(/BALLOON:(.*)/i);
+                const balloonHits = balloonMatch ? balloonMatch[1].trim().split(',').map(Number) : [];
+                let balloonIndex = 0;
 
                 const startIdx = tjaText.toUpperCase().indexOf('#START');
                 const endIdx = tjaText.toUpperCase().indexOf('#END');
@@ -430,24 +522,29 @@
 
                 lines.forEach(line => {
                     line = line.trim();
-                    if (!line) return;
-                    if (line.startsWith('//')) return; 
+                    if (!line || line.startsWith('//')) return;
 
                     if (line.startsWith('#')) {
-                        currentCommands.push(line);
+                        const parts = line.split(' ');
+                        let commandName = parts[0].toUpperCase();
+                        currentCommands.push(commandName + (parts.length > 1 ? ' ' + parts.slice(1).join(' ') : ''));
                     } else {
                         const commaIndex = line.indexOf(',');
                         if (commaIndex !== -1) {
                             currentNotesStr += line.substring(0, commaIndex);
-                            const notesArr = currentNotesStr.split('');
-                            const cleanNotes = notesArr.map(c => (c >= '0' && c <= '9') ? c : '0');
-                            
-                            if (cleanNotes.length === 0) cleanNotes.push('0'); 
-
-                            newChartData.push({
-                                notes: cleanNotes,
-                                commands: [...currentCommands]
+                            const notesArr = currentNotesStr.split('').map(c => (c >= '0' && c <= '9') ? c : '0');
+                            const noteObjects = notesArr.map(noteType => {
+                                if (noteType === '7') {
+                                    const hits = balloonHits[balloonIndex] || 5;
+                                    balloonIndex++;
+                                    return { type: '7', hits: hits };
+                                }
+                                return { type: noteType };
                             });
+
+                            if (noteObjects.length > 0) {
+                                newChartData.push({ notes: noteObjects, commands: [...currentCommands] });
+                            }
                             
                             currentNotesStr = line.substring(commaIndex + 1); 
                             currentCommands = [];
@@ -469,19 +566,27 @@
                 } else {
                     alert("譜面データが見つかりませんでした。");
                 }
-
-            } catch(e) {
-                console.error(e);
-                alert("TJAファイルの読み込みに失敗しました。形式を確認してください。");
-            }
+            } catch(e) { console.error(e); alert("TJAファイルの読み込みに失敗しました。"); }
         }
 
-        // --- PASTE UNCHANGED FUNCTIONS HERE ---
-        initEditor();
-        openCommandModal = function(measureIndex) { currentEditingMeasure = measureIndex; const measure = chartData[measureIndex]; document.getElementById('modal-title').innerText = `小節 ${measureIndex+1} のコマンド`; document.getElementById('modal-gogo').checked = !1; document.getElementById('modal-bpm').value = ""; document.getElementById('modal-measure').value = ""; measure.commands.forEach(cmd => { "#GOGOTIME" === cmd && (document.getElementById('modal-gogo').checked = !0); cmd.startsWith("#BPMCHANGE") && (document.getElementById('modal-bpm').value = cmd.split(" ")[1]); cmd.startsWith("#MEASURE") && (document.getElementById('modal-measure').value = cmd.split(" ")[1]) }); commandModal.style.display = "flex" };
-        saveCommands = function() { const measure = chartData[currentEditingMeasure]; measure.commands = []; document.getElementById('modal-gogo').checked && measure.commands.push("#GOGOTIME"); const bpm = document.getElementById('modal-bpm').value; bpm && measure.commands.push(`#BPMCHANGE ${bpm}`); const measureVal = document.getElementById('modal-measure').value; measureVal && measure.commands.push(`#MEASURE ${measureVal}`); closeModal(); drawEditor(); updateAllTja() };
-        updateAllTja=function(){let tjaString="";chartData.forEach((measure)=>{measure.commands.forEach(cmd=>{tjaString+=cmd+"\n"});tjaString+=measure.notes.join("")+",\n"}),inputs.chart.value=tjaString,updateTjaText()};
-        updateTjaText = function() { let waveName = fileInput.files[0] ? fileInput.files[0].name : "music.ogg"; let tja = `TITLE:${inputs.title.value}\nBPM:${inputs.bpm.value}\nWAVE:${waveName}\nOFFSET:${inputs.offset.value}\nCOURSE:Oni\nLEVEL:8\n\n#START\n${inputs.chart.value}`; if (!tja.endsWith('\n')) tja += '\n'; tja += '#END'; inputs.out.value = tja; };
+        updateTjaText = function() {
+            let waveName = fileInput.files[0] ? fileInput.files[0].name : "music.ogg";
+            
+            const balloonHits = [];
+            chartData.forEach(measure => {
+                measure.notes.forEach(note => {
+                    if (note.type === '7' && note.hits) {
+                        balloonHits.push(note.hits);
+                    }
+                });
+            });
+            const balloonHeader = balloonHits.length > 0 ? `BALLOON:${balloonHits.join(',')}\n` : '';
+
+            let tja = `TITLE:${inputs.title.value}\nBPM:${inputs.bpm.value}\nWAVE:${waveName}\nOFFSET:${inputs.offset.value}\n${balloonHeader}COURSE:Oni\nLEVEL:8\n\n#START\n${inputs.chart.value}`;
+            if (!tja.endsWith('\n')) tja += '\n';
+            tja += '#END';
+            inputs.out.value = tja;
+        };
         
         async function downloadZip() {
             if (!window.JSZip) { alert("JSZip library failed to load."); return; }
@@ -491,19 +596,313 @@
             if (fileInput.files.length > 0) { const file = fileInput.files[0]; zip.file(file.name, file); }
             try { const content = await zip.generateAsync({type: "blob"}); const a = document.createElement('a'); a.href = URL.createObjectURL(content); a.download = `${title}.zip`; a.click(); } catch (err) { console.error(err); alert("ZIP作成エラー"); }
         }
-
+        
+        // --- PASTE UNCHANGED FUNCTIONS HERE ---
+        initEditor();
         async function runAdvancedBpmAnalysis() { if (!musicBuffer) { alert("音楽ファイルがありません。"); return; } statusText.innerText = "⚡ 高精度解析中..."; setTimeout(async () => { try { const offlineContext = new OfflineAudioContext(1, musicBuffer.length, musicBuffer.sampleRate); const source = offlineContext.createBufferSource(); source.buffer = musicBuffer; const filter = offlineContext.createBiquadFilter(); filter.type = 'lowpass'; filter.frequency.value = 140; filter.Q.value = 1; source.connect(filter); filter.connect(offlineContext.destination); source.start(0); const renderedBuffer = await offlineContext.startRendering(); const audioData = renderedBuffer.getChannelData(0); const peaks = getPeaksWithDynamicThreshold(audioData, musicBuffer.sampleRate); const bpm = calculateBPMFromPeaks(peaks, musicBuffer.sampleRate); if (bpm > 0) { const doubledBpm = bpm * 2; const choice = prompt(`BPM解析結果:\n\n1: 通常BPM: ${bpm.toFixed(1)}\n2: 倍速BPM: ${doubledBpm.toFixed(1)}\n\nどちらを適用しますか？ (1か2を入力)`, "1"); let finalBpm = bpm; if (choice === "2") finalBpm = doubledBpm; else if (choice !== "1" && choice !== null) alert("無効な選択です。通常BPMを適用します。"); if (choice !== null) { inputs.bpm.value = finalBpm.toFixed(2); updateTjaText(); } statusText.innerText = "✅ 解析完了"; } else { alert("BPMを検出できませんでした。"); statusText.innerText = "⚠️ 検出不能"; } } catch(e) { console.error(e); alert("解析中にエラーが発生しました。"); statusText.innerText = "❌ 解析エラー"; } }, 100); }
         function getPeaksWithDynamicThreshold(data, sampleRate) { const peaks = []; const chunkSize = sampleRate; const thresholdMultiplier = 0.9; for (let i = 0; i < data.length; i += chunkSize) { const chunk = data.slice(i, i + chunkSize); let max = 0; for (let j = 0; j < chunk.length; j++) if (chunk[j] > max) max = chunk[j]; const threshold = max * thresholdMultiplier; for (let j = 1; j < chunk.length - 1; j++) { if (chunk[j] > threshold && chunk[j] > chunk[j - 1] && chunk[j] > chunk[j + 1]) peaks.push(i + j); } } return peaks; }
         function calculateBPMFromPeaks(peaks, sampleRate) { if (peaks.length < 10) return 0; const intervals = []; for (let i = 1; i < peaks.length; i++) intervals.push((peaks[i] - peaks[i - 1]) / sampleRate); const bpmCandidates = intervals.map(interval => 60 / interval).filter(bpm => bpm > 40 && bpm < 240); if (bpmCandidates.length === 0) return 0; const bpmGroups = {}; bpmCandidates.forEach(bpm => { const roundedBpm = Math.round(bpm); bpmGroups[roundedBpm] = (bpmGroups[roundedBpm] || 0) + 1; }); let maxCount = 0; let dominantGroup = 0; for (const bpm in bpmGroups) { if (bpmGroups[bpm] > maxCount) { maxCount = bpmGroups[bpm]; dominantGroup = Number(bpm); } } while (dominantGroup < 70) dominantGroup *= 2; while (dominantGroup > 180) dominantGroup /= 2; return dominantGroup; }
         initAudio = function() { if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)(); };
         fileInput.addEventListener('change', async function (e) { if (e.target.files.length === 0) return; statusText.innerText = "⏳ 読み込み中..."; btnPlay.disabled = true; btnAutoBpm.disabled = true; initAudio(); try { const file = e.target.files[0]; const arrayBuffer = await file.arrayBuffer(); audioCtx.decodeAudioData(arrayBuffer, (buffer) => { musicBuffer = buffer; statusText.innerText = "✅ 音楽準備OK"; btnPlay.disabled = false; btnAutoBpm.disabled = false; if (inputs.title.value === "New Song") inputs.title.value = file.name.replace(/\.[^/.]+$/, ""); updateTjaText(); }, (err) => { console.error(err); statusText.innerText = "❌ 読込失敗"; alert("音声ファイルの読み込みに失敗しました。"); }); } catch (err) { console.error(err); statusText.innerText = "❌ ファイル処理エラー"; alert("ファイルが開けませんでした。"); } });
         toggleMetro = function() { isMetroOn = !isMetroOn; btnMetro.innerText = isMetroOn ? "⏰ ON" : "⏰ OFF"; btnMetro.classList.toggle("active", isMetroOn); };
-        playSound = function (type) { if (!audioCtx) return; const now = audioCtx.currentTime; const osc = audioCtx.createOscillator(); const gain = audioCtx.createGain(); osc.connect(gain); gain.connect(audioCtx.destination); if (type === 'metro_high') { osc.frequency.setValueAtTime(1200, now); osc.type = 'square'; const vol = 0.2 * volMetro; gain.gain.setValueAtTime(vol, now); gain.gain.exponentialRampToValueAtTime(0.01, now + 0.05); osc.start(now); osc.stop(now + 0.05); } else if (type === 'metro_low') { osc.frequency.setValueAtTime(800, now); osc.type = 'square'; const vol = 0.15 * volMetro; gain.gain.setValueAtTime(vol, now); gain.gain.exponentialRampToValueAtTime(0.01, now + 0.05); osc.start(now); osc.stop(now + 0.05); } else if (type === 'don') { osc.frequency.setValueAtTime(150, now); osc.frequency.exponentialRampToValueAtTime(0.01, now + 0.15); gain.gain.setValueAtTime(0.8 * volSe, now); gain.gain.exponentialRampToValueAtTime(0.01, now + 0.15); osc.start(now); osc.stop(now + 0.2); } else { osc.type = 'triangle'; osc.frequency.setValueAtTime(300, now); osc.frequency.exponentialRampToValueAtTime(0.01, now + 0.1); gain.gain.setValueAtTime(0.6 * volSe, now); gain.gain.exponentialRampToValueAtTime(0.01, now + 0.1); osc.start(now); osc.stop(now + 0.2); } }
-        const previewCanvas = document.getElementById('previewCanvas'); const previewCtx = previewCanvas.getContext('2d'); let animationId, startTime = 0, isPlaying = false; const HIT_X = 150, PREVIEW_Y = 80, BASE_SPEED = 200;
-        parseTJA = function () { const lines = inputs.chart.value.split('\n'); const startBpm = parseFloat(inputs.bpm.value) || 120; const offset = parseFloat(inputs.offset.value) || 0; let currentTime = -offset; let currentBpm = startBpm; let currentScroll = 1.0; let measureRatio = 1.0; let parsedNotes = [], parsedClicks = [], parsedBarlines = [], gogoSections = []; let isGogo = false; let gogoStart = -1; lines.forEach(line => { line = line.trim(); if (!line) return; if (line.startsWith('#')) { const parts = line.split(' '); const cmd = parts[0]; const val = parseFloat(parts[1]); if (cmd === '#BPMCHANGE' && !isNaN(val)) currentBpm = val; if (cmd === '#SCROLL' && !isNaN(val)) currentScroll = val; if (cmd === '#MEASURE') { const frac = parts[1].split('/'); if (frac.length === 2) measureRatio = parseFloat(frac[0]) / parseFloat(frac[1]); } if (cmd === '#GOGOTIME') { isGogo = true; gogoStart = currentTime; } if (cmd === '#GOGOEND') { isGogo = false; if(gogoStart !== -1) { gogoSections.push({start: gogoStart, end: currentTime}); gogoStart = -1; } } return; } if (line.endsWith(',')) { const data = line.slice(0, -1); const len = data.length; const measureTime = (60 / currentBpm) * 4 * measureRatio; if (len > 0) { const timePerChar = measureTime / len; for (let i = 0; i < len; i++) { const char = data[i]; if (char !== '0' && char !== '8') { parsedNotes.push({ time: currentTime + (i * timePerChar), type: ['2', '4'].includes(char) ? 'kat' : 'don', char: char, scroll: currentScroll, isBig: ['3', '4', '6'].includes(char), isGogo: isGogo }); } } } const beatsPerMeasure = 4 * measureRatio; const timePerBeat = 60 / currentBpm; for (let b = 0; b < beatsPerMeasure; b++) { if (b * timePerBeat < measureTime) { parsedClicks.push({ time: currentTime + (b * timePerBeat), type: b === 0 ? 'metro_high' : 'metro_low' }); } } currentTime += measureTime; parsedBarlines.push({ time: currentTime, scroll: currentScroll }); } }); if(isGogo) gogoSections.push({start: gogoStart, end: currentTime}); return { notes: parsedNotes, clicks: parsedClicks, barlines: parsedBarlines, gogoSections: gogoSections }; }
-        loop = function () { if (!isPlaying) return; previewCtx.fillStyle = '#222'; previewCtx.fillRect(0, 0, previewCanvas.width, previewCanvas.height); const now = audioCtx.currentTime - startTime; const data = window.currentData; const laneY = PREVIEW_Y; let currentIsGogo = false; data.gogoSections.forEach(gogo => { if(now >= gogo.start && now < gogo.end) currentIsGogo = true; }); previewCtx.fillStyle = currentIsGogo ? '#602020' : '#444'; previewCtx.fillRect(0, laneY - 30, previewCanvas.width, 60); previewCtx.beginPath(); previewCtx.arc(HIT_X, laneY, 26, 0, Math.PI * 2); previewCtx.strokeStyle = '#fff'; previewCtx.lineWidth = 3; previewCtx.stroke(); if (isMetroOn) { data.clicks.forEach(click => { if (click.time <= now && !click.played) { click.played = true; if (now - click.time < 0.1) playSound(click.type); } }); } if (data.barlines) { previewCtx.strokeStyle = 'rgba(255, 255, 255, 0.5)'; previewCtx.lineWidth = 1; data.barlines.forEach(barline => { const timeDiff = barline.time - now; const x = HIT_X + (timeDiff * BASE_SPEED * barline.scroll); if (x > 0 && x < previewCanvas.width) { previewCtx.beginPath(); previewCtx.moveTo(x, laneY - 30); previewCtx.lineTo(x, laneY + 30); previewCtx.stroke(); } }); } data.notes.forEach(note => { const timeDiff = note.time - now; const x = HIT_X + (timeDiff * BASE_SPEED * note.scroll); if (timeDiff <= 0 && !note.played) { note.played = true; if (['1', '2', '3', '4'].includes(note.char)) { playSound(note.type); previewCtx.fillStyle = '#fff'; previewCtx.beginPath(); previewCtx.arc(HIT_X, laneY, 22, 0, Math.PI * 2); previewCtx.fill(); } } if (x > -50 && x < previewCanvas.width + 50) { drawNote(previewCtx, x, laneY, note.char); } }); const lastNoteTime = data.notes.length ? data.notes[data.notes.length - 1].time : 0; if (data.notes.length > 0 && now > lastNoteTime + 2) { stopPreview(); return; } animationId = requestAnimationFrame(loop); }
-        startPreview = function () { initAudio(); if (audioCtx.state === 'suspended') audioCtx.resume(); stopPreview(); window.currentData = parseTJA(); if (window.currentData.notes.length === 0 && window.currentData.gogoSections.length === 0) return; startTime = audioCtx.currentTime + 0.1; isPlaying = true; if (musicBuffer) { musicSource = audioCtx.createBufferSource(); musicSource.buffer = musicBuffer; const musicGain = audioCtx.createGain(); musicGain.gain.value = 0.7; musicSource.connect(musicGain); musicGain.connect(audioCtx.destination); musicSource.start(startTime); } loop(); btnPlay.disabled = true; }
-        stopPreview = function () { isPlaying = false; cancelAnimationFrame(animationId); if (musicSource) { try { musicSource.stop(); } catch (e) { } musicSource = null; } previewCtx.fillStyle = '#222'; previewCtx.fillRect(0, 0, previewCanvas.width, previewCanvas.height); btnPlay.disabled = musicBuffer ? false : true; }
+        playSound = function (type) { if (!audioCtx) return; const now = audioCtx.currentTime; const osc = audioCtx.createOscillator(); const gain = audioCtx.createGain(); osc.connect(gain); gain.connect(audioCtx.destination); if (type === 'metro_high') { osc.frequency.setValueAtTime(1200, now); osc.type = 'square'; const vol = 0.2 * volMetro; gain.gain.setValueAtTime(vol, now); gain.gain.exponentialRampToValueAtTime(0.01, now + 0.05); osc.start(now); osc.stop(now + 0.05); } else if (type === 'metro_low') { osc.frequency.setValueAtTime(800, now); osc.type = 'square'; const vol = 0.15 * volMetro; gain.gain.setValueAtTime(vol, now); gain.gain.exponentialRampToValueAtTime(0.01, now + 0.05); osc.start(now); osc.stop(now + 0.05); } else if (type === 'don') { osc.frequency.setValueAtTime(150, now); osc.frequency.exponentialRampToValueAtTime(0.01, now + 0.15); gain.gain.setValueAtTime(1.4 * volSe, now); gain.gain.exponentialRampToValueAtTime(0.01, now + 0.15); osc.start(now); osc.stop(now + 0.2); } else { osc.type = 'triangle'; osc.frequency.setValueAtTime(300, now); osc.frequency.exponentialRampToValueAtTime(0.01, now + 0.1); gain.gain.setValueAtTime(1.2 * volSe, now); gain.gain.exponentialRampToValueAtTime(0.01, now + 0.1); osc.start(now); osc.stop(now + 0.2); } }
+
+        const previewCanvas = document.getElementById('previewCanvas'); const previewCtx = previewCanvas.getContext('2d'); let animationId, startTime = 0, isPlaying = false, isPreviewPaused = false; const HIT_X = 150, PREVIEW_Y = 80, BASE_SPEED = 300;
+        
+        // ▼▼▼【修正】プレビュー解析をGOGOSTARTに変更 ▼▼▼
+        parseTJA = function () {
+            const lines = inputs.chart.value.split('\n');
+            const startBpm = parseFloat(inputs.bpm.value) || 120;
+            const offset = parseFloat(inputs.offset.value) || 0;
+            let currentTime = -offset;
+            let currentBpm = startBpm;
+            let currentScroll = 1.0;
+            let measureRatio = 1.0;
+            let parsedNotes = [], parsedClicks = [], parsedBarlines = [], gogoSections = [], parsedRolls = [];
+            let isGogo = false;
+            let gogoStart = -1;
+            let rollStartTime = -1, rollType = null, rollScroll = 1.0;
+
+            lines.forEach(line => {
+                line = line.trim();
+                if (!line) return;
+                if (line.startsWith('#')) {
+                    const parts = line.split(' ');
+                    const cmd = parts[0].toUpperCase();
+                    const val = parseFloat(parts[1]);
+                    if (cmd === '#BPMCHANGE' && !isNaN(val)) currentBpm = val;
+                    if (cmd === '#SCROLL' && !isNaN(val)) currentScroll = val;
+                    if (cmd === '#MEASURE') {
+                        const frac = parts[1].split('/');
+                        if (frac.length === 2) measureRatio = parseFloat(frac[0]) / parseFloat(frac[1]);
+                    }
+                    if (cmd === '#GOGOSTART') { isGogo = true; gogoStart = currentTime; }
+                    if (cmd === '#GOGOEND') { isGogo = false; if(gogoStart !== -1) { gogoSections.push({start: gogoStart, end: currentTime}); gogoStart = -1; } }
+                    return;
+                }
+                if (line.endsWith(',')) {
+                    const data = line.slice(0, -1);
+                    const len = data.length;
+                    const measureTime = (60 / currentBpm) * 4 * measureRatio;
+                    if (len > 0) {
+                        const timePerChar = measureTime / len;
+                        for (let i = 0; i < len; i++) {
+                            const char = data[i];
+                            const noteTime = currentTime + (i * timePerChar);
+
+                            if (['5', '6', '7'].includes(char) && rollStartTime === -1) {
+                                rollStartTime = noteTime;
+                                rollType = char;
+                                rollScroll = currentScroll;
+                            } else if (char === '8' && rollStartTime !== -1) {
+                                parsedRolls.push({ start: rollStartTime, end: noteTime, type: rollType, scroll: rollScroll });
+                                rollStartTime = -1;
+                            }
+                            
+                            if (char !== '0') {
+                                parsedNotes.push({ time: noteTime, type: ['2', '4'].includes(char) ? 'kat' : 'don', char: char, scroll: currentScroll, isBig: ['3', '4', '6'].includes(char), isGogo: isGogo });
+                            }
+                        }
+                    }
+                    const beatsPerMeasure = 4 * measureRatio;
+                    const timePerBeat = 60 / currentBpm;
+                    for (let b = 0; b < beatsPerMeasure; b++) {
+                        if (b * timePerBeat < measureTime) {
+                            parsedClicks.push({ time: currentTime + (b * timePerBeat), type: b === 0 ? 'metro_high' : 'metro_low' });
+                        }
+                    }
+                    currentTime += measureTime;
+                    parsedBarlines.push({ time: currentTime, scroll: currentScroll });
+                }
+            });
+            if(isGogo) gogoSections.push({start: gogoStart, end: currentTime});
+            return { notes: parsedNotes, clicks: parsedClicks, barlines: parsedBarlines, gogoSections: gogoSections, rolls: parsedRolls };
+        }
+        
+        loop = function () {
+            if (!isPlaying) return;
+            previewCtx.fillStyle = '#222';
+            previewCtx.fillRect(0, 0, previewCanvas.width, previewCanvas.height);
+            const now = audioCtx.currentTime - startTime;
+            const data = window.currentData;
+            const laneY = PREVIEW_Y;
+
+            // 背景とGOGO TIMEの描画
+            let currentIsGogo = false;
+            data.gogoSections.forEach(gogo => {
+                if(now >= gogo.start && now < gogo.end) currentIsGogo = true;
+            });
+            previewCtx.fillStyle = currentIsGogo ? '#602020' : '#444';
+            previewCtx.fillRect(0, laneY - 30, previewCanvas.width, 60);
+
+            // 判定円の描画
+            previewCtx.beginPath();
+            previewCtx.arc(HIT_X, laneY, 26, 0, Math.PI * 2);
+            previewCtx.strokeStyle = '#fff';
+            previewCtx.lineWidth = 3;
+            previewCtx.stroke();
+            
+            // メトロノーム音の再生
+            if (isMetroOn) {
+                data.clicks.forEach(click => {
+                    if (click.time <= now && !click.played) {
+                        click.played = true;
+                        if (now - click.time < 0.1) playSound(click.type);
+                    }
+                });
+            }
+            
+            // 小節線の描画
+            if (data.barlines) {
+                previewCtx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
+                previewCtx.lineWidth = 1;
+                data.barlines.forEach(barline => {
+                    const timeDiff = barline.time - now;
+                    const x = HIT_X + (timeDiff * BASE_SPEED * barline.scroll);
+                    if (x > 0 && x < previewCanvas.width) {
+                        previewCtx.beginPath();
+                        previewCtx.moveTo(x, laneY - 30);
+                        previewCtx.lineTo(x, laneY + 30);
+                        previewCtx.stroke();
+                    }
+                });
+            }
+
+            // 連打・風船のバーを描画 (ノートより奥に描画)
+            if (data.rolls) {
+                data.rolls.forEach(roll => {
+                    const timeDiffStart = roll.start - now;
+                    const timeDiffEnd = roll.end - now;
+
+                    const startX = HIT_X + (timeDiffStart * BASE_SPEED * roll.scroll);
+                    const endX = HIT_X + (timeDiffEnd * BASE_SPEED * roll.scroll);
+
+                    if (endX > 0 && startX < previewCanvas.width) {
+                        const isBig = roll.type === '6';
+                        const isBalloon = roll.type === '7';
+                        
+                        if (isBalloon) {
+                            previewCtx.fillStyle = 'rgba(230, 126, 34, 0.6)';
+                        } else {
+                            previewCtx.fillStyle = isBig ? 'rgba(241, 196, 15, 0.6)' : 'rgba(241, 196, 15, 0.4)';
+                        }
+
+                        const y = laneY - (isBig ? 22 : 15);
+                        const height = isBig ? 44 : 30;
+                        previewCtx.fillRect(startX, y, endX - startX, height);
+                    }
+                });
+            }
+            
+            const notesToDraw = [];
+            const effectsToDraw = [];
+
+            data.notes.forEach(note => {
+                const timeDiff = note.time - now;
+                const x = HIT_X + (timeDiff * BASE_SPEED * note.scroll);
+
+                if (timeDiff <= 0 && !note.played) {
+                    note.played = true;
+                    if (['1', '2', '3', '4'].includes(note.char)) {
+                        playSound(note.type);
+                        effectsToDraw.push({ x: HIT_X, y: laneY });
+                    }
+                }
+                if (x > -50 && x < previewCanvas.width + 50) {
+                    notesToDraw.push({x: x, y: laneY, noteObj: { type: note.char }});
+                }
+            });
+
+            for (let i = notesToDraw.length - 1; i >= 0; i--) {
+                const note = notesToDraw[i];
+                drawNote(previewCtx, note.x, note.y, note.noteObj);
+            }
+
+            effectsToDraw.forEach(effect => {
+                previewCtx.fillStyle = '#fff';
+                previewCtx.beginPath();
+                previewCtx.arc(effect.x, effect.y, 22, 0, Math.PI * 2);
+                previewCtx.fill();
+            });
+
+            // 終了判定
+            const lastEventTime = Math.max(
+                data.notes.length ? data.notes[data.notes.length - 1].time : 0,
+                data.rolls.length ? data.rolls[data.rolls.length - 1].end : 0
+            );
+            if (lastEventTime > 0 && now > lastEventTime + 2) {
+                stopPreview();
+                return;
+            }
+            animationId = requestAnimationFrame(loop);
+        }
+        
+        window.addEventListener('keydown', (e) => {
+            if (!isPlaying || !musicBuffer) return; // 再生中でなければ何もしない
+
+            const JUMP_AMOUNT = 2.0; // 2秒
+            let currentTime = audioCtx.currentTime - startTime;
+
+            if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+                e.preventDefault(); // ページのスクロールを防ぐ
+
+                if (e.key === 'ArrowUp') { // 早送り
+                    currentTime += JUMP_AMOUNT;
+                } else if (e.key === 'ArrowDown') { // 早戻し
+                    currentTime -= JUMP_AMOUNT;
+                }
+                
+                // 再生時間の上限と下限を設定
+                const duration = musicBuffer.duration;
+                if (currentTime > duration) currentTime = duration;
+                if (currentTime < 0) currentTime = 0;
+
+                // 現在の音楽を停止
+                if (musicSource) {
+                    try { musicSource.stop(); } catch (err) {}
+                }
+
+                // 新しい再生位置より未来にあるノートとクリックの再生状態をリセット
+                window.currentData.notes.forEach(n => { if (n.time >= currentTime) n.played = false; });
+                window.currentData.clicks.forEach(c => { if (c.time >= currentTime) c.played = false; });
+
+                // 新しい再生開始基準時間を設定
+                startTime = audioCtx.currentTime - currentTime;
+
+                // 新しい位置から音楽を再生
+                musicSource = audioCtx.createBufferSource();
+                musicSource.buffer = musicBuffer;
+                const musicGain = audioCtx.createGain();
+                musicGain.gain.value = 0.7;
+                musicSource.connect(musicGain);
+                musicGain.connect(audioCtx.destination);
+                musicSource.start(audioCtx.currentTime, currentTime);
+            }
+        });
+
+        function togglePlayback() {
+            if (!isPlaying) {
+                startPreview();
+            } else {
+                if (isPreviewPaused) {
+                    // Resume
+                    if (audioCtx.state === 'suspended') {
+                        audioCtx.resume();
+                    }
+                    isPreviewPaused = false;
+                    btnPlay.innerText = '❚❚ 一時停止';
+                    loop();
+                } else {
+                    // Pause
+                    if (audioCtx.state === 'running') {
+                        audioCtx.suspend();
+                    }
+                    isPreviewPaused = true;
+                    cancelAnimationFrame(animationId);
+                    btnPlay.innerText = '▶ 再生';
+                }
+            }
+        }
+        
+        startPreview = function () {
+            initAudio();
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+            stopPreview(); 
+            window.currentData = parseTJA();
+            if (window.currentData.notes.length === 0 && window.currentData.gogoSections.length === 0 && window.currentData.rolls.length === 0) return;
+            startTime = audioCtx.currentTime + 0.1;
+            isPlaying = true;
+            isPreviewPaused = false;
+            if (musicBuffer) {
+                musicSource = audioCtx.createBufferSource();
+                musicSource.buffer = musicBuffer;
+                const musicGain = audioCtx.createGain();
+                musicGain.gain.value = 0.7;
+                musicSource.connect(musicGain);
+                musicGain.connect(audioCtx.destination);
+                musicSource.start(startTime);
+            }
+            loop();
+            btnPlay.innerText = '❚❚ 一時停止';
+            btnPlay.disabled = false;
+        }
+
+        stopPreview = function () {
+            isPlaying = false;
+            isPreviewPaused = false;
+            cancelAnimationFrame(animationId);
+            if (musicSource) {
+                try { musicSource.stop(); } catch (e) { }
+                musicSource = null;
+            }
+            if (audioCtx && audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+            previewCtx.fillStyle = '#222';
+            previewCtx.fillRect(0, 0, previewCanvas.width, previewCanvas.height);
+            btnPlay.innerText = '▶ 再生';
+            btnPlay.disabled = musicBuffer ? false : true;
+        }
     </script>
 </body>
 </html>
