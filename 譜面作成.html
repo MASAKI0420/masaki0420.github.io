@@ -6,8 +6,10 @@
     <title>TJA Maker Pro: Import & Safe Grid 🛡️</title>
     <!-- JSZipライブラリ -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
-    <!-- ▼▼▼【追加】文字コード変換ライブラリ (Encoding.js) ▼▼▼ -->
+    <!-- 文字コード変換ライブラリ (Encoding.js) -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/encoding-japanese/2.0.0/encoding.min.js"></script>
+    <!-- 暗号化ライブラリ (CryptoJS) を追加 -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
     <style>
         :root {
             --primary: #ff4757;
@@ -18,7 +20,10 @@
         }
 
         body { font-family: "Helvetica Neue", Arial, sans-serif; background-color: var(--bg); color: var(--text); margin: 0; padding: 20px; }
-        .main-container { display: flex; flex-direction: column; gap: 20px; max-width: 1400px; margin: 0 auto; }
+        
+        /* 初期状態ではメイン画面を非表示にする */
+        .main-container { display: none; flex-direction: column; gap: 20px; max-width: 1400px; margin: 0 auto; }
+        
         h1 { margin: 0 0 10px 0; color: var(--primary); text-align: center; }
         .top-section { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
         
@@ -48,7 +53,7 @@
         .btn-don { background: #ff4757; } .btn-kat { background: #3742fa; }
         .btn-don-big { background: #ff4757; border: 2px solid #7c1e27; } .btn-kat-big { background: #3742fa; border: 2px solid #192085; }
         .btn-roll { background-color: #f1c40f; color: black; } .btn-eraser { background: #7f8c8d; }
-        .btn-balloon { background-color: #e67e22; color: white; } /* 風船用のスタイル追加 */
+        .btn-balloon { background-color: #e67e22; color: white; }
         .btn-control { background: #34495e; font-size: 0.9em; }
         .btn-file { background: #3498db; position: relative; overflow: hidden; }
         .btn-file input[type=file] { position: absolute; top: 0; right: 0; min-width: 100%; min-height: 100%; font-size: 100px; text-align: right; filter: alpha(opacity=0); opacity: 0; outline: none; background: white; cursor: inherit; display: block; }
@@ -59,11 +64,48 @@
         .modal-content .form-group { margin-bottom: 10px; }
 
         #chartTjaOutput { display: none; }
+
+        /* ログイン画面のスタイル */
+        #login-screen {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: #f1f2f6; z-index: 9999;
+            display: flex; flex-direction: column; justify-content: center; align-items: center;
+        }
+        .login-box {
+            background: white; padding: 30px; border-radius: 10px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            text-align: center; width: 300px;
+        }
+        .login-box h2 { color: var(--primary); margin-top: 0; }
+        .login-box input[type="password"] {
+            width: 100%; padding: 10px; margin: 10px 0;
+            border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box;
+        }
+        .login-box button {
+            width: 100%; padding: 10px; background: var(--primary); font-size: 1.1em; margin-top: 10px;
+        }
+        .login-error { color: #e74c3c; font-size: 0.9em; margin-top: 10px; display: none; }
+        .login-options { margin-top: 10px; font-size: 0.9em; text-align: left; }
     </style>
 </head>
 <body>
 
-    <div class="main-container">
+    <!-- ログイン画面 -->
+    <div id="login-screen">
+        <div class="login-box">
+            <h2>🔒 Restricted Access</h2>
+            <p>パスワードを入力してください</p>
+            <input type="password" id="passwordInput" placeholder="Password">
+            <div class="login-options">
+                <label><input type="checkbox" id="rememberMe"> 次回から自動でログインする</label>
+            </div>
+            <button onclick="attemptLogin()">ログイン</button>
+            <p id="loginError" class="login-error">パスワードが間違っています</p>
+        </div>
+    </div>
+
+    <!-- メインコンテンツ -->
+    <div class="main-container" id="mainApp">
         <h1>TJA Maker Pro (Graphical Editor)</h1>
 
         <div class="preview-container">
@@ -167,6 +209,61 @@
     </div>
 
     <script>
+        // ▼▼▼ パスワード設定 (SHA-256ハッシュ値) ▼▼▼
+    
+        const CORRECT_HASH = "d1f82b92179567a9a86ba7d4b15d83c2b18c53166fc4506af028dff11763f312";
+        const LOGIN_KEY = "tja_maker_auth_hash";
+
+        // ハッシュ計算 (CryptoJSライブラリを使用し、より確実に動作するように変更)
+        function calculateHash(message) {
+            return CryptoJS.SHA256(message).toString(CryptoJS.enc.Hex);
+        }
+
+        window.addEventListener('DOMContentLoaded', () => {
+            const savedHash = localStorage.getItem(LOGIN_KEY);
+            if (savedHash === CORRECT_HASH) {
+                grantAccess();
+            } else {
+                document.getElementById('login-screen').style.display = 'flex';
+            }
+        });
+
+        function attemptLogin() {
+            const input = document.getElementById('passwordInput').value;
+            const remember = document.getElementById('rememberMe').checked;
+            const errorMsg = document.getElementById('loginError');
+
+            // 入力値をハッシュ化
+            const inputHash = calculateHash(input);
+
+            if (inputHash === CORRECT_HASH) {
+                if (remember) {
+                    localStorage.setItem(LOGIN_KEY, CORRECT_HASH);
+                }
+                grantAccess();
+            } else {
+                errorMsg.style.display = 'block';
+                const box = document.querySelector('.login-box');
+                box.style.transform = "translateX(5px)";
+                setTimeout(() => box.style.transform = "translateX(-5px)", 50);
+                setTimeout(() => box.style.transform = "translateX(0)", 100);
+            }
+        }
+        
+        document.getElementById('passwordInput').addEventListener('keypress', function (e) {
+            if (e.key === 'Enter') {
+                attemptLogin();
+            }
+        });
+
+        function grantAccess() {
+            document.getElementById('login-screen').style.display = 'none';
+            document.getElementById('mainApp').style.display = 'flex';
+            window.dispatchEvent(new Event('resize'));
+        }
+
+        // --- 以下、既存のコード ---
+
         // --- UI & Globals ---
         const inputs = { 
             title: document.getElementById('title'), 
@@ -504,12 +601,10 @@
                 const buffer = evt.target.result;
                 let text = "";
                 
-                // 1. まずUTF-8として厳密にデコードを試みる
                 try {
                     const decoder = new TextDecoder("utf-8", { fatal: true });
                     text = decoder.decode(buffer);
                 } catch (e) {
-                    // 2. 失敗した場合（Shift_JIS/ANSIの可能性が高い）、Shift_JISでデコード
                     try {
                         const decoder = new TextDecoder("shift-jis");
                         text = decoder.decode(buffer);
@@ -524,7 +619,6 @@
                 tjaInput.value = '';
             };
             
-            // テキストとしてではなく、バッファとして読み込んでからデコードする
             reader.readAsArrayBuffer(file);
         });
 
@@ -628,7 +722,6 @@
             inputs.out.value = tja;
         };
         
-        // ▼▼▼【修正】ZIP作成時にTJAをShift_JIS (ANSI) に変換して保存 ▼▼▼
         async function downloadZip() {
             if (!window.JSZip) { alert("JSZip library failed to load."); return; }
             if (!window.Encoding) { alert("Encoding library failed to load."); return; }
@@ -636,16 +729,13 @@
             const zip = new JSZip();
             const title = inputs.title.value || "New Song";
             
-            // TJAのテキストを取得
             const tjaString = inputs.out.value;
             
-            // Encoding.jsを使ってUnicode文字列をShift_JIS(ANSI)のコード配列に変換
             const sjisCodeArray = Encoding.convert(Encoding.stringToCode(tjaString), {
                 to: 'SJIS',
                 from: 'UNICODE'
             });
             
-            // Uint8Arrayに変換してzipに追加
             const sjisUint8Array = new Uint8Array(sjisCodeArray);
             zip.file(`${title}.tja`, sjisUint8Array);
             
