@@ -185,7 +185,7 @@
                     <button class="btn-control" onclick="removeMeasure()">最後の小節を削除</button>
                 </div>
             </div>
-             <p style="font-size:0.8em; color:#555; margin:-10px 0 10px 0;">ヒント: ←→, Space, Shift(コマンド), 9(GOGO開始), 0(GOGO終了/消去), Del(消去)</p>
+             <p style="font-size:0.8em; color:#555; margin:-10px 0 10px 0;">ヒント: ←→, Shift(コマンド), 9(GOGO), Del(消去) / Ctrl(コピー開始), Alt(コピー終了), Ctrl+V(貼付), Ctrl+Z(戻す)</p>
             <div class="canvas-wrapper" tabindex="0">
                 <canvas id="editorCanvas" width="1200" height="100"></canvas>
             </div>
@@ -284,9 +284,16 @@
         let cursor = { measure: 0, pos: 0 };
         const MEASURE_WIDTH = 480, LANE_Y = 50, NOTE_RADIUS = 15;
 
+        // ▼▼▼【新規】Undo(元に戻す)とコピー＆ペースト用のグローバル変数 ▼▼▼
+        let history = [];
+        const MAX_HISTORY = 50; // 元に戻せる回数の上限
+        let clipboard = null;
+        let selectionStart = null; // コピー開始位置を保存する変数
+        // ▲▲▲ここまで▲▲▲
+
         // --- Editor Drawing & Init ---
         function initEditor() {
-            if(chartData.length === 0) for (let i = 0; i < 4; i++) addMeasure(false);
+            if(chartData.length === 0) for (let i = 0; i < 4; i++) addMeasure(false, false);
             drawEditor();
             updateAllTja();
         }
@@ -317,6 +324,14 @@
                 
                 drawRollBars(i, measureX, stepX);
                 for (let j = 0; j < gridSize; j++) { if (measure.notes[j].type !== '0') drawNote(editorCtx, measureX + j * stepX, LANE_Y, measure.notes[j]); }
+            }
+
+            // ▼▼▼【新規】コピー開始位置のマーカーを描画 ▼▼▼
+            if (selectionStart && chartData[selectionStart.measure]) {
+                const startGrid = chartData[selectionStart.measure].notes.length;
+                const startX = selectionStart.measure * MEASURE_WIDTH + selectionStart.pos * (MEASURE_WIDTH / startGrid);
+                editorCtx.fillStyle = 'rgba(26, 188, 156, 0.6)'; // マーカーの色
+                editorCtx.fillRect(startX - 2, LANE_Y - 35, 4, 70);
             }
 
             if (cursor.measure >= chartData.length) cursor.measure = chartData.length - 1;
@@ -383,7 +398,6 @@
         // --- Editor Interactions ---
         noteTools.addEventListener('click', (e) => { if (e.target.tagName === 'BUTTON') setActiveNote(e.target.dataset.note); });
 
-        // ▼▼▼【修正点2】クリックで音符を配置せず、カーソル移動のみ行うように変更 ▼▼▼
         function handleEditorClick(event) {
             const rect = editorCanvas.getBoundingClientRect();
             const x = event.clientX - rect.left + canvasWrapper.scrollLeft;
@@ -395,28 +409,35 @@
             const closestIndex = Math.round(xInMeasure / (MEASURE_WIDTH / gridSize));
             if(closestIndex >= gridSize) return;
 
-            // クリックした位置にカーソルを移動するだけ
             cursor = { measure: measureIndex, pos: closestIndex };
-            
-            // 再描画
             drawEditor();
         }
         editorCanvas.addEventListener('mousedown', handleEditorClick);
         editorCanvas.addEventListener('contextmenu', e => e.preventDefault());
 
-        // ▼▼▼【修正点1】スペースキーでの配置を廃止し、数字キーで直接配置するように変更 ▼▼▼
         canvasWrapper.addEventListener('keydown', (e) => {
-            const validToolKeys = ['1', '2', '3', '4', '5', '6', '7', '8'];
             if (document.activeElement === canvasWrapper) e.preventDefault();
             
+            // ▼▼▼【新規】UndoとCopy/Pasteのキー操作をハンドル ▼▼▼
+            // Ctrlキーが押されている場合の組み合わせキーを先に処理
+            if (e.ctrlKey) {
+                if (e.key.toLowerCase() === 'z') { undo(); return; }
+                if (e.key.toLowerCase() === 'v') { pasteFromClipboard(); return; }
+            }
+            // 単独のCtrl, Altキーの処理
+            if (e.key === 'Control' && !e.repeat) { setCopyStart(); return; }
+            if (e.key === 'Alt' && !e.repeat) { setCopyEndAndCopy(); return; }
+            // ▲▲▲ここまで▲▲▲
+
+            const validToolKeys = ['1', '2', '3', '4', '5', '6', '7', '8'];
             const measure = chartData[cursor.measure];
             const gridSize = measure.notes.length;
 
             if (e.key === 'ArrowRight') cursor.pos++; 
             else if (e.key === 'ArrowLeft') cursor.pos--;
-            // else if (e.key === ' ') placeNote(); // スペースキーでの配置を削除
             else if (e.key === 'Shift') openCommandModal(cursor.measure);
             else if (e.key === '9') { 
+                saveStateForUndo();
                 if (measure.commands.includes('#GOGOSTART')) {
                     measure.commands = measure.commands.filter(cmd => cmd !== '#GOGOSTART');
                 } else {
@@ -424,6 +445,7 @@
                 }
             } else if (e.key === '0') {
                 if (cursor.pos === 0) {
+                    saveStateForUndo();
                     if (measure.commands.includes('#GOGOEND')) {
                         measure.commands = measure.commands.filter(cmd => cmd !== '#GOGOEND');
                     } else {
@@ -433,10 +455,11 @@
                     setActiveNote('0');
                 }
             } else if (e.key === 'Delete' || e.key === 'Backspace') {
+                saveStateForUndo();
                 chartData[cursor.measure].notes[cursor.pos] = { type: '0' };
             } else if (validToolKeys.includes(e.key)) {
-                setActiveNote(e.key); // ツールをアクティブにし、
-                placeNote();          // そのまま配置する
+                setActiveNote(e.key);
+                placeNote();
             }
             
             if (cursor.pos < 0) {
@@ -464,6 +487,7 @@
         });
         
         function placeNote() {
+            saveStateForUndo();
             const { measure, pos } = cursor;
             const currentNote = chartData[measure].notes[pos];
 
@@ -494,15 +518,26 @@
             drawEditor();
         }
 
-        function addMeasure(redraw = true) { 
+        function addMeasure(redraw = true, save = true) { 
+            if(save) saveStateForUndo();
             const newMeasure = { notes: Array(currentGrid).fill(0).map(() => ({ type: '0' })), commands: [] };
             chartData.push(newMeasure); 
             if(redraw) { drawEditor(); updateAllTja(); } 
         }
-        function removeMeasure() { if (chartData.length > 1) { chartData.pop(); drawEditor(); updateAllTja(); } else { alert("最後の1小節は削除できません。"); } }
+        function removeMeasure() { 
+            if (chartData.length > 1) { 
+                saveStateForUndo();
+                chartData.pop(); 
+                drawEditor(); 
+                updateAllTja(); 
+            } else { 
+                alert("最後の1小節は削除できません。"); 
+            } 
+        }
         function findLCM(a, b) { const gcd = (x, y) => (!y ? x : gcd(y, x % y)); return (a * b) / gcd(a, b); }
 
         function changeGrid() { 
+            saveStateForUndo();
             const targetGrid = parseInt(gridSelect.value, 10);
             
             chartData.forEach(measure => {
@@ -564,6 +599,7 @@
         function closeModal() { commandModal.style.display = 'none'; }
         
         function saveCommands() {
+            saveStateForUndo();
             const measure = chartData[currentEditingMeasure];
             measure.commands = [];
 
@@ -579,6 +615,103 @@
             drawEditor();
             updateAllTja();
         }
+
+        // ▼▼▼【新規】UndoとCopy/Pasteの関連関数 ▼▼▼
+
+        /**
+         * 現在の譜面状態を履歴に保存します（Undo用）。
+         */
+        function saveStateForUndo() {
+            history.push(JSON.stringify(chartData)); // 譜面データをディープコピーして保存
+            if (history.length > MAX_HISTORY) {
+                history.shift(); // 履歴が上限を超えたら古いものから削除
+            }
+        }
+
+        /**
+         * 最後の操作を元に戻します。
+         */
+        function undo() {
+            if (history.length === 0) return; // 戻す履歴がない場合は何もしない
+            const lastState = history.pop();
+            chartData = JSON.parse(lastState);
+            drawEditor();
+            updateAllTja();
+        }
+
+        /**
+         * コピーの開始位置を現在のカーソルに設定します。
+         */
+        function setCopyStart() {
+            selectionStart = { ...cursor };
+            drawEditor(); // マーカーを表示するために再描画
+        }
+
+        /**
+         * コピーの終了位置を現在のカーソルに設定し、その間の音符をクリップボードにコピーします。
+         * Fnキーの代わりにAltキーを使用します。
+         */
+        function setCopyEndAndCopy() {
+            if (!selectionStart) return;
+
+            let start = selectionStart;
+            let end = { ...cursor };
+
+            // 開始点と終了点が逆の場合、入れ替える
+            if (start.measure > end.measure || (start.measure === end.measure && start.pos > end.pos)) {
+                [start, end] = [end, start];
+            }
+
+            clipboard = [];
+            for (let m = start.measure; m <= end.measure; m++) {
+                if (!chartData[m]) continue;
+                const measureData = chartData[m];
+                const startPos = (m === start.measure) ? start.pos : 0;
+                const endPos = (m === end.measure) ? end.pos + 1 : measureData.notes.length;
+                
+                const notesToCopy = measureData.notes.slice(startPos, endPos);
+                
+                if(notesToCopy.length > 0) {
+                    clipboard.push({ notes: notesToCopy, commands: [] }); // コマンドはコピーしない仕様
+                }
+            }
+            
+            selectionStart = null; // 選択をリセット
+            drawEditor(); // マーカーを消すために再描画
+        }
+
+        /**
+         * クリップボードの内容を現在のカーソル位置に貼り付けます。
+         */
+        function pasteFromClipboard() {
+            if (!clipboard || clipboard.length === 0) return;
+
+            saveStateForUndo(); // 貼り付け前に状態を保存
+
+            let targetM = cursor.measure;
+            let targetP = cursor.pos;
+
+            for (const clipMeasure of clipboard) {
+                for (const noteToPaste of clipMeasure.notes) {
+                    while (!chartData[targetM]) {
+                        addMeasure(false, false); // 小節がなければ追加（Undo履歴には残さない）
+                    }
+                    const targetMeasureNotes = chartData[targetM].notes;
+
+                    if (targetP >= targetMeasureNotes.length) {
+                        targetM++;
+                        targetP = 0;
+                        continue;
+                    }
+
+                    targetMeasureNotes[targetP] = { ...noteToPaste }; // ノートをコピーして貼り付け
+                    targetP++;
+                }
+            }
+            drawEditor();
+            updateAllTja();
+        }
+        // ▲▲▲ここまで▲▲▲
         
         function updateAllTja() {
             let tjaString = "";
@@ -622,6 +755,7 @@
 
         function parseAndLoadTja(tjaText) {
             try {
+                history = []; // 譜面を読み込んだらUndo履歴をリセット
                 const titleMatch = tjaText.match(/TITLE:(.*)/i);
                 if(titleMatch) inputs.title.value = titleMatch[1].trim();
                 
@@ -941,7 +1075,7 @@
         }
         
         window.addEventListener('keydown', (e) => {
-            if (!isPlaying || !musicBuffer) return; // 再生中でなければ何もしない
+            if (document.activeElement === canvasWrapper || !isPlaying || !musicBuffer) return;
 
             const JUMP_AMOUNT = 2.0; // 2秒
             let currentTime = audioCtx.currentTime - startTime;
