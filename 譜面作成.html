@@ -383,6 +383,7 @@
         // --- Editor Interactions ---
         noteTools.addEventListener('click', (e) => { if (e.target.tagName === 'BUTTON') setActiveNote(e.target.dataset.note); });
 
+        // ▼▼▼【修正点2】クリックで音符を配置せず、カーソル移動のみ行うように変更 ▼▼▼
         function handleEditorClick(event) {
             const rect = editorCanvas.getBoundingClientRect();
             const x = event.clientX - rect.left + canvasWrapper.scrollLeft;
@@ -394,20 +395,16 @@
             const closestIndex = Math.round(xInMeasure / (MEASURE_WIDTH / gridSize));
             if(closestIndex >= gridSize) return;
 
+            // クリックした位置にカーソルを移動するだけ
             cursor = { measure: measureIndex, pos: closestIndex };
             
-            if (event.button === 2) {
-                chartData[measureIndex].notes[closestIndex] = { type: '0' };
-                event.preventDefault();
-            } else {
-                placeNote();
-            }
+            // 再描画
             drawEditor();
-            updateAllTja();
         }
         editorCanvas.addEventListener('mousedown', handleEditorClick);
         editorCanvas.addEventListener('contextmenu', e => e.preventDefault());
 
+        // ▼▼▼【修正点1】スペースキーでの配置を廃止し、数字キーで直接配置するように変更 ▼▼▼
         canvasWrapper.addEventListener('keydown', (e) => {
             const validToolKeys = ['1', '2', '3', '4', '5', '6', '7', '8'];
             if (document.activeElement === canvasWrapper) e.preventDefault();
@@ -417,7 +414,7 @@
 
             if (e.key === 'ArrowRight') cursor.pos++; 
             else if (e.key === 'ArrowLeft') cursor.pos--;
-            else if (e.key === ' ') placeNote(); 
+            // else if (e.key === ' ') placeNote(); // スペースキーでの配置を削除
             else if (e.key === 'Shift') openCommandModal(cursor.measure);
             else if (e.key === '9') { 
                 if (measure.commands.includes('#GOGOSTART')) {
@@ -438,7 +435,8 @@
             } else if (e.key === 'Delete' || e.key === 'Backspace') {
                 chartData[cursor.measure].notes[cursor.pos] = { type: '0' };
             } else if (validToolKeys.includes(e.key)) {
-                setActiveNote(e.key);
+                setActiveNote(e.key); // ツールをアクティブにし、
+                placeNote();          // そのまま配置する
             }
             
             if (cursor.pos < 0) {
