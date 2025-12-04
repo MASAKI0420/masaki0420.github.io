@@ -2,16 +2,21 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>計算トレーニング</title>
     
-    <!-- JavaScriptによって後から設定されます -->
-    <link rel="manifest" id="manifest-link">
-
-    <!-- iOS用の設定 -->
+    <!-- ▼▼▼ CJDG方式のPWA設定 ▼▼▼ -->
     <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black">
-    <meta name="apple-mobile-web-app-title" content="計算トレーニング">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="計算トレ">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="theme-color" content="#3498db">
+
+    <!-- ここにJavaScriptで生成したアイコンとマニフェストが注入されます -->
+    <link id="dynamic-favicon" rel="icon" type="image/png" href="">
+    <link id="dynamic-apple-icon" rel="apple-touch-icon" href="">
+    <link id="dynamic-manifest" rel="manifest" href="">
+    <!-- ▲▲▲ CJDG方式のPWA設定 ▲▲▲ -->
 
     <style>
         :root {
@@ -21,10 +26,11 @@
             --danger-color: #e74c3c;
             --dark-color: #34495e;
             --light-color: #f4f7f9;
-            --warning-color: #f39c12;
         }
         html, body {
             height: 100%; width: 100%; overflow: hidden;
+            /* iOSでのバウンススクロール防止 */
+            overscroll-behavior: none;
         }
         body {
             font-family: 'Helvetica Neue', Arial, sans-serif;
@@ -37,6 +43,8 @@
             text-align: center; padding: 30px 40px; background-color: #fff;
             border-radius: 12px; box-shadow: 0 8px 20px rgba(0,0,0,0.1);
             width: 90%; max-width: 500px;
+            /* スマホでタップしたときのハイライトを消す */
+            -webkit-tap-highlight-color: transparent;
         }
         h1, h2 { color: var(--dark-color); }
 
@@ -47,19 +55,14 @@
             font-size: 1.1em; padding: 12px 25px; margin: 8px; border: none;
             border-radius: 8px; cursor: pointer; color: #fff;
             transition: background-color 0.3s, transform 0.2s;
+            touch-action: manipulation;
         }
         button:hover { transform: translateY(-2px); }
+        button:active { transform: scale(0.98); }
         .btn-primary { background-color: var(--primary-color); }
-        .btn-primary:hover { background-color: #2980b9; }
         .btn-secondary { background-color: var(--secondary-color); }
-        .btn-secondary:hover { background-color: #8e44ad; }
         .btn-danger { background-color: var(--danger-color); }
-        .btn-danger:hover { background-color: #c0392b; }
         .btn-success { background-color: var(--success-color); }
-        .btn-success:hover { background-color: #27ae60; }
-        .btn-warning { background-color: var(--warning-color); }
-        .btn-warning:hover { background-color: #e67e22; }
-
 
         #mode-selection button { width: 80%; }
         #time-attack-options, #custom-settings-screen { margin-top: 20px; }
@@ -111,47 +114,100 @@
         #calc-keys .operator { background-color: #f39c12; }
         #calc-keys .operator:hover { background-color: #e67e22; }
         #close-calc-btn { width: 100%; margin-top: 15px; background-color: var(--danger-color); }
-
-        .keypad-container {
-            margin: 20px auto 0;
-            max-width: 280px;
+        
+        /* インストールボタンのスタイル */
+        #install-btn {
+            display: none; /* 初期状態は非表示 */
+            background-color: #16a085;
+            animation: pulse 2s infinite;
         }
-        .keypad-grid {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 10px;
-        }
-        .keypad-btn {
-            font-size: 1.6em;
-            padding: 15px 0;
-            margin: 0;
-            border-radius: 8px;
-            border: 1px solid #bdc3c7;
-            background-color: #fff;
-            color: #333;
-            cursor: pointer;
-            -webkit-tap-highlight-color: transparent; /* モバイルでのタップ時のハイライトを無効化 */
-        }
-        .keypad-btn:active {
-            background-color: #ecf0f1;
-        }
-        .keypad-btn.key-enter {
-            background-color: var(--success-color);
-            border-color: var(--success-color);
-            color: #fff;
-        }
-        .key-enter:active {
-            background-color: #27ae60;
-        }
-        .keypad-btn.key-clear {
-            background-color: var(--danger-color);
-            border-color: var(--danger-color);
-            color: #fff;
-        }
-        .key-clear:active {
-            background-color: #c0392b;
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
         }
     </style>
+
+    <!-- ▼▼▼ マニフェストとアイコン生成スクリプト ▼▼▼ -->
+    <script>
+        (function() {
+            // 1. アイコンをCanvasで動的に描画
+            const size = 512;
+            const canvas = document.createElement('canvas');
+            canvas.width = size;
+            canvas.height = size;
+            const ctx = canvas.getContext('2d');
+
+            // 背景（青）
+            ctx.fillStyle = "#3498db";
+            // 角丸四角形
+            const radius = 80;
+            ctx.beginPath();
+            ctx.moveTo(radius, 0);
+            ctx.lineTo(size - radius, 0);
+            ctx.quadraticCurveTo(size, 0, size, radius);
+            ctx.lineTo(size, size - radius);
+            ctx.quadraticCurveTo(size, size, size - radius, size);
+            ctx.lineTo(radius, size);
+            ctx.quadraticCurveTo(0, size, 0, size - radius);
+            ctx.lineTo(0, radius);
+            ctx.quadraticCurveTo(0, 0, radius, 0);
+            ctx.closePath();
+            ctx.fill();
+
+            // 文字（白で123）
+            ctx.fillStyle = "#ffffff";
+            ctx.font = "bold 220px sans-serif";
+            ctx.textAlign = "center";
+            ctx.textBaseline = "middle";
+            ctx.fillText("123", size/2, size/2);
+
+            const iconBase64 = canvas.toDataURL('image/png');
+
+            // 2. HTMLヘッダーにアイコンをセット
+            document.getElementById('dynamic-favicon').href = iconBase64;
+            document.getElementById('dynamic-apple-icon').href = iconBase64;
+
+            // 3. マニフェストJSONを作成
+            const manifestJson = {
+                "name": "計算トレーニング",
+                "short_name": "計算トレ",
+                "start_url": window.location.href, // 現在のURL
+                "display": "standalone",
+                "background_color": "#f4f7f9",
+                "theme_color": "#3498db",
+                "orientation": "portrait",
+                "description": "シンプルな計算トレーニングアプリ",
+                "icons": [
+                    { "src": iconBase64, "sizes": "512x512", "type": "image/png" }
+                ]
+            };
+
+            // JSONを文字列化してBase64エンコード（ここがCJDGのキモ）
+            const manifestString = JSON.stringify(manifestJson);
+            const base64Manifest = btoa(unescape(encodeURIComponent(manifestString)));
+            
+            // data:スキームでマニフェストを設定
+            document.getElementById('dynamic-manifest').href = "data:application/manifest+json;base64," + base64Manifest;
+
+            // 4. Service Workerも動的に生成して登録（Android/Chromeでのインストール要件を満たすため）
+            if ('serviceWorker' in navigator) {
+                const swCode = `
+                    self.addEventListener('install', e => e.waitUntil(self.skipWaiting()));
+                    self.addEventListener('activate', e => e.waitUntil(self.clients.claim()));
+                    self.addEventListener('fetch', e => e.respondWith(fetch(e.request)));
+                `;
+                const swBlob = new Blob([swCode], {type: 'application/javascript'});
+                const swUrl = URL.createObjectURL(swBlob);
+                
+                navigator.serviceWorker.register(swUrl)
+                    .then(() => console.log('SW Registered'))
+                    .catch(err => console.log('SW Failed', err));
+            }
+        })();
+    </script>
+    <!-- ▲▲▲ マニフェストとアイコン生成スクリプト終了 ▲▲▲ -->
+
 </head>
 <body>
 
@@ -162,7 +218,9 @@
             <button class="btn-primary" onclick="showScreen('time-attack-options')">タイムアタックモード</button>
             <button class="btn-secondary" onclick="showScreen('custom-settings-screen')">カスタムモード</button>
             <button id="fullscreen-btn" class="btn-success" onclick="toggleFullScreen()">フルスクリーン</button>
-            <button id="install-btn" class="btn-warning" style="display: none;">アプリをインストール</button>
+            
+            <!-- インストールボタン -->
+            <button id="install-btn" class="btn-primary">アプリをインストール</button>
         </div>
     </div>
     
@@ -198,7 +256,7 @@
     <div id="game-screen" class="screen">
         <div id="game-info"><div id="timer"></div><div id="score"></div></div>
         <div id="question">1 + 1</div>
-        <input type="tel" id="answer" placeholder="答え" pattern="[0-9-]*" inputmode="numeric" readonly>
+        <input type="tel" id="answer" placeholder="答え" pattern="[0-9-]*" inputmode="numeric">
         <div id="feedback"></div>
         <div id="custom-mode-controls">
             <button class="btn-danger" onclick="quitGame()">やめる</button>
@@ -252,7 +310,6 @@
 </div>
 
 <script>
-    // --- アプリケーション本体のロジック ---
     const screens = document.querySelectorAll('.screen'), timerElement = document.getElementById('timer'), scoreElement = document.getElementById('score'),
           questionElement = document.getElementById('question'), feedbackElement = document.getElementById('feedback'), answerInput = document.getElementById('answer'),
           finalScoreElement = document.getElementById('final-score'), customControls = document.getElementById('custom-mode-controls'),
@@ -319,7 +376,7 @@
         if (!document.fullscreenElement) {
             document.documentElement.requestFullscreen().then(() => {
                 wantsFullScreen = true;
-                try { screen.orientation.lock('portrait-primary'); } catch (e) {}
+                // スマホで横向き固定解除等は不要（縦画面アプリなので）
             }).catch(e => { wantsFullScreen = false; });
         } else {
             if (document.exitFullscreen) { document.exitFullscreen(); }
@@ -396,124 +453,47 @@
     const performCalculation={'/':(f,s)=>f/s, '*':(f,s)=>f*s, '+':(f,s)=>f+s, '-':(f,s)=>f-s, '=':(f,s)=>s,};
     function resetCalculator() { calculator.displayValue='0'; calculator.firstOperand=null; calculator.waitingForSecondOperand=false; calculator.operator=null; }
     
-    function createKeypad() {
-        if (document.getElementById('keypad-container')) return;
-        const container = document.createElement('div');
-        container.id = 'keypad-container';
-        container.className = 'keypad-container';
-        const grid = document.createElement('div');
-        grid.className = 'keypad-grid';
-        const keys = ['7', '8', '9','4', '5', '6','1', '2', '3','C', '0', 'Enter'];
-        keys.forEach(key => {
-            const button = document.createElement('button');
-            button.textContent = key;
-            button.dataset.key = key;
-            button.className = 'keypad-btn';
-            if (key === 'Enter') button.classList.add('key-enter');
-            if (key === 'C') button.classList.add('key-clear');
-            grid.appendChild(button);
-        });
-        container.appendChild(grid);
-        answerInput.insertAdjacentElement('afterend', container);
-        container.addEventListener('mousedown', (e) => {
-            e.preventDefault();
-            const target = e.target;
-            if (target.classList.contains('keypad-btn')) {
-                handleKeypadInput(target.dataset.key);
-            }
-        });
-    }
+    // ▼▼▼ インストールボタン制御 ▼▼▼
+    const installBtn = document.getElementById('install-btn');
+    let deferredPrompt;
 
-    function handleKeypadInput(key) {
-        if (!isNaN(parseInt(key))) { 
-            answerInput.value += key;
-        } else if (key === 'C') {
-            answerInput.value = '';
-        } else if (key === 'Enter') {
-            checkAnswer();
-        }
-        if (feedbackElement.textContent !== '') {
-            feedbackElement.textContent = '';
-        }
-    }
-    
-    // --- PWA化とアプリ初期化のメイン処理 ---
-    window.addEventListener('load', () => {
-        
-        const icon192 = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAMAAAADACAYAAABS3GwHAAACHElEQVR4nO3WsW3DUBAEQX/dARzAKmwE29gB2AUtYAR2gA7gEIIJ4AAdAAdwwQWREEISCmK3+y9fMvjBv+UeIjgDAAAAAAAAAAAAAAAAAAAAAMBxLzYfAIA/G0AABBCAAAggAAEIIAABCCCAAAQggAAEIIAABCCAAAQggAAEIIAABCCAAAQggAAEIIAABCCAAAQggAAEIIAABCCAAAQggAAEIIAABCCAAAQggAAEIIAABCCAaQACCEAAAhBAAAIQQAAeQAAEEIADCSCAAAQggAAEIIAABCCAAAQggAAEIIAABCCAAAQggAAEIIAABCCAAAQggAAEIIAABCCAAAQggAAEIIAABCCAAAQggAAEIIAABCCAAAQggAAEIIAABCCA/wMIIAABCEAAAhBAAAIQQAAeQAAEEIADCSCAAAQggAAEIIAABCCAAAQggAAEIIAABCCAAAQggAAEIIAABCCAAAQggAAEIIAABCCAAAQggAAEIIAABCCAAAQggAAEIIAABCCAaQACCEAAAhBAAAIQQAAeQAAEEIADCSCAAAQggAAEIIAABCCAAAQggAAEIIAABCCAAAQggAAEIIAABCCAAAQggAAEIIAABCCAAAQggAAEIIAABCCAAAQggAAEIIAABCCAaQACCEAAAhBAAAIQQAAeQAAEEIADCSCAAAQggAAEIIAABCCAAAQggAAEIIAABCCAAAQggAAEIIAABCCAAAQggAAEIIAABCCAAAQggAAEIIAABCCAAAQggAAEIIAABCCAaQACCEAAAhBAAAIQQAAeQAAEEIADCSCAAAQggAAEIIAABCCAAAQggAAEIIAABCCAAAQggAAEIIAABCCAAAQggAAEIIAABCCAAAQggAAEIIAABCCAAAQggAAEIIAABCCAaQACCEAAAhBAAAIQQAC+AQv4A2a/kfBvAAAAAElFTkSuQmCC';
-        const icon512 = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAgAAAAIACAYAAAD0eNT6AAADY0lEQVR4nO3WsQ2AMAwEwZ92gI/dARzgoQMGYAcOwAEc4Ad2AByA84ISW6O1yJ+8/2AJAf8/A8mBEgUAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACASwACEEAAAhCAAAQQgAAEIAABCCAAAQhgAAEIIAABCEAAAhCAAAQQgAAEIAABCCAAAQhgAAEIIAABCEAAAhCAAAQQgAAEIAABCCAAAQhgAAEIIAABCEAAAhCAAAQQgAAEIAABCCAeQACEEAAAhCAAAQggAAEIIB4AAIIQAACEIAABCCAAAQggHgAAghAAAIQgAAEIAABCCCAeAACCDBzAAIQQACEIAABCCAAgQAEIIAYAAEIQAACEEAAAhCAQAAEIMAIAEIQAACEIAABCEAAAQEIQAACEEAAAhCAAAQggAAEIAABCCCAAAQgAAEIQAACEIAABCCAAAQggAAEIIB4AAIIQAACEIAABCCAAAQggHgAAghAAAIQgAAEIAABCCCAeAACCDBzAAIQQACEIAABCCAAgQAEIIAYAAEIQAACEEAAAhCAQAAEIMAIAEIQAACEIAABCEAAAQEIQAACEEAAAhCAAAQggAAEIAABCCCAAAQgAAEIQAACEIAABCCAAAQggAAEIIB4AAIIQAACEIAABCCAAAQggHgAAghAAAIQgAAEIAABCCCAeAACCDBzAAIQQACEIAABCCAAgQAEIIAYAAEIQAACEEAAAhCAQAAEIMAIAEIQAACEIAABCEAAAQEIQAACEEAAAhCAAAQggAAEIAABCCCAAAQgAAEIQAACEIAABCCAAAQggAAEIIB4AAIIQAACEIAABCCAAAQggHgAAghAAAIQgAAEIAABCCCAeAACCDBzAAIQQACEIAABCCAAgQAEIIAYAAEIQAACEEAAAhCAQAAEIMAIAEIQAACEIAABCEAAAQEIQAACEEAAAhCAAAQggAAEIAABCCCAAAQgAAEIQAACEIAABCCAAAQggAAEIIB4AAIIQAACEIAABCCAAAQggHgAAghAAAIQgAAEIAABCCCAeAACCDBzAAIQQACEIAABCCAAgQAEIIAYAAEIQAACEEAAAhCAQAAEIMAIAEIQAACEIAABCEAAAQEIQAACEEAAAhCAAAQggAAEIAABCCCAAAQgAAEIQAACEIAABCCAAAQggAAEIIB4AAIIQAACEIAABCCAAAQggHgAAghAAAIQgAAEIAABCCCAeAACCDBzAAIQQACEIAABCCAAgQAEIIAYAAEIQAACEEAAAhCAQAAEIMAIAEIQAACEIAABCEAAAQEIQAACEEAAAhCAAAQggAAEIAABCCCAAAQgAAEIQAACEIAABCCAAAQggAAEIIB4AAIIQAACEIAABCCAAAQggHgAAghAAAIQgAAEIAABCCCAeAACCDBzAAIQQACEIAABCCAAgQAEIIAYAAEIQAACEEAAAhCAQAAEIMAIAEIQAACEIAABCEAAAQEIQAACEEAAAhCAAAQggAAEIAABCCCAAAQgAAEIQAACEIAABCCAAAQgAAEIIB4AAIIQAACEIAABCCAAAQggHgAAghAAAIQgAAEIAABCCAeAPwDH2UDHw02l+cAAAAASUVORK5CYII=';
-        
-        const manifest = {
-            "name": "計算トレーニング",
-            "short_name": "計算トレ",
-            "start_url": ".",
-            "display": "standalone",
-            "background_color": "#f4f7f9",
-            "theme_color": "#3498db",
-            "description": "シンプルな計算トレーニングアプリです。",
-            "icons": [
-                { "src": icon192, "sizes": "192x192", "type": "image/png" },
-                { "src": icon512, "sizes": "512x512", "type": "image/png" }
-            ]
-        };
+    window.addEventListener('beforeinstallprompt', (e) => {
+        e.preventDefault();
+        deferredPrompt = e;
+        installBtn.style.display = 'inline-block';
+    });
 
-        const blob = new Blob([JSON.stringify(manifest)], { type: 'application/json' });
-        const manifestURL = URL.createObjectURL(blob);
-        document.querySelector('#manifest-link').setAttribute('href', manifestURL);
-
-        if ('serviceWorker' in navigator) {
-            const serviceWorkerScript = `
-                const CACHE_NAME = 'calc-training-cache-v1';
-                const urlsToCache = ['${window.location.href.split('?')[0].split('#')[0]}'];
-                self.addEventListener('install', event => {
-                    event.waitUntil(caches.open(CACHE_NAME).then(cache => cache.addAll(urlsToCache)));
-                });
-                self.addEventListener('fetch', event => {
-                    event.respondWith(caches.match(event.request).then(response => response || fetch(event.request)));
-                });
-            `;
-            const swBlob = new Blob([serviceWorkerScript], { type: 'application/javascript' });
-            const swURL = URL.createObjectURL(swBlob);
-            navigator.serviceWorker.register(swURL)
-                .then(reg => console.log('Service worker registered successfully:', reg))
-                .catch(err => console.error('Service worker registration failed:', err));
-        }
-
-        let deferredPrompt;
-        const installBtn = document.getElementById('install-btn');
-
-        window.addEventListener('beforeinstallprompt', (e) => {
-            e.preventDefault();
-            deferredPrompt = e;
-            installBtn.style.display = 'block';
-        });
-
-        installBtn.addEventListener('click', async () => {
-            if (deferredPrompt) {
-                deferredPrompt.prompt();
-                const { outcome } = await deferredPrompt.userChoice;
-                console.log(`User response to the install prompt: ${outcome}`);
-                deferredPrompt = null;
-                installBtn.style.display = 'none';
-            }
-        });
-        
-        window.addEventListener('appinstalled', () => {
+    installBtn.addEventListener('click', async () => {
+        if (deferredPrompt) {
+            deferredPrompt.prompt();
+            const { outcome } = await deferredPrompt.userChoice;
+            console.log('User response:', outcome);
             deferredPrompt = null;
             installBtn.style.display = 'none';
-            console.log('PWA was installed');
-        });
-        
+        }
+    });
+    // アプリとして起動中ならボタンを消す
+    if (window.matchMedia('(display-mode: standalone)').matches) {
+        installBtn.style.display = 'none';
+    }
+
+    window.onload = () => {
         setupCanvasEvents();
         selectTool('pen');
         setEraserSize(20);
         handleKeyboard();
         calcKeys.addEventListener('click', handleCalcKeyPress);
         updateCalcDisplay();
-        document.addEventListener('fullscreenchange', () => { if (!document.fullscreenElement) { wantsFullScreen = false; } });
-        document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && wantsFullScreen && !document.fullscreenElement) { document.documentElement.requestFullscreen().catch(() => {}); } });
-        createKeypad();
-    });
+
+        document.addEventListener('fullscreenchange', () => {
+            if (!document.fullscreenElement) wantsFullScreen = false;
+        });
+        document.addEventListener('visibilitychange', () => {
+            if (document.visibilityState === 'visible' && wantsFullScreen && !document.fullscreenElement) {
+                document.documentElement.requestFullscreen().catch(() => {});
+            }
+        });
+    };
 </script>
 
 </body>
