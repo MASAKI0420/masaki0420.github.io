@@ -7,11 +7,10 @@
     
     <!-- ▼▼▼ PWA設定 ▼▼▼ -->
     <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="default"> <!-- ステータスバーも見やすく変更 -->
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="計算トレ">
     <meta name="mobile-web-app-capable" content="yes">
-    <!-- ▼▼▼ 変更点：テーマカラーを白に変更 ▼▼▼ -->
-    <meta name="theme-color" content="#ffffff">
+    <meta name="theme-color" content="#000000">
 
     <link id="dynamic-favicon" rel="icon" type="image/png" href="">
     <link id="dynamic-apple-icon" rel="apple-touch-icon" href="">
@@ -25,6 +24,7 @@
             --danger-color: #e74c3c;
             --dark-color: #34495e;
             --light-color: #f4f7f9;
+            --warning-color: #e67e22;
         }
         html, body {
             height: 100%; width: 100%; overflow: hidden;
@@ -63,6 +63,7 @@
         .btn-secondary { background-color: var(--secondary-color); }
         .btn-danger { background-color: var(--danger-color); }
         .btn-success { background-color: var(--success-color); }
+        .btn-warning { background-color: var(--warning-color); }
 
         #mode-selection button { width: 80%; }
         #time-attack-options, #custom-settings-screen { margin-top: 10px; }
@@ -124,7 +125,17 @@
         .key-del { background-color: #e74c3c; color: white; box-shadow: 0 3px 0 #c0392b; }
         .key-enter { background-color: #2ecc71; color: white; box-shadow: 0 3px 0 #27ae60; }
         
-        /* 入力ブロック時のスタイル（少し薄くする） */
+        .key-quit {
+            background-color: #95a5a6; 
+            color: white; 
+            box-shadow: 0 3px 0 #7f8c8d;
+            grid-column: 1 / -1; 
+            margin-top: 5px;
+            font-size: 1.2em;
+            /* 長押し中のアニメーション用 */
+            transition: background-color 0.2s;
+        }
+        
         .key-btn.disabled { opacity: 0.5; pointer-events: none; box-shadow: none; transform: translateY(2px); }
 
         input::-webkit-outer-spin-button, input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
@@ -175,7 +186,7 @@
             canvas.height = size;
             const ctx = canvas.getContext('2d');
 
-            ctx.fillStyle = "#f39c12"; // アイコンの背景はオレンジのまま（デザインとして）
+            ctx.fillStyle = "#f39c12"; 
             ctx.fillRect(0, 0, size, size);
 
             const baseColor = "#57606f"; 
@@ -218,8 +229,8 @@
                 "short_name": "計算トレ",
                 "start_url": window.location.href,
                 "display": "standalone",
-                "background_color": "#ffffff", /* 変更：背景色を白に */
-                "theme_color": "#ffffff", /* 変更：テーマカラーを白に */
+                "background_color": "#ffffff",
+                "theme_color": "#000000",
                 "orientation": "portrait",
                 "description": "シンプルな計算トレーニングアプリ",
                 "icons": [{ "src": iconBase64, "sizes": "512x512", "type": "image/png" }]
@@ -248,6 +259,7 @@
         <h1>計算トレーニング</h1>
         <div id="mode-selection">
             <button class="btn-primary" onclick="showScreen('time-attack-options')">タイムアタックモード</button>
+            <button class="btn-warning" onclick="startSurvivalGame()">サバイバルモード (60秒+ボナスタイム)</button>
             <button class="btn-secondary" onclick="showScreen('custom-settings-screen')">カスタムモード</button>
             <button id="fullscreen-btn" class="btn-success" onclick="toggleFullScreen()">フルスクリーン</button>
             <button id="install-btn" class="btn-primary">アプリをインストール</button>
@@ -260,6 +272,7 @@
         <button class="btn-primary" onclick="startTimeAttack(10)">10秒</button>
         <button class="btn-primary" onclick="startTimeAttack(20)">20秒</button>
         <button class="btn-primary" onclick="startTimeAttack(30)">30秒</button>
+        <button class="btn-primary" onclick="startTimeAttack(60)">60秒</button>
         <br><button class="btn-danger" onclick="showScreen('start-screen')">戻る</button>
     </div>
 
@@ -311,10 +324,14 @@
             <button class="key-btn key-del" onclick="inputKey('del')">⌫</button>
             <button class="key-btn" onclick="inputKey(0)">0</button>
             <button class="key-btn key-enter" onclick="checkAnswer()">Enter</button>
+            
+            <!-- ▼▼▼ 修正点：長押し仕様に変更（onclick削除） ▼▼▼ -->
+            <button id="ta-quit-btn" class="key-btn key-quit">やめる (長押し)</button>
+            <!-- ▲▲▲ 修正終了 ▲▲▲ -->
         </div>
 
         <div id="custom-mode-controls">
-            <button class="btn-danger" onclick="quitGame()">やめる</button>
+            <button class="btn-danger" onclick="goToHome()">やめる</button>
             <button class="btn-secondary" onclick="openMemo()">ひっ算メモ</button>
             <button class="btn-secondary" onclick="openCalculator()">電卓</button>
         </div>
@@ -324,7 +341,7 @@
         <h2>タイムアップ！</h2>
         <p>あなたのスコアは...</p>
         <div id="final-score">15 <span>問</span></div>
-        <button class="btn-secondary" onclick="showScreen('start-screen')">もう一度挑戦する</button>
+        <button class="btn-secondary" onclick="goToHome()">もう一度挑戦する</button>
     </div>
 </div>
 
@@ -373,18 +390,88 @@
           eraserCursor = document.getElementById('eraser-cursor'), eraserSizeOptions = document.getElementById('eraser-size-options'), sizeBtns = document.querySelectorAll('.size-btn'),
           calculatorModal = document.getElementById('calculator-modal'), calcDisplay = document.getElementById('calc-display'), calcKeys = document.getElementById('calc-keys');
 
+    const taQuitBtn = document.getElementById('ta-quit-btn');
+
     let gameMode = '', customSettings = {}, correctAnswer, score, timeLeft, timerInterval;
     let thinkingTimer, nextQuestionTimer;
-    let isInputBlocked = false; // ▼▼▼ 追加：入力ブロックフラグ ▼▼▼
+    let isInputBlocked = false;
+    let currentStreak = 0;
+    // ▼▼▼ 追加：長押しタイマー変数 ▼▼▼
+    let quitPressTimer;
     
     function showScreen(id) { screens.forEach(s => s.style.display = 'none'); document.getElementById(id).style.display = 'block'; }
 
+    function goToHome() {
+        if (thinkingTimer) clearTimeout(thinkingTimer);
+        if (nextQuestionTimer) clearTimeout(nextQuestionTimer);
+        clearInterval(timerInterval);
+        
+        isInputBlocked = false;
+        document.querySelectorAll('.key-btn').forEach(btn => btn.classList.remove('disabled'));
+        
+        showScreen('start-screen');
+    }
+
+    // ▼▼▼ 追加：長押しボタンのセットアップ ▼▼▼
+    function setupQuitButton() {
+        const resetBtn = () => {
+            clearTimeout(quitPressTimer);
+            taQuitBtn.textContent = "やめる (長押し)";
+            taQuitBtn.style.backgroundColor = "#95a5a6"; // 元のグレー
+        };
+
+        const startPress = (e) => {
+            e.preventDefault(); // タッチ時の挙動安定化
+            taQuitBtn.style.backgroundColor = "#e74c3c"; // 押している間は赤く
+            taQuitBtn.textContent = "そのまま待って...";
+            
+            quitPressTimer = setTimeout(() => {
+                resetBtn();
+                goToHome();
+            }, 2000); // 2秒
+        };
+
+        taQuitBtn.addEventListener('mousedown', startPress);
+        taQuitBtn.addEventListener('touchstart', startPress, {passive: false});
+
+        taQuitBtn.addEventListener('mouseup', resetBtn);
+        taQuitBtn.addEventListener('mouseleave', resetBtn);
+        taQuitBtn.addEventListener('touchend', resetBtn);
+    }
+    // ▲▲▲ 追加終了 ▲▲▲
+
     function startTimeAttack(sec) {
         gameMode = 'time-attack'; score = 0; timeLeft = sec; showScreen('game-screen');
-        timerElement.style.display = 'block'; customControls.style.display = 'none';
+        timerElement.style.display = 'block'; 
+        customControls.style.display = 'none';
+        taQuitBtn.style.display = 'block'; 
+        
         scoreElement.textContent = `スコア: ${score}`; timerElement.textContent = `時間: ${timeLeft}`;
         generateQuestion(); 
         timerInterval = setInterval(() => { timeLeft--; timerElement.textContent = `時間: ${timeLeft}`; if (timeLeft <= 0) endGame(); }, 1000);
+    }
+    
+    function startSurvivalGame() {
+        gameMode = 'survival';
+        score = 0;
+        timeLeft = 60; 
+        currentStreak = 0; 
+        
+        showScreen('game-screen');
+        timerElement.style.display = 'block';
+        customControls.style.display = 'none';
+        taQuitBtn.style.display = 'block'; 
+        
+        scoreElement.textContent = `スコア: ${score}`;
+        timerElement.textContent = `時間: ${timeLeft}`;
+        
+        generateQuestion();
+        
+        timerInterval = setInterval(() => {
+            timeLeft--;
+            timerElement.textContent = `時間: ${timeLeft}`;
+            if (timeLeft <= 0) endGame();
+        }, 1000);
     }
     
     function endGame() { 
@@ -404,27 +491,30 @@
         customSettings = { digits1: d1, digits2: d2, operators: ops, thinkingTime: isNaN(tTime) ? 0 : tTime }; 
         
         gameMode = 'custom'; score = 0;
-        showScreen('game-screen'); timerElement.style.display = 'none'; customControls.style.display = 'block';
+        showScreen('game-screen'); 
+        timerElement.style.display = 'none'; 
+        customControls.style.display = 'block';
+        taQuitBtn.style.display = 'none'; 
+
         scoreElement.textContent = `正解数: ${score}`; generateQuestion(); 
     }
 
     function quitGame() { 
-        if (thinkingTimer) clearTimeout(thinkingTimer);
-        if (nextQuestionTimer) clearTimeout(nextQuestionTimer);
-        showScreen('start-screen'); 
+        goToHome();
     }
 
     function getRandomNumberByDigits(d) { return Math.floor(Math.random() * (Math.pow(10, d) - Math.pow(10, d-1))) + Math.pow(10, d-1); }
 
     function generateQuestion() {
-        // タイマーと入力ブロックのリセット
         if (thinkingTimer) clearTimeout(thinkingTimer);
         if (nextQuestionTimer) clearTimeout(nextQuestionTimer);
         isInputBlocked = false;
-        document.querySelectorAll('.key-btn').forEach(btn => btn.classList.remove('disabled')); // ボタンの見た目戻す
+        document.querySelectorAll('.key-btn').forEach(btn => btn.classList.remove('disabled'));
 
         let n1, n2, op, qText;
-        if (gameMode === 'time-attack') { n1=Math.floor(Math.random()*10)+1; n2=Math.floor(Math.random()*10)+1; op=['+','-','×','÷'][Math.floor(Math.random()*4)]; }
+        if (gameMode === 'time-attack' || gameMode === 'survival') {
+             n1=Math.floor(Math.random()*10)+1; n2=Math.floor(Math.random()*10)+1; op=['+','-','×','÷'][Math.floor(Math.random()*4)];
+        }
         else { n1=getRandomNumberByDigits(customSettings.digits1); n2=getRandomNumberByDigits(customSettings.digits2); op=customSettings.operators[Math.floor(Math.random()*customSettings.operators.length)]; }
         switch (op) {
             case '+': qText=`${n1} + ${n2}`; correctAnswer=n1+n2; break;
@@ -438,44 +528,48 @@
             thinkingTimer = setTimeout(() => {
                 feedbackElement.textContent = `時間切れ！ 答え: ${correctAnswer.toLocaleString()}`;
                 feedbackElement.className = 'incorrect';
-                
-                // ▼▼▼ 追加：時間切れ時の処理 ▼▼▼
-                isInputBlocked = true; // 入力禁止
-                document.querySelectorAll('.key-btn').forEach(btn => btn.classList.add('disabled')); // ボタンを薄くする
-                
-                // 3秒後に次の問題へ
-                nextQuestionTimer = setTimeout(() => {
-                    generateQuestion();
-                }, 3000);
-                // ▲▲▲ 追加終了 ▲▲▲
-
+                isInputBlocked = true;
+                document.querySelectorAll('.key-btn').forEach(btn => btn.classList.add('disabled'));
+                nextQuestionTimer = setTimeout(() => { generateQuestion(); }, 3000);
             }, customSettings.thinkingTime * 1000);
         }
     }
 
     function inputKey(val) {
-        if (isInputBlocked) return; // ▼▼▼ 追加：ブロック中は無視 ▼▼▼
-
-        if (val === 'del') {
-            answerInput.value = answerInput.value.slice(0, -1);
-        } else {
-            answerInput.value += val;
-        }
+        if (isInputBlocked) return;
+        if (val === 'del') { answerInput.value = ''; } 
+        else { answerInput.value += val; }
         if (feedbackElement.textContent !== '') feedbackElement.textContent = '';
     }
 
     function checkAnswer() {
-        if (isInputBlocked) return; // ▼▼▼ 追加：ブロック中は無視 ▼▼▼
+        if (isInputBlocked) return;
         if (answerInput.value==='') return;
         
         const userAnswer = parseInt(answerInput.value.replace(/,/g, ''), 10);
         if (!isNaN(userAnswer)) {
             if (userAnswer===correctAnswer) { 
                 if (thinkingTimer) clearTimeout(thinkingTimer);
-                score++; feedbackElement.textContent="○ 正解！"; feedbackElement.className='correct'; 
+                score++; 
+                feedbackElement.textContent="○ 正解！"; feedbackElement.className='correct';
+                
+                if (gameMode === 'survival') {
+                    currentStreak++;
+                    if (currentStreak >= 3) {
+                        timeLeft += 2;
+                        currentStreak = 0;
+                        feedbackElement.textContent="○ 正解！ (+2秒)";
+                        timerElement.textContent = `時間: ${timeLeft}`;
+                    }
+                }
             }
-            else { feedbackElement.textContent=`× 不正解 (答え: ${correctAnswer.toLocaleString()})`; feedbackElement.className='incorrect'; }
-            scoreElement.textContent = gameMode === 'time-attack' ? `スコア: ${score}` : `正解数: ${score}`;
+            else { 
+                feedbackElement.textContent=`× 不正解 (答え: ${correctAnswer.toLocaleString()})`; feedbackElement.className='incorrect'; 
+                if (gameMode === 'survival') {
+                    currentStreak = 0;
+                }
+            }
+            scoreElement.textContent = (gameMode === 'time-attack' || gameMode === 'survival') ? `スコア: ${score}` : `正解数: ${score}`;
             generateQuestion();
         }
     }
@@ -588,6 +682,7 @@
 
     window.onload = () => {
         setupCanvasEvents();
+        setupQuitButton(); // ▼▼▼ 呼び出し追加 ▼▼▼
         selectTool('pen');
         setEraserSize(20);
         handleKeyboard();
