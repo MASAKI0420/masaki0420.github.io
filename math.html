@@ -207,13 +207,11 @@
             100% { transform: scale(1); }
         }
 
-        /* ▼▼▼ 修正：アプリとして起動中（standalone）の場合にフルスクリーンボタンを消す ▼▼▼ */
         @media all and (display-mode: standalone) {
             #fullscreen-btn {
                 display: none;
             }
         }
-        /* ▲▲▲ 修正終了 ▲▲▲ */
     </style>
 
     <script>
@@ -446,6 +444,54 @@
         document.querySelectorAll('.key-btn').forEach(btn => btn.classList.remove('disabled'));
         showScreen('start-screen');
     }
+
+    // ▼▼▼ 追加：PCでの物理キーボード対応 ▼▼▼
+    function setupPhysicalKeyboard() {
+        document.addEventListener('keydown', (e) => {
+            // ゲーム画面が表示されていない場合は無視
+            if (document.getElementById('game-screen').style.display !== 'block') return;
+
+            // モーダルが開いている場合は無視（電卓やメモ）
+            if (document.getElementById('calculator-modal').style.display !== 'none' && 
+                document.getElementById('calculator-modal').style.display !== '') return;
+            if (document.getElementById('memo-modal').style.display !== 'none' && 
+                document.getElementById('memo-modal').style.display !== '') return;
+
+            // 入力ブロック中（タイムアップ時）は無視
+            if (isInputBlocked) return;
+
+            // 数字キー (0-9)
+            if (e.key >= '0' && e.key <= '9') {
+                // UIボタンを視覚的に押す演出
+                const btn = document.querySelector(`.key-btn[data-val="${e.key}"]`);
+                if(btn) {
+                    btn.classList.add('active-press');
+                    setTimeout(() => btn.classList.remove('active-press'), 100);
+                }
+                inputKey(e.key);
+            } 
+            // 削除キー (Backspace / Delete)
+            else if (e.key === 'Backspace' || e.key === 'Delete') {
+                const btn = document.querySelector(`.key-btn[data-val="del"]`);
+                if(btn) {
+                    btn.classList.add('active-press');
+                    setTimeout(() => btn.classList.remove('active-press'), 100);
+                }
+                inputKey('del');
+            } 
+            // Enterキー
+            else if (e.key === 'Enter') {
+                e.preventDefault(); // フォーカス移動などを防ぐ
+                const btn = document.querySelector(`.key-btn[data-val="enter"]`);
+                if(btn) {
+                    btn.classList.add('active-press');
+                    setTimeout(() => btn.classList.remove('active-press'), 100);
+                }
+                checkAnswer();
+            }
+        });
+    }
+    // ▲▲▲ 追加終了 ▲▲▲
 
     function setupFastKeypad() {
         const keys = document.querySelectorAll('#game-keypad .key-btn:not(.key-quit)');
@@ -766,7 +812,8 @@
     window.onload = () => {
         setupCanvasEvents();
         setupQuitButton();
-        setupFastKeypad();
+        setupFastKeypad(); // 呼び出し追加
+        setupPhysicalKeyboard(); // 呼び出し追加
         selectTool('pen');
         setEraserSize(20);
         handleKeyboard();
