@@ -5,14 +5,14 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>CJDG Revival</title>
     
-    <!-- PWA設定 (iOS用) -->
+    <!-- ▼▼▼ PWA設定 (計算トレと同じ構成) ▼▼▼ -->
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="CJDG">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="theme-color" content="#000000">
 
-    <!-- ここに動的にBase64アイコンとマニフェストが注入されます -->
+    <!-- ここに動的にアイコンとマニフェストが入ります -->
     <link id="dynamic-favicon" rel="icon" type="image/png" href="">
     <link id="dynamic-apple-icon" rel="apple-touch-icon" href="">
     <link id="dynamic-manifest" rel="manifest" href="">
@@ -25,14 +25,12 @@
             height: 100%;
             background-color: #000;
             overflow: hidden;
-            
             /* UI挙動の制限 */
             -webkit-touch-callout: none;
             -webkit-user-select: none;
             user-select: none;
             touch-action: none;
             overscroll-behavior: none;
-            
             display: flex;
             justify-content: center;
             align-items: center;
@@ -57,10 +55,8 @@
         }
 
         /* --- ボタンのスタイル --- */
-        #fs-btn {
+        .ctrl-btn {
             position: fixed;
-            bottom: 20px;
-            right: 20px;
             z-index: 99999;
             background: rgba(50, 50, 50, 0.8);
             color: #fff;
@@ -70,62 +66,80 @@
             font-size: 14px;
             font-weight: bold;
             cursor: pointer;
-            -webkit-touch-callout: none;
-            user-select: none;
-            -webkit-user-select: none;
-            -webkit-tap-highlight-color: transparent;
-            transition: opacity 0.5s ease, visibility 0.5s;
             font-family: sans-serif;
+            -webkit-tap-highlight-color: transparent;
+            transition: opacity 0.5s ease, visibility 0.5s, transform 0.2s;
         }
         
-        #fs-btn:active {
+        .ctrl-btn:active {
             background: rgba(100, 100, 100, 0.9);
             transform: scale(0.95);
         }
 
-        /* フルスクリーン時はボタンを隠す */
-        :fullscreen #fs-btn { opacity: 0; pointer-events: none; visibility: hidden; }
-        :-webkit-full-screen #fs-btn { opacity: 0; pointer-events: none; visibility: hidden; }
-        
-        /* アプリモード（ホーム画面起動時） */
-        @media all and (display-mode: standalone) {
-            body { background-color: #000; }
+        /* 全画面ボタン（右下） */
+        #fs-btn {
+            bottom: 20px;
+            right: 20px;
         }
+
+        /* インストールボタン（左下・初期は非表示） */
+        /* 計算トレと同じ点滅アニメーションを追加 */
+        #install-btn {
+            bottom: 20px;
+            left: 20px;
+            display: none; /* JSで制御 */
+            background-color: #e67e22; /* オレンジ色 */
+            border-color: #f39c12;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+
+        /* アプリモードや全画面時はボタンを隠す */
+        @media all and (display-mode: standalone) {
+            #install-btn { display: none !important; }
+        }
+        :fullscreen .ctrl-btn { opacity: 0; pointer-events: none; visibility: hidden; }
+        :-webkit-full-screen .ctrl-btn { opacity: 0; pointer-events: none; visibility: hidden; }
     </style>
-    
-    <!-- アイコン生成とPWA化のためのスクリプト -->
+
+    <!-- ▼▼▼ PWA化ロジック（計算トレのコードを移植） ▼▼▼ -->
     <script>
         (function() {
-            // 1. アイコンをCanvasで描画してBase64化する
+            // 1. アイコン画像の作成 (Canvas)
             const size = 512;
             const canvas = document.createElement('canvas');
             canvas.width = size;
             canvas.height = size;
             const ctx = canvas.getContext('2d');
 
-            // --- 太鼓アイコンのデザイン ---
-            // 背景
+            // --- アイコンデザイン（黒背景・太鼓） ---
+            // 背景（黒）
             ctx.fillStyle = "#111111";
             ctx.fillRect(0, 0, size, size);
 
             // 太鼓の胴（赤）
             ctx.beginPath();
-            ctx.arc(size/2, size/2, size * 0.42, 0, Math.PI * 2);
-            ctx.fillStyle = "#ff4500"; // オレンジレッド
+            ctx.arc(size/2, size/2, size * 0.40, 0, Math.PI * 2);
+            ctx.fillStyle = "#ff4500";
             ctx.fill();
             
             // 太鼓の面（白）
             ctx.beginPath();
-            ctx.arc(size/2, size/2, size * 0.32, 0, Math.PI * 2);
+            ctx.arc(size/2, size/2, size * 0.30, 0, Math.PI * 2);
             ctx.fillStyle = "#ffffff";
             ctx.fill();
             ctx.lineWidth = size * 0.02;
             ctx.strokeStyle = "#cccccc";
             ctx.stroke();
 
-            // 鋲（黒い点）
+            // 鋲
             const dotCount = 10;
-            const radius = size * 0.37;
+            const radius = size * 0.35;
             ctx.fillStyle = "#4a0404";
             for (let i = 0; i < dotCount; i++) {
                 const angle = (i / dotCount) * Math.PI * 2;
@@ -136,40 +150,25 @@
                 ctx.fill();
             }
 
-            // バチ（黄色い棒）
+            // バチ
             ctx.lineWidth = size * 0.05;
-            ctx.strokeStyle = "#ffd700"; // ゴールド
+            ctx.strokeStyle = "#ffd700";
             ctx.lineCap = "round";
-            
-            // バチ1
-            ctx.beginPath();
-            ctx.moveTo(size * 0.25, size * 0.75);
-            ctx.lineTo(size * 0.75, size * 0.25);
-            ctx.stroke();
+            ctx.beginPath(); ctx.moveTo(size * 0.25, size * 0.75); ctx.lineTo(size * 0.75, size * 0.25); ctx.stroke();
+            ctx.beginPath(); ctx.moveTo(size * 0.75, size * 0.75); ctx.lineTo(size * 0.25, size * 0.25); ctx.stroke();
 
-            // バチ2
-            ctx.beginPath();
-            ctx.moveTo(size * 0.75, size * 0.75);
-            ctx.lineTo(size * 0.25, size * 0.25);
-            ctx.stroke();
-
-            // Base64文字列を取得
+            // 画像をBase64化してリンクにセット
             const iconBase64 = canvas.toDataURL('image/png');
+            document.getElementById('dynamic-favicon').href = iconBase64;
+            document.getElementById('dynamic-apple-icon').href = iconBase64;
 
-            // 2. HTMLヘッダーにアイコンをセット
-            const iconLink = document.getElementById('dynamic-favicon');
-            const appleLink = document.getElementById('dynamic-apple-icon');
-            iconLink.href = iconBase64;
-            appleLink.href = iconBase64;
-
-            // 3. マニフェストファイル(JSON)を作成し、Data URIとしてセット
-            // これにより、実ファイルがなくてもブラウザはmanifest.jsonがあると思い込みます
+            // 2. マニフェストの動的生成
             const manifestJson = {
                 "name": "CJDG Revival",
                 "short_name": "CJDG",
-                "start_url": window.location.href, // 現在のURLを開く
+                "start_url": window.location.href, // 計算トレと同じ設定
                 "display": "standalone",
-                "background_color": "#000000",
+                "background_color": "#111111",
                 "theme_color": "#000000",
                 "orientation": "landscape",
                 "icons": [
@@ -180,14 +179,21 @@
                     }
                 ]
             };
-
-            // JSONを文字列化してBase64エンコード
             const manifestString = JSON.stringify(manifestJson);
-            // 日本語文字化け等を防ぐためのエンコード処理
             const base64Manifest = btoa(unescape(encodeURIComponent(manifestString)));
-            
-            // data:スキームでマニフェストを設定
             document.getElementById('dynamic-manifest').href = "data:application/manifest+json;base64," + base64Manifest;
+
+            // 3. Service Workerの登録（Blob技法）
+            if ('serviceWorker' in navigator) {
+                const swCode = `
+                    self.addEventListener('install', e => e.waitUntil(self.skipWaiting()));
+                    self.addEventListener('activate', e => e.waitUntil(self.clients.claim()));
+                    self.addEventListener('fetch', e => e.respondWith(fetch(e.request)));
+                `;
+                const swBlob = new Blob([swCode], {type: 'application/javascript'});
+                const swUrl = URL.createObjectURL(swBlob);
+                navigator.serviceWorker.register(swUrl).catch(err => console.log('SW Failed', err));
+            }
         })();
     </script>
 </head>
@@ -202,23 +208,56 @@
         ></iframe>
     </div>
 
-    <button id="fs-btn" tabindex="-1">画面切替・回転</button>
+    <!-- インストールボタン（計算トレと同じロジックで表示制御） -->
+    <button id="install-btn" class="ctrl-btn">アプリをインストール</button>
+    
+    <!-- 全画面切替ボタン -->
+    <button id="fs-btn" class="ctrl-btn" tabindex="-1">画面切替</button>
 
     <script>
-        // --- 既存のゲーム制御ロジック ---
-        const btn = document.getElementById('fs-btn');
+        const installBtn = document.getElementById('install-btn');
+        const fsBtn = document.getElementById('fs-btn');
         const iframe = document.getElementById('game-frame');
         const docEl = document.documentElement;
 
-        // 右クリック禁止
-        document.addEventListener('contextmenu', (e) => {
-            e.preventDefault();
-            return false;
-        }, { passive: false });
+        // ▼▼▼ インストール関連の処理（計算トレと同じ） ▼▼▼
+        let deferredPrompt;
 
-        // タッチ制御
+        window.addEventListener('beforeinstallprompt', (e) => {
+            // Chrome標準のミニ情報バーをキャンセル
+            e.preventDefault();
+            deferredPrompt = e;
+            // インストールボタンを表示
+            installBtn.style.display = 'block';
+        });
+
+        installBtn.addEventListener('click', async () => {
+            if (deferredPrompt) {
+                deferredPrompt.prompt();
+                const { outcome } = await deferredPrompt.userChoice;
+                console.log('User response:', outcome);
+                deferredPrompt = null;
+                // インストール後はボタンを隠す
+                installBtn.style.display = 'none';
+            } else {
+                // PCなどでイベントが発火しない場合のアラート
+                alert("【PCでインストールする場合】\nブラウザメニューから「インストール」または「ショートカットを作成」を選んでください。");
+            }
+        });
+
+        // アプリとして起動しているときはインストールボタンを出さない
+        if (window.matchMedia('(display-mode: standalone)').matches) {
+            installBtn.style.display = 'none';
+        }
+
+
+        // ▼▼▼ 既存のゲーム制御ロジック ▼▼▼
+        // 右クリック禁止
+        document.addEventListener('contextmenu', (e) => { e.preventDefault(); return false; }, { passive: false });
+
+        // タッチ制御（iframe外の操作を無効化）
         const preventTouch = (e) => {
-            if (e.target !== iframe && e.target !== btn) {
+            if (e.target !== iframe && e.target !== fsBtn && e.target !== installBtn) {
                 e.preventDefault();
                 e.stopPropagation();
                 focusGame();
@@ -229,44 +268,32 @@
         document.addEventListener('touchend', preventTouch, { passive: false });
         
         function focusGame() {
-            if (iframe.contentWindow) {
-                iframe.contentWindow.focus();
-            }
+            if (iframe.contentWindow) iframe.contentWindow.focus();
             iframe.focus();
         }
 
-        btn.addEventListener('click', async (e) => {
-            e.preventDefault();
-            e.stopPropagation();
+        fsBtn.addEventListener('click', async (e) => {
+            e.preventDefault(); e.stopPropagation();
             await toggleFullScreen();
-            btn.blur();
+            fsBtn.blur();
             focusGame();
         });
 
         async function toggleFullScreen() {
             try {
                 if (!document.fullscreenElement && !document.webkitFullscreenElement) {
-                    if (docEl.requestFullscreen) {
-                        await docEl.requestFullscreen();
-                    } else if (docEl.webkitRequestFullscreen) {
-                        await docEl.webkitRequestFullscreen();
-                    }
+                    if (docEl.requestFullscreen) await docEl.requestFullscreen();
+                    else if (docEl.webkitRequestFullscreen) await docEl.webkitRequestFullscreen();
+                    
                     if (screen.orientation && screen.orientation.lock) {
                         try { await screen.orientation.lock('landscape'); } catch (e) {}
                     }
                 } else {
-                    if (screen.orientation && screen.orientation.unlock) {
-                        screen.orientation.unlock();
-                    }
-                    if (document.exitFullscreen) {
-                        await document.exitFullscreen();
-                    } else if (document.webkitExitFullscreen) {
-                        await document.webkitExitFullscreen();
-                    }
+                    if (screen.orientation && screen.orientation.unlock) screen.orientation.unlock();
+                    if (document.exitFullscreen) await document.exitFullscreen();
+                    else if (document.webkitExitFullscreen) await document.webkitExitFullscreen();
                 }
-            } catch (err) {
-                console.log(err);
-            }
+            } catch (err) { console.log(err); }
         }
 
         window.addEventListener('resize', () => {
