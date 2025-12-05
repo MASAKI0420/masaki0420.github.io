@@ -117,10 +117,8 @@
             border-radius: 8px;
             font-weight: bold;
             box-shadow: 0 3px 0 #bdc3c7;
-            /* 高速応答のためタッチアクションを操作 */
             touch-action: none;
         }
-        /* active疑似クラスに加えて、JSで付与するクラスでも凹むようにする */
         .key-btn:active, .key-btn.active-press {
             transform: translateY(3px);
             box-shadow: none;
@@ -132,6 +130,7 @@
         .key-enter { background-color: #2ecc71; color: white; box-shadow: 0 3px 0 #27ae60; }
         .key-enter:active, .key-enter.active-press { background-color: #27ae60; }
         
+        /* ▼▼▼ 修正点：やめるボタンの長押しアニメーションCSS ▼▼▼ */
         .key-quit {
             background-color: #95a5a6; 
             color: white; 
@@ -139,8 +138,30 @@
             grid-column: 1 / -1; 
             margin-top: 5px;
             font-size: 1.2em;
-            transition: background-color 0.2s;
+            position: relative; /* 擬似要素の位置基準 */
+            overflow: hidden;   /* はみ出しを隠す */
+            z-index: 1;         /* 文字を手前に */
         }
+        
+        /* 背景の赤いバー */
+        .key-quit::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 0%;          /* 初期状態は幅0 */
+            height: 100%;
+            background-color: #e74c3c; /* 赤色 */
+            z-index: -1;        /* 文字の後ろに配置 */
+            transition: width 0s; /* 通常時は即座に戻る */
+        }
+
+        /* 押している間（クラス付与時） */
+        .key-quit.pressing::before {
+            width: 100%;        /* 右端まで埋める */
+            transition: width 2s linear; /* 2秒かけてリニアに変化 */
+        }
+        /* ▲▲▲ 修正終了 ▲▲▲ */
         
         .key-btn.disabled { opacity: 0.5; pointer-events: none; box-shadow: none; transform: translateY(2px); }
 
@@ -314,7 +335,6 @@
         
         <div id="feedback"></div>
         
-        <!-- ▼▼▼ 修正点：onclickを削除しdata-val属性を追加 ▼▼▼ -->
         <div id="game-keypad">
             <button class="key-btn" data-val="7">7</button>
             <button class="key-btn" data-val="8">8</button>
@@ -332,10 +352,10 @@
             <button class="key-btn" data-val="0">0</button>
             <button class="key-btn key-enter" data-val="enter">Enter</button>
             
-            <!-- やめるボタン（これは独自処理のためそのまま） -->
+            <!-- ▼▼▼ 修正点：やめるボタン ▼▼▼ -->
             <button id="ta-quit-btn" class="key-btn key-quit">やめる (長押し)</button>
+            <!-- ▲▲▲ 修正終了 ▲▲▲ -->
         </div>
-        <!-- ▲▲▲ 修正終了 ▲▲▲ -->
 
         <div id="custom-mode-controls">
             <button class="btn-danger" onclick="goToHome()">やめる</button>
@@ -416,17 +436,13 @@
         showScreen('start-screen');
     }
 
-    // ▼▼▼ 追加：高速応答イベントの設定 ▼▼▼
     function setupFastKeypad() {
         const keys = document.querySelectorAll('#game-keypad .key-btn:not(.key-quit)');
         keys.forEach(btn => {
             const val = btn.getAttribute('data-val');
             
             const handleTouch = (e) => {
-                // タッチ時のデフォルト挙動（拡大やスクロール、遅延クリック発生）を防ぐ
                 if(e.cancelable) e.preventDefault();
-                
-                // 視覚フィードバック
                 btn.classList.add('active-press');
                 setTimeout(() => btn.classList.remove('active-press'), 100);
 
@@ -437,14 +453,9 @@
                 }
             };
 
-            // touchstart: スマホで最速で反応
             btn.addEventListener('touchstart', handleTouch, { passive: false });
             
-            // mousedown: PC用。スマホでtouchstartが発火した場合preventDefaultしてるのでここは発火しないはずだが念のため
             btn.addEventListener('mousedown', (e) => {
-                // タッチデバイスでtouchstartが処理された直後のmousedownなら無視したいが
-                // preventDefault()していれば基本来ない。
-                // PC操作用としてシンプルに定義。
                 btn.classList.add('active-press');
                 setTimeout(() => btn.classList.remove('active-press'), 100);
                 if (val === 'enter') checkAnswer();
@@ -452,19 +463,19 @@
             });
         });
     }
-    // ▲▲▲ 追加終了 ▲▲▲
 
+    // ▼▼▼ 修正点：やめるボタンのロジック変更 ▼▼▼
     function setupQuitButton() {
         const resetBtn = () => {
             clearTimeout(quitPressTimer);
             taQuitBtn.textContent = "やめる (長押し)";
-            taQuitBtn.style.backgroundColor = "#95a5a6"; 
+            taQuitBtn.classList.remove('pressing'); // クラス削除で幅リセット
         };
 
         const startPress = (e) => {
             if(e.cancelable) e.preventDefault(); 
-            taQuitBtn.style.backgroundColor = "#e74c3c"; 
             taQuitBtn.textContent = "そのまま待って...";
+            taQuitBtn.classList.add('pressing'); // クラス追加でCSSアニメーション開始
             
             quitPressTimer = setTimeout(() => {
                 resetBtn();
@@ -478,6 +489,7 @@
         taQuitBtn.addEventListener('mouseleave', resetBtn);
         taQuitBtn.addEventListener('touchend', resetBtn);
     }
+    // ▲▲▲ 修正終了 ▲▲▲
 
     function startTimeAttack(sec) {
         gameMode = 'time-attack'; score = 0; timeLeft = sec; showScreen('game-screen');
@@ -722,7 +734,7 @@
     window.onload = () => {
         setupCanvasEvents();
         setupQuitButton();
-        setupFastKeypad(); // ▼▼▼ 追加した高速化関数の呼び出し ▼▼▼
+        setupFastKeypad();
         selectTool('pen');
         setEraserSize(20);
         handleKeyboard();
