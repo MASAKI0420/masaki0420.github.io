@@ -7,10 +7,11 @@
     
     <!-- ▼▼▼ PWA設定 ▼▼▼ -->
     <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default"> <!-- ステータスバーも見やすく変更 -->
     <meta name="apple-mobile-web-app-title" content="計算トレ">
     <meta name="mobile-web-app-capable" content="yes">
-    <meta name="theme-color" content="#f39c12">
+    <!-- ▼▼▼ 変更点：テーマカラーを白に変更 ▼▼▼ -->
+    <meta name="theme-color" content="#ffffff">
 
     <link id="dynamic-favicon" rel="icon" type="image/png" href="">
     <link id="dynamic-apple-icon" rel="apple-touch-icon" href="">
@@ -88,14 +89,12 @@
         }
         #answer:focus { outline: none; border-color: var(--primary-color); }
 
-        /* ▼▼▼ フィードバックのスタイル調整（マージン等） ▼▼▼ */
         #feedback { 
-            height: 24px; /* 高さを少し確保 */
+            height: 24px; 
             font-size: 1.2em; 
             font-weight: bold; 
-            margin-bottom: 10px; /* テンキーとの間隔 */
+            margin-bottom: 10px; 
         }
-        /* ▲▲▲ 調整終了 ▲▲▲ */
         
         .correct { color: var(--success-color); }
         .incorrect { color: var(--danger-color); }
@@ -124,6 +123,9 @@
         }
         .key-del { background-color: #e74c3c; color: white; box-shadow: 0 3px 0 #c0392b; }
         .key-enter { background-color: #2ecc71; color: white; box-shadow: 0 3px 0 #27ae60; }
+        
+        /* 入力ブロック時のスタイル（少し薄くする） */
+        .key-btn.disabled { opacity: 0.5; pointer-events: none; box-shadow: none; transform: translateY(2px); }
 
         input::-webkit-outer-spin-button, input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
         input[type=number] { -moz-appearance: textfield; }
@@ -154,7 +156,7 @@
         #close-calc-btn { width: 100%; margin-top: 15px; background-color: var(--danger-color); }
         
         #install-btn {
-            display: none;
+            display: inline-block;
             background-color: #16a085;
             animation: pulse 2s infinite;
         }
@@ -173,7 +175,7 @@
             canvas.height = size;
             const ctx = canvas.getContext('2d');
 
-            ctx.fillStyle = "#f39c12"; 
+            ctx.fillStyle = "#f39c12"; // アイコンの背景はオレンジのまま（デザインとして）
             ctx.fillRect(0, 0, size, size);
 
             const baseColor = "#57606f"; 
@@ -216,8 +218,8 @@
                 "short_name": "計算トレ",
                 "start_url": window.location.href,
                 "display": "standalone",
-                "background_color": "#f39c12",
-                "theme_color": "#f39c12",
+                "background_color": "#ffffff", /* 変更：背景色を白に */
+                "theme_color": "#ffffff", /* 変更：テーマカラーを白に */
                 "orientation": "portrait",
                 "description": "シンプルな計算トレーニングアプリ",
                 "icons": [{ "src": iconBase64, "sizes": "512x512", "type": "image/png" }]
@@ -291,9 +293,7 @@
         
         <input type="tel" id="answer" placeholder="答え" readonly>
         
-        <!-- ▼▼▼ 変更点：フィードバックをテンキーの上に移動 ▼▼▼ -->
         <div id="feedback"></div>
-        <!-- ▲▲▲ 変更点終了 ▲▲▲ -->
         
         <div id="game-keypad">
             <button class="key-btn" onclick="inputKey(7)">7</button>
@@ -374,7 +374,8 @@
           calculatorModal = document.getElementById('calculator-modal'), calcDisplay = document.getElementById('calc-display'), calcKeys = document.getElementById('calc-keys');
 
     let gameMode = '', customSettings = {}, correctAnswer, score, timeLeft, timerInterval;
-    let thinkingTimer;
+    let thinkingTimer, nextQuestionTimer;
+    let isInputBlocked = false; // ▼▼▼ 追加：入力ブロックフラグ ▼▼▼
     
     function showScreen(id) { screens.forEach(s => s.style.display = 'none'); document.getElementById(id).style.display = 'block'; }
 
@@ -388,6 +389,7 @@
     
     function endGame() { 
         if (thinkingTimer) clearTimeout(thinkingTimer);
+        if (nextQuestionTimer) clearTimeout(nextQuestionTimer);
         clearInterval(timerInterval); 
         showScreen('result-screen'); 
         finalScoreElement.innerHTML = `${score} <span>問</span>`; 
@@ -408,13 +410,18 @@
 
     function quitGame() { 
         if (thinkingTimer) clearTimeout(thinkingTimer);
+        if (nextQuestionTimer) clearTimeout(nextQuestionTimer);
         showScreen('start-screen'); 
     }
 
     function getRandomNumberByDigits(d) { return Math.floor(Math.random() * (Math.pow(10, d) - Math.pow(10, d-1))) + Math.pow(10, d-1); }
 
     function generateQuestion() {
+        // タイマーと入力ブロックのリセット
         if (thinkingTimer) clearTimeout(thinkingTimer);
+        if (nextQuestionTimer) clearTimeout(nextQuestionTimer);
+        isInputBlocked = false;
+        document.querySelectorAll('.key-btn').forEach(btn => btn.classList.remove('disabled')); // ボタンの見た目戻す
 
         let n1, n2, op, qText;
         if (gameMode === 'time-attack') { n1=Math.floor(Math.random()*10)+1; n2=Math.floor(Math.random()*10)+1; op=['+','-','×','÷'][Math.floor(Math.random()*4)]; }
@@ -431,11 +438,24 @@
             thinkingTimer = setTimeout(() => {
                 feedbackElement.textContent = `時間切れ！ 答え: ${correctAnswer.toLocaleString()}`;
                 feedbackElement.className = 'incorrect';
+                
+                // ▼▼▼ 追加：時間切れ時の処理 ▼▼▼
+                isInputBlocked = true; // 入力禁止
+                document.querySelectorAll('.key-btn').forEach(btn => btn.classList.add('disabled')); // ボタンを薄くする
+                
+                // 3秒後に次の問題へ
+                nextQuestionTimer = setTimeout(() => {
+                    generateQuestion();
+                }, 3000);
+                // ▲▲▲ 追加終了 ▲▲▲
+
             }, customSettings.thinkingTime * 1000);
         }
     }
 
     function inputKey(val) {
+        if (isInputBlocked) return; // ▼▼▼ 追加：ブロック中は無視 ▼▼▼
+
         if (val === 'del') {
             answerInput.value = answerInput.value.slice(0, -1);
         } else {
@@ -445,7 +465,9 @@
     }
 
     function checkAnswer() {
+        if (isInputBlocked) return; // ▼▼▼ 追加：ブロック中は無視 ▼▼▼
         if (answerInput.value==='') return;
+        
         const userAnswer = parseInt(answerInput.value.replace(/,/g, ''), 10);
         if (!isNaN(userAnswer)) {
             if (userAnswer===correctAnswer) { 
@@ -555,7 +577,8 @@
             const { outcome } = await deferredPrompt.userChoice;
             console.log('User response:', outcome);
             deferredPrompt = null;
-            installBtn.style.display = 'none';
+        } else {
+            alert("【PCでインストールする場合】\n\nブラウザ右上の「︙」メニューから\n「保存して共有」→「ショートカットを作成」を選び、\n「ウィンドウとして開く」にチェックを入れて作成してください。");
         }
     });
 
