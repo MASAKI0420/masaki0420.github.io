@@ -212,6 +212,22 @@
                 display: none;
             }
         }
+
+        /* ▼▼▼ 追加：カウントダウンオーバーレイのスタイル ▼▼▼ */
+        #countdown-overlay {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background-color: rgba(255, 255, 255, 0.95);
+            display: none; /* 初期は非表示 */
+            justify-content: center;
+            align-items: center;
+            font-size: 8rem;
+            font-weight: bold;
+            color: var(--primary-color);
+            z-index: 9999;
+            user-select: none;
+        }
+        /* ▲▲▲ 追加終了 ▲▲▲ */
     </style>
 
     <script>
@@ -380,6 +396,10 @@
     </div>
 </div>
 
+<!-- ▼▼▼ 追加：カウントダウン用要素 ▼▼▼ -->
+<div id="countdown-overlay"></div>
+<!-- ▲▲▲ 追加終了 ▲▲▲ -->
+
 <div id="memo-modal">
     <div class="memo-content">
         <canvas id="memo-canvas"></canvas>
@@ -426,6 +446,7 @@
           calculatorModal = document.getElementById('calculator-modal'), calcDisplay = document.getElementById('calc-display'), calcKeys = document.getElementById('calc-keys');
 
     const taQuitBtn = document.getElementById('ta-quit-btn');
+    const countdownOverlay = document.getElementById('countdown-overlay'); // 追加
 
     let gameMode = '', customSettings = {}, correctAnswer, score, timeLeft, timerInterval;
     let thinkingTimer, nextQuestionTimer;
@@ -444,54 +465,6 @@
         document.querySelectorAll('.key-btn').forEach(btn => btn.classList.remove('disabled'));
         showScreen('start-screen');
     }
-
-    // ▼▼▼ 追加：PCでの物理キーボード対応 ▼▼▼
-    function setupPhysicalKeyboard() {
-        document.addEventListener('keydown', (e) => {
-            // ゲーム画面が表示されていない場合は無視
-            if (document.getElementById('game-screen').style.display !== 'block') return;
-
-            // モーダルが開いている場合は無視（電卓やメモ）
-            if (document.getElementById('calculator-modal').style.display !== 'none' && 
-                document.getElementById('calculator-modal').style.display !== '') return;
-            if (document.getElementById('memo-modal').style.display !== 'none' && 
-                document.getElementById('memo-modal').style.display !== '') return;
-
-            // 入力ブロック中（タイムアップ時）は無視
-            if (isInputBlocked) return;
-
-            // 数字キー (0-9)
-            if (e.key >= '0' && e.key <= '9') {
-                // UIボタンを視覚的に押す演出
-                const btn = document.querySelector(`.key-btn[data-val="${e.key}"]`);
-                if(btn) {
-                    btn.classList.add('active-press');
-                    setTimeout(() => btn.classList.remove('active-press'), 100);
-                }
-                inputKey(e.key);
-            } 
-            // 削除キー (Backspace / Delete)
-            else if (e.key === 'Backspace' || e.key === 'Delete') {
-                const btn = document.querySelector(`.key-btn[data-val="del"]`);
-                if(btn) {
-                    btn.classList.add('active-press');
-                    setTimeout(() => btn.classList.remove('active-press'), 100);
-                }
-                inputKey('del');
-            } 
-            // Enterキー
-            else if (e.key === 'Enter') {
-                e.preventDefault(); // フォーカス移動などを防ぐ
-                const btn = document.querySelector(`.key-btn[data-val="enter"]`);
-                if(btn) {
-                    btn.classList.add('active-press');
-                    setTimeout(() => btn.classList.remove('active-press'), 100);
-                }
-                checkAnswer();
-            }
-        });
-    }
-    // ▲▲▲ 追加終了 ▲▲▲
 
     function setupFastKeypad() {
         const keys = document.querySelectorAll('#game-keypad .key-btn:not(.key-quit)');
@@ -521,6 +494,43 @@
         });
     }
 
+    function setupPhysicalKeyboard() {
+        document.addEventListener('keydown', (e) => {
+            if (document.getElementById('game-screen').style.display !== 'block') return;
+            if (document.getElementById('calculator-modal').style.display !== 'none' && 
+                document.getElementById('calculator-modal').style.display !== '') return;
+            if (document.getElementById('memo-modal').style.display !== 'none' && 
+                document.getElementById('memo-modal').style.display !== '') return;
+            if (isInputBlocked) return;
+
+            if (e.key >= '0' && e.key <= '9') {
+                const btn = document.querySelector(`.key-btn[data-val="${e.key}"]`);
+                if(btn) {
+                    btn.classList.add('active-press');
+                    setTimeout(() => btn.classList.remove('active-press'), 100);
+                }
+                inputKey(e.key);
+            } 
+            else if (e.key === 'Backspace' || e.key === 'Delete') {
+                const btn = document.querySelector(`.key-btn[data-val="del"]`);
+                if(btn) {
+                    btn.classList.add('active-press');
+                    setTimeout(() => btn.classList.remove('active-press'), 100);
+                }
+                inputKey('del');
+            } 
+            else if (e.key === 'Enter') {
+                e.preventDefault(); 
+                const btn = document.querySelector(`.key-btn[data-val="enter"]`);
+                if(btn) {
+                    btn.classList.add('active-press');
+                    setTimeout(() => btn.classList.remove('active-press'), 100);
+                }
+                checkAnswer();
+            }
+        });
+    }
+
     function setupQuitButton() {
         const resetBtn = () => {
             clearTimeout(quitPressTimer);
@@ -546,6 +556,29 @@
         taQuitBtn.addEventListener('touchend', resetBtn);
     }
 
+    // ▼▼▼ 追加：カウントダウン処理 ▼▼▼
+    function startCountdown(callback) {
+        countdownOverlay.style.display = 'flex';
+        let count = 3;
+        countdownOverlay.textContent = count;
+        countdownOverlay.style.color = "var(--primary-color)";
+
+        const timer = setInterval(() => {
+            count--;
+            if (count > 0) {
+                countdownOverlay.textContent = count;
+            } else if (count === 0) {
+                countdownOverlay.textContent = "START";
+                countdownOverlay.style.color = "var(--danger-color)";
+            } else {
+                clearInterval(timer);
+                countdownOverlay.style.display = 'none';
+                callback();
+            }
+        }, 1000);
+    }
+    // ▲▲▲ 追加終了 ▲▲▲
+
     function startTimeAttack(sec) {
         gameMode = 'time-attack'; score = 0; timeLeft = sec; showScreen('game-screen');
         initialTime = sec; 
@@ -555,8 +588,15 @@
         taQuitBtn.style.display = 'block'; 
         
         scoreElement.textContent = `スコア: ${score}`; timerElement.textContent = `時間: ${timeLeft}`;
-        generateQuestion(); 
-        timerInterval = setInterval(() => { timeLeft--; timerElement.textContent = `時間: ${timeLeft}`; if (timeLeft <= 0) endGame(); }, 1000);
+        
+        questionElement.textContent = '...'; // 準備中
+        answerInput.value = '';
+
+        // ▼▼▼ 変更：カウントダウン後に開始 ▼▼▼
+        startCountdown(() => {
+            generateQuestion(); 
+            timerInterval = setInterval(() => { timeLeft--; timerElement.textContent = `時間: ${timeLeft}`; if (timeLeft <= 0) endGame(); }, 1000);
+        });
     }
     
     function startSurvivalGame() {
@@ -573,13 +613,18 @@
         scoreElement.textContent = `スコア: ${score}`;
         timerElement.textContent = `時間: ${timeLeft}`;
         
-        generateQuestion();
-        
-        timerInterval = setInterval(() => {
-            timeLeft--;
-            timerElement.textContent = `時間: ${timeLeft}`;
-            if (timeLeft <= 0) endGame();
-        }, 1000);
+        questionElement.textContent = '...';
+        answerInput.value = '';
+
+        // ▼▼▼ 変更：カウントダウン後に開始 ▼▼▼
+        startCountdown(() => {
+            generateQuestion();
+            timerInterval = setInterval(() => {
+                timeLeft--;
+                timerElement.textContent = `時間: ${timeLeft}`;
+                if (timeLeft <= 0) endGame();
+            }, 1000);
+        });
     }
     
     function endGame() { 
@@ -812,8 +857,8 @@
     window.onload = () => {
         setupCanvasEvents();
         setupQuitButton();
-        setupFastKeypad(); // 呼び出し追加
-        setupPhysicalKeyboard(); // 呼び出し追加
+        setupFastKeypad();
+        setupPhysicalKeyboard(); // 追加
         selectTool('pen');
         setEraserSize(20);
         handleKeyboard();
