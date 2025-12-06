@@ -1,0 +1,477 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>爆音時計</title>
+    
+    <!-- PWA設定 -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="爆音時計">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="theme-color" content="#e30000">
+
+    <!-- 動的生成されるアイコンとマニフェストの受け皿 -->
+    <link id="dynamic-favicon" rel="icon" type="image/png" href="">
+    <link id="dynamic-apple-icon" rel="apple-touch-icon" href="">
+    <link id="dynamic-manifest" rel="manifest" href="">
+
+    <style>
+        :root {
+            --primary: #e30000;
+            --dark: #1a1a1a;
+            --light: #ffffff;
+            --gray: #333;
+        }
+
+        * { box-sizing: border-box; user-select: none; -webkit-tap-highlight-color: transparent; }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--dark);
+            color: var(--light);
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        header {
+            background-color: var(--primary);
+            padding: 10px 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.5);
+            z-index: 10;
+        }
+
+        .app-title { font-weight: bold; font-size: 1.2rem; }
+
+        /* インストールボタン */
+        #install-btn {
+            display: none;
+            background-color: #fff;
+            color: var(--primary);
+            border: none;
+            padding: 5px 10px;
+            font-size: 0.8rem;
+            font-weight: bold;
+            border-radius: 20px;
+            cursor: pointer;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+            animation: pulse 2s infinite;
+        }
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+
+        nav {
+            display: flex;
+            justify-content: space-around;
+            background-color: #2a2a2a;
+            padding: 10px 0;
+        }
+
+        nav button {
+            background: none;
+            border: none;
+            color: #888;
+            font-size: 1rem;
+            padding: 10px 20px;
+            cursor: pointer;
+            border-bottom: 3px solid transparent;
+            transition: 0.3s;
+        }
+
+        nav button.active {
+            color: var(--light);
+            border-bottom: 3px solid var(--primary);
+        }
+
+        main {
+            flex: 1;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .view {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        .view.active { display: flex; }
+
+        .time-display {
+            font-size: 4.5rem;
+            font-weight: bold;
+            font-variant-numeric: tabular-nums;
+            margin-bottom: 30px;
+            text-shadow: 0 0 10px rgba(255, 0, 0, 0.3);
+        }
+        @media (max-width: 400px) { .time-display { font-size: 3.5rem; } }
+
+        .controls { display: flex; gap: 20px; }
+
+        button.btn {
+            border: none;
+            border-radius: 50%;
+            width: 80px;
+            height: 80px;
+            font-size: 1rem;
+            font-weight: bold;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+        }
+        button.btn:active { transform: scale(0.95); }
+
+        .btn-start { background-color: #00b84c; }
+        .btn-stop { background-color: #d60000; }
+        .btn-reset { background-color: #555; }
+
+        /* アラームセットボタン（四角） */
+        button.btn.btn-set {
+            background-color: #007acc;
+            width: auto;
+            height: auto;
+            padding: 15px 40px;
+            border-radius: 8px;
+            margin-top: 20px;
+            font-size: 1.2rem;
+        }
+
+        .timer-inputs { display: flex; gap: 10px; margin-bottom: 20px; justify-content: center; align-items: center; }
+        .timer-inputs input {
+            background: #333; border: none; color: white;
+            font-size: 1.5rem; width: 70px; text-align: center;
+            padding: 10px; border-radius: 5px;
+        }
+        .timer-inputs label { font-size: 0.8rem; color: #aaa; }
+
+        /* Alarm Input */
+        input[type="datetime-local"] {
+            background: #333; border: none; color: white;
+            font-size: 1.2rem; padding: 15px; border-radius: 10px;
+            margin-bottom: 20px; color-scheme: dark;
+            width: 90%; max-width: 350px; text-align: center;
+            font-weight: bold;
+        }
+
+        /* Stop Overlay */
+        #stop-alarm-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(227, 0, 0, 0.95);
+            z-index: 9999;
+            display: none;
+            flex-direction: column; align-items: center; justify-content: center;
+            animation: flash 0.5s infinite alternate;
+        }
+        @keyframes flash {
+            from { background-color: rgba(227, 0, 0, 0.95); }
+            to { background-color: rgba(0, 0, 0, 0.95); }
+        }
+        #stop-alarm-btn {
+            width: 200px; height: 200px; font-size: 1.5rem;
+            border: 5px solid white; background: transparent;
+            border-radius: 50%;
+        }
+    </style>
+
+    <script>
+        (function() {
+            // アイコン生成
+            const size = 512;
+            const canvas = document.createElement('canvas');
+            canvas.width = size; canvas.height = size;
+            const ctx = canvas.getContext('2d');
+            ctx.fillStyle = "#e30000"; ctx.fillRect(0, 0, size, size);
+            ctx.beginPath(); ctx.arc(size/2, size/2, size/3, 0, Math.PI * 2); ctx.fillStyle = "#ffffff"; ctx.fill();
+            ctx.strokeStyle = "#1a1a1a"; ctx.lineWidth = 30; ctx.lineCap = "round";
+            ctx.beginPath(); ctx.moveTo(size/2, size/2); ctx.lineTo(size/2 + 60, size/2 - 60); ctx.stroke();
+            ctx.beginPath(); ctx.moveTo(size/2, size/2); ctx.lineTo(size/2, size/2 - 110); ctx.stroke();
+            ctx.beginPath(); ctx.arc(size/2, size/2, 20, 0, Math.PI * 2); ctx.fillStyle = "#1a1a1a"; ctx.fill();
+
+            const iconBase64 = canvas.toDataURL('image/png');
+            document.getElementById('dynamic-favicon').href = iconBase64;
+            document.getElementById('dynamic-apple-icon').href = iconBase64;
+
+            // マニフェスト生成
+            const manifestJson = {
+                "name": "爆音時計",
+                "short_name": "爆音時計",
+                "start_url": window.location.href,
+                "display": "standalone",
+                "background_color": "#e30000",
+                "theme_color": "#e30000",
+                "orientation": "portrait",
+                "description": "Web Audio APIを使用した爆音アラーム",
+                "icons": [{ "src": iconBase64, "sizes": "512x512", "type": "image/png" }]
+            };
+            const base64Manifest = btoa(unescape(encodeURIComponent(JSON.stringify(manifestJson))));
+            document.getElementById('dynamic-manifest').href = "data:application/manifest+json;base64," + base64Manifest;
+
+            // Service Worker (通知操作に対応)
+            if ('serviceWorker' in navigator) {
+                const swCode = `
+                    self.addEventListener('install', e => e.waitUntil(self.skipWaiting()));
+                    self.addEventListener('activate', e => e.waitUntil(self.clients.claim()));
+                    self.addEventListener('fetch', e => e.respondWith(fetch(e.request)));
+
+                    // ▼▼▼ 通知クリック時の処理 ▼▼▼
+                    self.addEventListener('notificationclick', event => {
+                        event.notification.close(); // 通知を消す
+
+                        if (event.action === 'stop') {
+                            // 「音を止める」ボタンが押された場合
+                            const channel = new BroadcastChannel('alarm-channel');
+                            channel.postMessage({ command: 'stop' });
+                        } else {
+                            // 通知自体をタップした場合（アプリを開く）
+                            event.waitUntil(
+                                clients.matchAll({ type: 'window', includeUncontrolled: true }).then(clientList => {
+                                    // 既に開いているウィンドウがあればフォーカス
+                                    for (const client of clientList) {
+                                        if ('focus' in client) return client.focus();
+                                    }
+                                    // なければ開く
+                                    if (clients.openWindow) return clients.openWindow('./');
+                                })
+                            );
+                        }
+                    });
+                `;
+                const swBlob = new Blob([swCode], {type: 'application/javascript'});
+                navigator.serviceWorker.register(URL.createObjectURL(swBlob))
+                    .then(reg => console.log('SW Registered', reg))
+                    .catch(err => console.log('SW Error', err));
+            }
+        })();
+    </script>
+</head>
+<body>
+
+    <header>
+        <div class="app-title">⚠️ 爆音時計</div>
+        <button id="install-btn">↓ アプリを入れる</button>
+    </header>
+
+    <nav>
+        <button onclick="switchTab('timer')" id="nav-timer" class="active">タイマー</button>
+        <button onclick="switchTab('stopwatch')" id="nav-stopwatch">ウォッチ</button>
+        <button onclick="switchTab('alarm')" id="nav-alarm">アラーム</button>
+    </nav>
+
+    <main>
+        <!-- TIMER -->
+        <div id="view-timer" class="view active">
+            <div id="timer-setup">
+                <div class="timer-inputs">
+                    <div><input type="number" id="t-min" value="3" min="0" max="99"><br><label>分</label></div>
+                    <div><input type="number" id="t-sec" value="0" min="0" max="59"><br><label>秒</label></div>
+                </div>
+            </div>
+            <div id="timer-count" class="time-display" style="display:none;">03:00</div>
+            <div class="controls">
+                <button class="btn btn-start" id="timer-start" onclick="timerStart()">開始</button>
+                <button class="btn btn-stop" id="timer-stop" onclick="timerStop()" style="display:none;">停止</button>
+                <button class="btn btn-reset" onclick="timerReset()">リセット</button>
+            </div>
+        </div>
+
+        <!-- STOPWATCH -->
+        <div id="view-stopwatch" class="view">
+            <div class="time-display" id="sw-display">00:00.00</div>
+            <div class="controls">
+                <button class="btn btn-start" id="sw-start" onclick="swStart()">開始</button>
+                <button class="btn btn-stop" id="sw-stop" onclick="swStop()" style="display:none;">停止</button>
+                <button class="btn btn-reset" onclick="swReset()">リセット</button>
+            </div>
+        </div>
+
+        <!-- ALARM -->
+        <div id="view-alarm" class="view">
+            <input type="datetime-local" id="alarm-datetime">
+            <div class="time-display" id="alarm-status" style="font-size: 1.2rem; color: #888; white-space: pre-wrap; text-align: center;">OFF</div>
+            <button class="btn btn-set" id="alarm-toggle" onclick="toggleAlarm()">アラームセット</button>
+        </div>
+    </main>
+
+    <!-- Stop Overlay -->
+    <div id="stop-alarm-overlay">
+        <h1 style="color:white; margin-bottom: 20px;">時間です！</h1>
+        <button class="btn" id="stop-alarm-btn" onclick="stopSound()">音を止める</button>
+    </div>
+
+    <script>
+        // --- BroadcastChannel for Notification Action ---
+        // Service Workerからの「停止」コマンドを受け取る
+        const channel = new BroadcastChannel('alarm-channel');
+        channel.onmessage = (event) => {
+            if (event.data && event.data.command === 'stop') {
+                stopSound();
+            }
+        };
+
+        // --- Audio Logic ---
+        let audioCtx, oscillators = [], isPlaying = false;
+        function initAudio() { if(!audioCtx) { audioCtx = new (window.AudioContext || window.webkitAudioContext)(); } if(audioCtx.state==='suspended') audioCtx.resume(); }
+        
+        // ▼▼▼ 通知を表示する関数 ▼▼▼
+        function showNotification() {
+            if (Notification.permission === 'granted') {
+                // Service Worker経由で通知を出す（これがないとスマホでアクションボタンが出にくい）
+                navigator.serviceWorker.ready.then(function(registration) {
+                    registration.showNotification('爆音時計', {
+                        body: '時間です！タップしてアプリを開くか、ボタンで停止してください。',
+                        icon: document.getElementById('dynamic-favicon').href,
+                        vibrate: [200, 100, 200, 100, 200], // バイブレーション
+                        tag: 'loud-alarm',
+                        renotify: true,
+                        requireInteraction: true, // ユーザーが操作するまで消えない
+                        actions: [
+                            { action: 'stop', title: '🔕 音を止める' } // Android/Chrome用ボタン
+                        ]
+                    });
+                });
+            }
+        }
+
+        function playLoudSound() {
+            initAudio(); if(isPlaying) return; isPlaying=true;
+            
+            // 通知を表示
+            showNotification();
+            
+            document.getElementById('stop-alarm-overlay').style.display = 'flex';
+            const t = audioCtx.currentTime;
+            const osc1 = audioCtx.createOscillator(); const gain1 = audioCtx.createGain();
+            const osc2 = audioCtx.createOscillator(); const gain2 = audioCtx.createGain();
+            osc1.type = 'square'; osc1.frequency.setValueAtTime(800, t);
+            osc2.type = 'sawtooth'; osc2.frequency.setValueAtTime(810, t);
+            gain1.gain.value = 1.0; gain2.gain.value = 0.8;
+            osc1.connect(gain1); osc2.connect(gain2);
+            gain1.connect(audioCtx.destination); gain2.connect(audioCtx.destination);
+            osc1.start(); osc2.start();
+            
+            const sirenInterval = setInterval(() => {
+                if(!isPlaying) { clearInterval(sirenInterval); return; }
+                const now = audioCtx.currentTime;
+                osc1.frequency.linearRampToValueAtTime(1200, now + 0.3); osc1.frequency.linearRampToValueAtTime(800, now + 0.6);
+                osc2.frequency.linearRampToValueAtTime(1210, now + 0.3); osc2.frequency.linearRampToValueAtTime(810, now + 0.6);
+            }, 600);
+            oscillators = [osc1, osc2];
+        }
+
+        function stopSound() {
+            isPlaying=false; 
+            oscillators.forEach(osc=>{try{osc.stop()}catch(e){}}); 
+            oscillators=[]; 
+            document.getElementById('stop-alarm-overlay').style.display='none';
+            // 通知も閉じる
+            navigator.serviceWorker.ready.then(reg => {
+                reg.getNotifications().then(notifications => {
+                    notifications.forEach(n => n.close());
+                });
+            });
+        }
+
+        // Tabs
+        function switchTab(tab) {
+            initAudio();
+            document.querySelectorAll('.view').forEach(el=>el.classList.remove('active'));
+            document.querySelectorAll('nav button').forEach(el=>el.classList.remove('active'));
+            document.getElementById('view-'+tab).classList.add('active');
+            document.getElementById('nav-'+tab).classList.add('active');
+        }
+
+        // Timer
+        function formatTime(s) { return `${Math.floor(s/60).toString().padStart(2,'0')}:${(s%60).toString().padStart(2,'0')}`; }
+        let timerInterval, timerSeconds=0;
+        function timerStart() {
+            initAudio();
+            // ▼▼▼ 通知の許可を求める ▼▼▼
+            Notification.requestPermission();
+            
+            const min=document.getElementById('t-min'), sec=document.getElementById('t-sec'), disp=document.getElementById('timer-count'), setup=document.getElementById('timer-setup');
+            if(setup.style.display!=='none') { timerSeconds=(parseInt(min.value)||0)*60+(parseInt(sec.value)||0); if(timerSeconds<=0)return; setup.style.display='none'; disp.style.display='block'; }
+            document.getElementById('timer-start').style.display='none'; document.getElementById('timer-stop').style.display='flex';
+            updateTimerDisplay();
+            timerInterval = setInterval(()=>{ timerSeconds--; updateTimerDisplay(); if(timerSeconds<=0){ clearInterval(timerInterval); playLoudSound(); timerResetUI(); } }, 1000);
+        }
+        function updateTimerDisplay() { document.getElementById('timer-count').innerText = formatTime(timerSeconds); }
+        function timerStop() { clearInterval(timerInterval); document.getElementById('timer-start').style.display='flex'; document.getElementById('timer-stop').style.display='none'; }
+        function timerReset() { timerStop(); timerResetUI(); }
+        function timerResetUI() { document.getElementById('timer-setup').style.display='flex'; document.getElementById('timer-count').style.display='none'; document.getElementById('timer-start').style.display='flex'; document.getElementById('timer-stop').style.display='none'; }
+
+        // Stopwatch
+        let swInterval, swStartT, swElapsed=0;
+        function swStart() {
+            initAudio(); swStartT = Date.now()-swElapsed;
+            swInterval = setInterval(()=>{ swElapsed=Date.now()-swStartT; let d=new Date(swElapsed); document.getElementById('sw-display').innerText=`${d.getUTCMinutes().toString().padStart(2,'0')}:${d.getUTCSeconds().toString().padStart(2,'0')}.${Math.floor(d.getUTCMilliseconds()/10).toString().padStart(2,'0')}`; }, 10);
+            document.getElementById('sw-start').style.display='none'; document.getElementById('sw-stop').style.display='flex';
+        }
+        function swStop() { clearInterval(swInterval); document.getElementById('sw-start').style.display='flex'; document.getElementById('sw-stop').style.display='none'; }
+        function swReset() { swStop(); swElapsed=0; document.getElementById('sw-display').innerText="00:00.00"; }
+
+        // Alarm
+        let alarmCheckInt, isAlarmSet=false, alarmTargetStr="";
+        function toggleAlarm() {
+            initAudio();
+            // ▼▼▼ 通知の許可を求める ▼▼▼
+            Notification.requestPermission().then(permission => {
+                if (permission !== 'granted') {
+                    alert('通知を許可しないと、アプリを閉じている時に気付けない場合があります。');
+                }
+            });
+
+            const input=document.getElementById('alarm-datetime');
+            const status=document.getElementById('alarm-status');
+            const btn=document.getElementById('alarm-toggle');
+
+            if(!isAlarmSet) {
+                if(!input.value) { alert("日時を設定してください"); return; }
+                const targetTime = new Date(input.value);
+                const now = new Date();
+                if(targetTime < now) { alert("現在より未来の日時を設定してください"); return; }
+
+                alarmTargetStr = input.value;
+                isAlarmSet = true;
+                const displayStr = targetTime.toLocaleString('ja-JP', {month:'numeric', day:'numeric', hour:'2-digit', minute:'2-digit'});
+                status.innerText = "設定中:\n" + displayStr; status.style.color = "#00b84c"; btn.innerText = "解除"; btn.style.backgroundColor = "#d60000"; input.disabled = true;
+
+                alarmCheckInt = setInterval(()=>{
+                    const currentNow = new Date();
+                    const localIso = new Date(currentNow.getTime() - (currentNow.getTimezoneOffset() * 60000)).toISOString().slice(0, 16);
+                    if(localIso === alarmTargetStr && currentNow.getSeconds() === 0) { 
+                        playLoudSound(); toggleAlarm(); 
+                    }
+                }, 1000);
+            } else {
+                isAlarmSet = false; clearInterval(alarmCheckInt);
+                status.innerText = "OFF"; status.style.color = "#888"; btn.innerText = "アラームセット"; btn.style.backgroundColor = "#007acc"; input.disabled = false;
+            }
+        }
+
+        // Install
+        const installBtn=document.getElementById('install-btn'); let deferredPrompt;
+        window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); deferredPrompt=e; installBtn.style.display='block'; });
+        installBtn.addEventListener('click', async () => {
+            if(deferredPrompt) { deferredPrompt.prompt(); deferredPrompt=null; }
+            else { alert("【iOS】共有ボタン→「ホーム画面に追加」\n【PC】メニュー→「保存して共有」→「アプリをインストール」"); }
+        });
+        if(window.matchMedia('(display-mode: standalone)').matches) installBtn.style.display='none';
+    </script>
+</body>
+</html>
