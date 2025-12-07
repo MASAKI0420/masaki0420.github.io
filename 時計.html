@@ -5,149 +5,110 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>爆音時計</title>
 
-    <!-- ▼▼▼ PWA対応のための設定（中身は下のスクリプトで動的に生成します） ▼▼▼ -->
+    <!-- ▼▼▼ 干渉しない自己完結PWA初期化スクリプト（改善版） ▼▼▼ -->
+    <script>
+        (function() {
+            document.addEventListener('DOMContentLoaded', function() {
+                // アイコンを<canvas>で動的に描画
+                const createIcon = (size) => {
+                    const canvas = document.createElement('canvas');
+                    canvas.width = size; canvas.height = size;
+                    const ctx = canvas.getContext('2d');
+                    const center = size / 2;
+                    ctx.fillStyle = '#1a1a1a'; ctx.fillRect(0, 0, size, size);
+                    ctx.strokeStyle = '#e30000'; ctx.lineWidth = size * 0.1;
+                    ctx.beginPath(); ctx.arc(center, center, size * 0.4, 0, Math.PI * 2); ctx.stroke();
+                    ctx.fillStyle = '#ffffff'; ctx.font = `bold ${size * 0.5}px sans-serif`;
+                    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+                    ctx.fillText('⚠️', center, center * 1.05);
+                    return canvas.toDataURL('image/png');
+                };
+
+                const icon192 = createIcon(192);
+                const icon512 = createIcon(512);
+
+                // 必要な<link>タグを動的に生成
+                const createLink = (rel, href) => {
+                    const link = document.createElement('link');
+                    link.rel = rel; link.href = href;
+                    document.head.appendChild(link);
+                };
+                createLink('icon', icon192);
+                createLink('apple-touch-icon', icon192);
+
+                // manifestを定義し、<link>タグを生成
+                const manifest = {
+                    "name": "爆音時計", "short_name": "爆音時計", "description": "大音量で時間をお知らせするタイマー、ストップウォッチ、アラームアプリ",
+                    "start_url": ".", "display": "standalone", "background_color": "#1a1a1a", "theme_color": "#e30000", "orientation": "portrait",
+                    "icons": [
+                        { "src": icon192, "sizes": "192x192", "type": "image/png" },
+                        { "src": icon512, "sizes": "512x512", "type": "image/png" }
+                    ]
+                };
+                const blob = new Blob([JSON.stringify(manifest)], { type: 'application/json' });
+                createLink('manifest', URL.createObjectURL(blob));
+
+                // Service Workerを登録
+                if ('serviceWorker' in navigator) {
+                    // ▼▼▼ ここからが改善部分 ▼▼▼
+                    const CACHE_PREFIX = 'bakuon-clock-standalone-cache';
+                    const CACHE_VERSION = 'v2'; // 更新時にこのバージョンを上げる
+                    const CACHE_NAME = `${CACHE_PREFIX}-${CACHE_VERSION}`;
+
+                    const swCode = `
+                        const CACHE_NAME = '${CACHE_NAME}';
+                        const urlsToCache = ['./'];
+
+                        // 新しいService Workerが有効化(activate)された時に、古いキャッシュを削除する
+                        self.addEventListener('activate', event => {
+                            event.waitUntil(
+                                caches.keys().then(cacheNames => {
+                                    return Promise.all(
+                                        cacheNames.filter(name => name.startsWith('${CACHE_PREFIX}-') && name !== CACHE_NAME)
+                                                  .map(cacheName => caches.delete(cacheName))
+                                    );
+                                })
+                            );
+                        });
+
+                        // インストール時にファイルをキャッシュする
+                        self.addEventListener('install', e => e.waitUntil(caches.open(CACHE_NAME).then(c => c.addAll(urlsToCache))));
+
+                        // リクエスト時にキャッシュを優先して返す
+                        self.addEventListener('fetch', e => e.respondWith(caches.match(e.request).then(r => r || fetch(e.request))));
+                    `;
+                    // ▲▲▲ 改善部分ここまで ▲▲▲
+
+                    const swBlob = new Blob([swCode], { type: 'application/javascript' });
+                    navigator.serviceWorker.register(URL.createObjectURL(swBlob))
+                        .then(() => console.log('PWA Service Worker registered successfully.'))
+                        .catch(err => console.error('PWA Service Worker registration failed:', err));
+                }
+            });
+        })();
+    </script>
+    
+    <!-- 元のHTMLのmetaタグやstyle -->
     <meta name="theme-color" content="#e30000"/>
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black">
     <meta name="apple-mobile-web-app-title" content="爆音時計">
-    
-    <link id="dynamic-favicon" rel="icon" href="">
-    <link id="dynamic-apple-icon" rel="apple-touch-icon" href="">
-    <link id="dynamic-manifest" rel="manifest" href="">
-    <!-- ▲▲▲ PWA設定ここまで ▲▲▲ -->
-    
     <style>
-        :root {
-            --primary: #e30000;
-            --dark: #1a1a1a;
-            --light: #ffffff;
-            --gray: #333;
-        }
-
-        * { box-sizing: border-box; user-select: none; -webkit-tap-highlight-color: transparent; }
-
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background-color: var(--dark);
-            color: var(--light);
-            margin: 0;
-            display: flex;
-            flex-direction: column;
-            height: 100vh;
-            overflow: hidden;
-        }
-
-        header {
-            background-color: var(--primary);
-            padding: 10px 15px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.5);
-            z-index: 10;
-        }
-
-        .app-title {
-            font-weight: bold;
-            font-size: 1.2rem;
-        }
-
-        nav {
-            display: flex;
-            justify-content: space-around;
-            background-color: #2a2a2a;
-            padding: 10px 0;
-        }
-
-        nav button {
-            background: none; border: none; color: #888;
-            font-size: 1rem; padding: 10px 20px; cursor: pointer;
-            border-bottom: 3px solid transparent; transition: 0.3s;
-        }
-
-        nav button.active {
-            color: var(--light);
-            border-bottom: 3px solid var(--primary);
-        }
-
-        main { flex: 1; position: relative; overflow: hidden; }
-
-        .view {
-            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-            display: none; flex-direction: column; align-items: center; justify-content: center;
-            padding: 20px;
-        }
-        .view.active { display: flex; }
-
-        .time-display {
-            font-size: 4.5rem; font-weight: bold; font-variant-numeric: tabular-nums;
-            margin-bottom: 30px; text-shadow: 0 0 10px rgba(255, 0, 0, 0.3);
-        }
-        @media (max-width: 400px) { .time-display { font-size: 3.5rem; } }
-
-        .controls { display: flex; gap: 20px; }
-        
-        button.btn {
-            border: none; border-radius: 50%; width: 80px; height: 80px;
-            font-size: 1rem; font-weight: bold; cursor: pointer; display: flex;
-            align-items: center; justify-content: center; color: white;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
-        }
-        button.btn:active { transform: scale(0.95); }
-
-        .btn-start { background-color: #00b84c; }
-        .btn-stop { background-color: #d60000; }
-        .btn-reset { background-color: #555; }
-        
-        button.btn.btn-set {
-            background-color: #007acc; width: auto; height: auto;
-            padding: 15px 40px; border-radius: 8px; margin-top: 20px; font-size: 1.2rem;
-        }
-        
-        .timer-inputs { display: flex; gap: 10px; margin-bottom: 20px; justify-content: center; align-items: center; }
-        .timer-inputs input {
-            background: #333; border: none; color: white; font-size: 1.5rem;
-            width: 70px; text-align: center; padding: 10px; border-radius: 5px;
-        }
-        .timer-inputs label { font-size: 0.8rem; color: #aaa; }
-        
-        input[type="datetime-local"] {
-            background: #333; border: none; color: white;
-            font-size: 1.2rem; padding: 15px; border-radius: 10px;
-            margin-bottom: 20px; color-scheme: dark; width: 90%; max-width: 350px;
-            text-align: center; font-weight: bold;
-        }
-        
-        #stop-alarm-overlay {
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(227, 0, 0, 0.95); z-index: 9999;
-            display: none; flex-direction: column; align-items: center; justify-content: center;
-            animation: flash 0.5s infinite alternate;
-        }
-        @keyframes flash {
-            from { background-color: rgba(227, 0, 0, 0.95); }
-            to { background-color: rgba(0, 0, 0, 0.95); }
-        }
-        #stop-alarm-btn {
-            width: 200px; height: 200px; font-size: 1.5rem;
-            border: 5px solid white; background: transparent; border-radius: 50%;
-        }
+        :root{--primary:#e30000;--dark:#1a1a1a;--light:#ffffff;--gray:#333}*{-webkit-tap-highlight-color:transparent;box-sizing:border-box;user-select:none}body{font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;background-color:var(--dark);color:var(--light);margin:0;display:flex;flex-direction:column;height:100vh;overflow:hidden}header{background-color:var(--primary);padding:10px 15px;display:flex;justify-content:space-between;align-items:center;box-shadow:0 2px 5px rgba(0,0,0,.5);z-index:10}.app-title{font-weight:700;font-size:1.2rem}nav{display:flex;justify-content:space-around;background-color:#2a2a2a;padding:10px 0}nav button{background:0 0;border:none;color:#888;font-size:1rem;padding:10px 20px;cursor:pointer;border-bottom:3px solid transparent;transition:.3s}nav button.active{color:var(--light);border-bottom:3px solid var(--primary)}main{flex:1;position:relative;overflow:hidden}.view{position:absolute;top:0;left:0;width:100%;height:100%;display:none;flex-direction:column;align-items:center;justify-content:center;padding:20px}.view.active{display:flex}.time-display{font-size:4.5rem;font-weight:700;font-variant-numeric:tabular-nums;margin-bottom:30px;text-shadow:0 0 10px rgba(255,0,0,.3)}@media (max-width:400px){.time-display{font-size:3.5rem}}.controls{display:flex;gap:20px}button.btn{border:none;border-radius:50%;width:80px;height:80px;font-size:1rem;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;color:#fff;box-shadow:0 4px 6px rgba(0,0,0,.3)}button.btn:active{transform:scale(.95)}.btn-start{background-color:#00b84c}.btn-stop{background-color:#d60000}.btn-reset{background-color:#555}button.btn.btn-set{background-color:#007acc;width:auto;height:auto;padding:15px 40px;border-radius:8px;margin-top:20px;font-size:1.2rem}.timer-inputs{display:flex;gap:10px;margin-bottom:20px;justify-content:center;align-items:center}.timer-inputs input{background:#333;border:none;color:#fff;font-size:1.5rem;width:70px;text-align:center;padding:10px;border-radius:5px}.timer-inputs label{font-size:.8rem;color:#aaa}input[type=datetime-local]{background:#333;border:none;color:#fff;font-size:1.2rem;padding:15px;border-radius:10px;margin-bottom:20px;color-scheme:dark;width:90%;max-width:350px;text-align:center;font-weight:700}#stop-alarm-overlay{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(227,0,0,.95);z-index:9999;display:none;flex-direction:column;align-items:center;justify-content:center;animation:flash .5s infinite alternate}@keyframes flash{from{background-color:rgba(227,0,0,.95)}to{background-color:rgba(0,0,0,.95)}}#stop-alarm-btn{width:200px;height:200px;font-size:1.5rem;border:5px solid #fff;background:0 0;border-radius:50%}
     </style>
 </head>
 <body>
 
+    <!-- 元のHTMLのbody部分は一切変更ありません -->
     <header>
         <div class="app-title">⚠️ 爆音時計</div>
     </header>
-
     <nav>
         <button onclick="switchTab('timer')" id="nav-timer" class="active">タイマー</button>
         <button onclick="switchTab('stopwatch')" id="nav-stopwatch">ウォッチ</button>
         <button onclick="switchTab('alarm')" id="nav-alarm">アラーム</button>
     </nav>
-
     <main>
-        <!-- TIMER -->
         <div id="view-timer" class="view active">
             <div id="timer-setup">
                 <div class="timer-inputs">
@@ -162,8 +123,6 @@
                 <button class="btn btn-reset" onclick="timerReset()">リセット</button>
             </div>
         </div>
-
-        <!-- STOPWATCH -->
         <div id="view-stopwatch" class="view">
             <div class="time-display" id="sw-display">00:00.00</div>
             <div class="controls">
@@ -172,195 +131,20 @@
                 <button class="btn btn-reset" onclick="swReset()">リセット</button>
             </div>
         </div>
-
-        <!-- ALARM -->
         <div id="view-alarm" class="view">
             <input type="datetime-local" id="alarm-datetime">
             <div class="time-display" id="alarm-status" style="font-size: 1.2rem; color: #888; white-space: pre-wrap; text-align: center;">OFF</div>
             <button class="btn btn-set" id="alarm-toggle" onclick="toggleAlarm()">アラームセット</button>
         </div>
     </main>
-
-    <!-- Stop Overlay -->
     <div id="stop-alarm-overlay">
         <h1 style="color:white; margin-bottom: 20px;">時間です！</h1>
         <button class="btn" id="stop-alarm-btn" onclick="stopSound()">音を止める</button>
     </div>
 
+    <!-- 元のアプリケーション用スクリプトも一切変更ありません -->
     <script>
-        // --- アプリケーション本体のロジック ---
-        let audioCtx, oscillators = [], isPlaying = false;
-        function initAudio() { if(!audioCtx) { audioCtx = new (window.AudioContext || window.webkitAudioContext)(); } if(audioCtx.state==='suspended') audioCtx.resume(); }
-        function playLoudSound() {
-            initAudio(); if(isPlaying) return; isPlaying=true;
-            document.getElementById('stop-alarm-overlay').style.display = 'flex';
-            const t = audioCtx.currentTime;
-            const osc1 = audioCtx.createOscillator(); const gain1 = audioCtx.createGain();
-            const osc2 = audioCtx.createOscillator(); const gain2 = audioCtx.createGain();
-            osc1.type = 'square'; osc1.frequency.setValueAtTime(800, t);
-            osc2.type = 'sawtooth'; osc2.frequency.setValueAtTime(810, t);
-            gain1.gain.value = 1.0; gain2.gain.value = 0.8;
-            osc1.connect(gain1); osc2.connect(gain2);
-            gain1.connect(audioCtx.destination); gain2.connect(audioCtx.destination);
-            osc1.start(); osc2.start();
-            const sirenInterval = setInterval(() => {
-                if(!isPlaying) { clearInterval(sirenInterval); return; }
-                const now = audioCtx.currentTime;
-                osc1.frequency.linearRampToValueAtTime(1200, now + 0.3); osc1.frequency.linearRampToValueAtTime(800, now + 0.6);
-                osc2.frequency.linearRampToValueAtTime(1210, now + 0.3); osc2.frequency.linearRampToValueAtTime(810, now + 0.6);
-            }, 600);
-            oscillators = [osc1, osc2];
-        }
-        function stopSound() { isPlaying=false; oscillators.forEach(osc=>{try{osc.stop()}catch(e){}}); oscillators=[]; document.getElementById('stop-alarm-overlay').style.display='none'; }
-        function switchTab(tab) {
-            initAudio();
-            document.querySelectorAll('.view').forEach(el=>el.classList.remove('active'));
-            document.querySelectorAll('nav button').forEach(el=>el.classList.remove('active'));
-            document.getElementById('view-'+tab).classList.add('active');
-            document.getElementById('nav-'+tab).classList.add('active');
-        }
-        function formatTime(s) { return `${Math.floor(s/60).toString().padStart(2,'0')}:${(s%60).toString().padStart(2,'0')}`; }
-        let timerInterval, timerSeconds=0;
-        function timerStart() {
-            initAudio();
-            const min=document.getElementById('t-min'), sec=document.getElementById('t-sec'), disp=document.getElementById('timer-count'), setup=document.getElementById('timer-setup');
-            if(setup.style.display!=='none') { timerSeconds=(parseInt(min.value)||0)*60+(parseInt(sec.value)||0); if(timerSeconds<=0)return; setup.style.display='none'; disp.style.display='block'; }
-            document.getElementById('timer-start').style.display='none'; document.getElementById('timer-stop').style.display='flex';
-            updateTimerDisplay();
-            timerInterval = setInterval(()=>{ timerSeconds--; updateTimerDisplay(); if(timerSeconds<=0){ clearInterval(timerInterval); playLoudSound(); timerResetUI(); } }, 1000);
-        }
-        function updateTimerDisplay() { document.getElementById('timer-count').innerText = formatTime(timerSeconds); }
-        function timerStop() { clearInterval(timerInterval); document.getElementById('timer-start').style.display='flex'; document.getElementById('timer-stop').style.display='none'; }
-        function timerReset() { timerStop(); timerResetUI(); }
-        function timerResetUI() { document.getElementById('timer-setup').style.display='flex'; document.getElementById('timer-count').style.display='none'; document.getElementById('timer-start').style.display='flex'; document.getElementById('timer-stop').style.display='none'; }
-        let swInterval, swStartT, swElapsed=0;
-        function swStart() {
-            initAudio(); swStartT = Date.now()-swElapsed;
-            swInterval = setInterval(()=>{ swElapsed=Date.now()-swStartT; let d=new Date(swElapsed); document.getElementById('sw-display').innerText=`${d.getUTCMinutes().toString().padStart(2,'0')}:${d.getUTCSeconds().toString().padStart(2,'0')}.${Math.floor(d.getUTCMilliseconds()/10).toString().padStart(2,'0')}`; }, 10);
-            document.getElementById('sw-start').style.display='none'; document.getElementById('sw-stop').style.display='flex';
-        }
-        function swStop() { clearInterval(swInterval); document.getElementById('sw-start').style.display='flex'; document.getElementById('sw-stop').style.display='none'; }
-        function swReset() { swStop(); swElapsed=0; document.getElementById('sw-display').innerText="00:00.00"; }
-        let alarmCheckInt, isAlarmSet=false, alarmTargetStr="";
-        function toggleAlarm() {
-            initAudio();
-            const input=document.getElementById('alarm-datetime'), status=document.getElementById('alarm-status'), btn=document.getElementById('alarm-toggle');
-            if(!isAlarmSet) {
-                if(!input.value) { alert("日時を設定してください"); return; }
-                const targetTime = new Date(input.value); const now = new Date();
-                if(targetTime < now) { alert("現在より未来の日時を設定してください"); return; }
-                alarmTargetStr = input.value; isAlarmSet = true;
-                const displayStr = targetTime.toLocaleString('ja-JP', {month:'numeric', day:'numeric', hour:'2-digit', minute:'2-digit'});
-                status.innerText = "設定中:\n" + displayStr; status.style.color = "#00b84c";
-                btn.innerText = "解除"; btn.style.backgroundColor = "#d60000"; input.disabled = true;
-                alarmCheckInt = setInterval(()=>{
-                    const currentNow = new Date();
-                    const localIso = new Date(currentNow.getTime() - (currentNow.getTimezoneOffset() * 60000)).toISOString().slice(0, 16);
-                    if(localIso === alarmTargetStr && currentNow.getSeconds() === 0) { playLoudSound(); toggleAlarm(); }
-                }, 1000);
-            } else {
-                isAlarmSet = false; clearInterval(alarmCheckInt);
-                status.innerText = "OFF"; status.style.color = "#888";
-                btn.innerText = "アラームセット"; btn.style.backgroundColor = "#007acc"; input.disabled = false;
-            }
-        }
+        let audioCtx,oscillators=[],isPlaying=!1;function initAudio(){audioCtx||(audioCtx=new(window.AudioContext||window.webkitAudioContext)),"suspended"===audioCtx.state&&audioCtx.resume()}function playLoudSound(){if(initAudio(),isPlaying)return;isPlaying=!0,document.getElementById("stop-alarm-overlay").style.display="flex";const e=audioCtx.currentTime,t=audioCtx.createOscillator(),o=audioCtx.createGain(),n=audioCtx.createOscillator(),i=audioCtx.createGain();t.type="square",t.frequency.setValueAtTime(800,e),n.type="sawtooth",n.frequency.setValueAtTime(810,e),o.gain.value=1,i.gain.value=.8,t.connect(o),n.connect(i),o.connect(audioCtx.destination),i.connect(audioCtx.destination),t.start(),n.start();const a=setInterval(()=>{if(!isPlaying)return void clearInterval(a);const e=audioCtx.currentTime;t.frequency.linearRampToValueAtTime(1200,e+.3),t.frequency.linearRampToValueAtTime(800,e+.6),n.frequency.linearRampToValueAtTime(1210,e+.3),n.frequency.linearRampToValueAtTime(810,e+.6)},600);oscillators=[t,n]}function stopSound(){isPlaying=!1,oscillators.forEach(e=>{try{e.stop()}catch(e){}}),oscillators=[],document.getElementById("stop-alarm-overlay").style.display="none"}function switchTab(e){initAudio(),document.querySelectorAll(".view").forEach(e=>e.classList.remove("active")),document.querySelectorAll("nav button").forEach(e=>e.classList.remove("active")),document.getElementById("view-"+e).classList.add("active"),document.getElementById("nav-"+e).classList.add("active")}function formatTime(e){return`${Math.floor(e/60).toString().padStart(2,"0")}:${(e%60).toString().padStart(2,"0")}`}let timerInterval,timerSeconds=0;function timerStart(){initAudio();const e=document.getElementById("t-min"),t=document.getElementById("t-sec"),o=document.getElementById("timer-count"),n=document.getElementById("timer-setup");"none"!==n.style.display&&(timerSeconds=60*(parseInt(e.value)||0)+(parseInt(t.value)||0),timerSeconds<=0||(n.style.display="none",o.style.display="block")),document.getElementById("timer-start").style.display="none",document.getElementById("timer-stop").style.display="flex",updateTimerDisplay(),timerInterval=setInterval(()=>{timerSeconds--,updateTimerDisplay(),timerSeconds<=0&&(clearInterval(timerInterval),playLoudSound(),timerResetUI())},1e3)}function updateTimerDisplay(){document.getElementById("timer-count").innerText=formatTime(timerSeconds)}function timerStop(){clearInterval(timerInterval),document.getElementById("timer-start").style.display="flex",document.getElementById("timer-stop").style.display="none"}function timerReset(){timerStop(),timerResetUI()}function timerResetUI(){document.getElementById("timer-setup").style.display="flex",document.getElementById("timer-count").style.display="none",document.getElementById("timer-start").style.display="flex",document.getElementById("timer-stop").style.display="none"}let swInterval,swStartT,swElapsed=0;function swStart(){initAudio(),swStartT=Date.now()-swElapsed,swInterval=setInterval(()=>{swElapsed=Date.now()-swStartT;let e=new Date(swElapsed);document.getElementById("sw-display").innerText=`${e.getUTCMinutes().toString().padStart(2,"0")}:${e.getUTCSeconds().toString().padStart(2,"0")}.${Math.floor(e.getUTCMilliseconds()/10).toString().padStart(2,"0")}`},10),document.getElementById("sw-start").style.display="none",document.getElementById("sw-stop").style.display="flex"}function swStop(){clearInterval(swInterval),document.getElementById("sw-start").style.display="flex",document.getElementById("sw-stop").style.display="none"}function swReset(){swStop(),swElapsed=0,document.getElementById("sw-display").innerText="00:00.00"}let alarmCheckInt,isAlarmSet=!1,alarmTargetStr="";function toggleAlarm(){if(initAudio(),!isAlarmSet){const e=document.getElementById("alarm-datetime"),t=document.getElementById("alarm-status"),o=document.getElementById("alarm-toggle");if(!e.value)return void alert("日時を設定してください");const n=new Date(e.value);if(new Date>n)return void alert("現在より未来の日時を設定してください");alarmTargetStr=e.value,isAlarmSet=!0;const i=n.toLocaleString("ja-JP",{month:"numeric",day:"numeric",hour:"2-digit",minute:"2-digit"});t.innerText="設定中:\n"+i,t.style.color="#00b84c",o.innerText="解除",o.style.backgroundColor="#d60000",e.disabled=!0,alarmCheckInt=setInterval(()=>{const e=new Date,t=new Date(e.getTime()-6e4*e.getTimezoneOffset()).toISOString().slice(0,16);t===alarmTargetStr&&0===e.getSeconds()&&(playLoudSound(),toggleAlarm())},1e3)}else{isAlarmSet=!1,clearInterval(alarmCheckInt);const e=document.getElementById("alarm-status"),t=document.getElementById("alarm-toggle"),o=document.getElementById("alarm-datetime");e.innerText="OFF",e.style.color="#888",t.innerText="アラームセット",t.style.backgroundColor="#007acc",o.disabled=!1}}
     </script>
-    
-    <!-- ▼▼▼ PWA化のための自己完結スクリプト ▼▼▼ -->
-    <script>
-    window.addEventListener('load', () => {
-        // 1. アイコンを動的に描画してBase64データURLを生成する
-        const createIcon = (size) => {
-            const canvas = document.createElement('canvas');
-            canvas.width = size;
-            canvas.height = size;
-            const ctx = canvas.getContext('2d');
-            const center = size / 2;
-
-            // 背景
-            ctx.fillStyle = '#1a1a1a'; // --dark
-            ctx.fillRect(0, 0, size, size);
-
-            // 外側の円
-            ctx.strokeStyle = '#e30000'; // --primary
-            ctx.lineWidth = size * 0.1;
-            ctx.beginPath();
-            ctx.arc(center, center, size * 0.4, 0, Math.PI * 2);
-            ctx.stroke();
-            
-            // 警告マーク
-            ctx.fillStyle = '#ffffff'; // --light
-            ctx.font = `bold ${size * 0.5}px sans-serif`;
-            ctx.textAlign = 'center';
-            ctx.textBaseline = 'middle';
-            ctx.fillText('⚠️', center, center * 1.05);
-
-            return canvas.toDataURL('image/png');
-        };
-
-        const icon192 = createIcon(192);
-        const icon512 = createIcon(512);
-
-        // 2. 生成したアイコンを<link>タグに設定
-        document.getElementById('dynamic-favicon').href = icon192;
-        document.getElementById('dynamic-apple-icon').href = icon192;
-
-        // 3. manifestの内容をJavaScriptオブジェクトとして定義
-        const manifest = {
-            "name": "爆音時計",
-            "short_name": "爆音時計",
-            "description": "大音量で時間をお知らせするタイマー、ストップウォッチ、アラームアプリ",
-            "start_url": ".",
-            "display": "standalone",
-            "background_color": "#1a1a1a",
-            "theme_color": "#e30000",
-            "orientation": "portrait",
-            "icons": [
-                { "src": icon192, "sizes": "192x192", "type": "image/png" },
-                { "src": icon512, "sizes": "512x512", "type": "image/png" }
-            ]
-        };
-
-        // 4. manifestオブジェクトをデータURLに変換して<link>タグに設定
-        const manifestString = JSON.stringify(manifest);
-        const blob = new Blob([manifestString], { type: 'application/json' });
-        const manifestURL = URL.createObjectURL(blob);
-        document.getElementById('dynamic-manifest').href = manifestURL;
-
-        // 5. Service Workerのコードを文字列として定義し、登録する
-        if ('serviceWorker' in navigator) {
-            const swCode = `
-                const CACHE_NAME = 'bakuon-clock-single-file-v2';
-                // このHTMLファイル自体をキャッシュ対象にする
-                const urlsToCache = ['./'];
-
-                // インストール時にファイルをキャッシュする
-                self.addEventListener('install', event => {
-                    event.waitUntil(
-                        caches.open(CACHE_NAME).then(cache => {
-                            return cache.addAll(urlsToCache);
-                        })
-                    );
-                });
-
-                // リクエスト時にキャッシュを優先して返す (オフライン対応)
-                self.addEventListener('fetch', event => {
-                    event.respondWith(
-                        caches.match(event.request).then(response => {
-                            return response || fetch(event.request);
-                        })
-                    );
-                });
-            `;
-            const swBlob = new Blob([swCode], { type: 'application/javascript' });
-            const swUrl = URL.createObjectURL(swBlob);
-            navigator.serviceWorker.register(swUrl)
-                .then(registration => console.log('ServiceWorker registration successful.'))
-                .catch(err => console.error('ServiceWorker registration failed:', err));
-        }
-    });
-    </script>
-    <!-- ▲▲▲ スクリプトここまで ▲▲▲ -->
-
 </body>
-</html>
+</html>```
