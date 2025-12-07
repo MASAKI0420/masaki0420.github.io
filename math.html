@@ -276,13 +276,16 @@
             document.getElementById('dynamic-favicon').href = iconBase64;
             document.getElementById('dynamic-apple-icon').href = iconBase64;
 
-            // ▼▼▼ 修正箇所: IDとScopeを追加して、他のアプリと区別させる ▼▼▼
+            // ▼▼▼ 修正箇所: 適用範囲をこのファイルだけに厳密に限定する ▼▼▼
+            // 現在のファイルのパス（例: /calc.html）を取得
+            const currentPath = window.location.pathname;
+            
             const manifestJson = {
-                "id": "calculation-training-app-v1", // ユニークなIDを追加
+                "id": "calc-app-strict-scope-" + currentPath, // パスを含めて絶対にかぶらないIDにする
                 "name": "計算トレーニング",
                 "short_name": "計算トレ",
-                "start_url": window.location.href,
-                "scope": ".", // スコープをこのファイルの階層に限定
+                "start_url": currentPath, // 開始URLをこのファイルそのものにする
+                "scope": currentPath, // ★最重要★ 適用範囲をこのファイルだけに限定する
                 "display": "standalone",
                 "background_color": "#ffffff",
                 "theme_color": "#000000",
@@ -302,8 +305,8 @@
                 `;
                 const swBlob = new Blob([swCode], {type: 'application/javascript'});
                 const swUrl = URL.createObjectURL(swBlob);
-                // scopeを指定して登録
-                navigator.serviceWorker.register(swUrl, { scope: './' }).catch(err => console.log('SW Failed', err));
+                // ServiceWorkerのスコープもこのファイルだけに限定
+                navigator.serviceWorker.register(swUrl, { scope: currentPath }).catch(err => console.log('SW Failed', err));
             }
         })();
     </script>
