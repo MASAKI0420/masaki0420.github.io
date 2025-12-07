@@ -276,10 +276,13 @@
             document.getElementById('dynamic-favicon').href = iconBase64;
             document.getElementById('dynamic-apple-icon').href = iconBase64;
 
+            // ▼▼▼ 修正箇所: IDとScopeを追加して、他のアプリと区別させる ▼▼▼
             const manifestJson = {
+                "id": "calculation-training-app-v1", // ユニークなIDを追加
                 "name": "計算トレーニング",
                 "short_name": "計算トレ",
                 "start_url": window.location.href,
+                "scope": ".", // スコープをこのファイルの階層に限定
                 "display": "standalone",
                 "background_color": "#ffffff",
                 "theme_color": "#000000",
@@ -299,7 +302,8 @@
                 `;
                 const swBlob = new Blob([swCode], {type: 'application/javascript'});
                 const swUrl = URL.createObjectURL(swBlob);
-                navigator.serviceWorker.register(swUrl).catch(err => console.log('SW Failed', err));
+                // scopeを指定して登録
+                navigator.serviceWorker.register(swUrl, { scope: './' }).catch(err => console.log('SW Failed', err));
             }
         })();
     </script>
