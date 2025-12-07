@@ -5,17 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>爆音時計</title>
     
-    <!-- PWA設定 -->
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="apple-mobile-web-app-title" content="爆音時計">
-    <meta name="mobile-web-app-capable" content="yes">
-    <meta name="theme-color" content="#e30000">
-
-    <!-- 動的生成されるアイコンとマニフェストの受け皿 -->
-    <link id="dynamic-favicon" rel="icon" type="image/png" href="">
-    <link id="dynamic-apple-icon" rel="apple-touch-icon" href="">
-    <link id="dynamic-manifest" rel="manifest" href="">
+    <!-- 
+      以前の静的な <link> タグは削除しました。
+      JavaScript (generatePWA関数) によって動的に生成されます。
+    -->
 
     <style>
         :root {
@@ -25,7 +18,10 @@
             --gray: #333;
         }
 
-        * { box-sizing: border-box; user-select: none; -webkit-tap-highlight-color: transparent; }
+        * {
+            box-sizing: border-box;
+            user-select: none;
+        }
 
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -40,34 +36,11 @@
 
         header {
             background-color: var(--primary);
-            padding: 10px 15px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.5);
-            z-index: 10;
-        }
-
-        .app-title { font-weight: bold; font-size: 1.2rem; }
-
-        /* インストールボタン */
-        #install-btn {
-            display: none;
-            background-color: #fff;
-            color: var(--primary);
-            border: none;
-            padding: 5px 10px;
-            font-size: 0.8rem;
+            padding: 15px;
+            text-align: center;
             font-weight: bold;
-            border-radius: 20px;
-            cursor: pointer;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
-            animation: pulse 2s infinite;
-        }
-        @keyframes pulse {
-            0% { transform: scale(1); }
-            50% { transform: scale(1.05); }
-            100% { transform: scale(1); }
+            font-size: 1.2rem;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.5);
         }
 
         nav {
@@ -101,14 +74,20 @@
 
         .view {
             position: absolute;
-            top: 0; left: 0; width: 100%; height: 100%;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
             display: none;
             flex-direction: column;
             align-items: center;
             justify-content: center;
             padding: 20px;
         }
-        .view.active { display: flex; }
+
+        .view.active {
+            display: flex;
+        }
 
         .time-display {
             font-size: 4.5rem;
@@ -117,9 +96,15 @@
             margin-bottom: 30px;
             text-shadow: 0 0 10px rgba(255, 0, 0, 0.3);
         }
-        @media (max-width: 400px) { .time-display { font-size: 3.5rem; } }
+        
+        @media (max-width: 400px) {
+            .time-display { font-size: 3.5rem; }
+        }
 
-        .controls { display: flex; gap: 20px; }
+        .controls {
+            display: flex;
+            gap: 20px;
+        }
 
         button.btn {
             border: none;
@@ -129,143 +114,92 @@
             font-size: 1rem;
             font-weight: bold;
             cursor: pointer;
+            transition: transform 0.1s;
             display: flex;
             align-items: center;
             justify-content: center;
             color: white;
             box-shadow: 0 4px 6px rgba(0,0,0,0.3);
         }
-        button.btn:active { transform: scale(0.95); }
+
+        button.btn:active {
+            transform: scale(0.95);
+        }
 
         .btn-start { background-color: #00b84c; }
         .btn-stop { background-color: #d60000; }
         .btn-reset { background-color: #555; }
+        .btn-set { background-color: #007acc; width: auto; height: auto; padding: 10px 20px; border-radius: 8px; margin-top: 10px;}
 
-        /* アラームセットボタン（四角） */
-        button.btn.btn-set {
-            background-color: #007acc;
-            width: auto;
-            height: auto;
-            padding: 15px 40px;
-            border-radius: 8px;
-            margin-top: 20px;
-            font-size: 1.2rem;
+        /* Timer Inputs */
+        .timer-inputs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            justify-content: center;
+            align-items: center;
         }
-
-        .timer-inputs { display: flex; gap: 10px; margin-bottom: 20px; justify-content: center; align-items: center; }
         .timer-inputs input {
-            background: #333; border: none; color: white;
-            font-size: 1.5rem; width: 70px; text-align: center;
-            padding: 10px; border-radius: 5px;
+            background: #333;
+            border: none;
+            color: white;
+            font-size: 1.5rem;
+            width: 70px;
+            text-align: center;
+            padding: 10px;
+            border-radius: 5px;
         }
-        .timer-inputs label { font-size: 0.8rem; color: #aaa; }
-
-        /* Alarm Input */
-        input[type="datetime-local"] {
-            background: #333; border: none; color: white;
-            font-size: 1.2rem; padding: 15px; border-radius: 10px;
-            margin-bottom: 20px; color-scheme: dark;
-            width: 90%; max-width: 350px; text-align: center;
-            font-weight: bold;
+        .timer-inputs label {
+            font-size: 0.8rem;
+            color: #aaa;
         }
 
-        /* Stop Overlay */
+        /* Alarm Specific */
+        input[type="time"] {
+            background: #333;
+            border: none;
+            color: white;
+            font-size: 2rem;
+            padding: 10px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            color-scheme: dark;
+        }
+
+        /* STOP ALARM OVERLAY */
         #stop-alarm-overlay {
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
             background: rgba(227, 0, 0, 0.95);
             z-index: 9999;
             display: none;
-            flex-direction: column; align-items: center; justify-content: center;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
             animation: flash 0.5s infinite alternate;
         }
+
         @keyframes flash {
             from { background-color: rgba(227, 0, 0, 0.95); }
             to { background-color: rgba(0, 0, 0, 0.95); }
         }
+
         #stop-alarm-btn {
-            width: 200px; height: 200px; font-size: 1.5rem;
-            border: 5px solid white; background: transparent;
-            border-radius: 50%;
+            width: 200px;
+            height: 200px;
+            font-size: 1.5rem;
+            border: 5px solid white;
+            background: transparent;
         }
+
     </style>
-
-    <script>
-        (function() {
-            // アイコン生成
-            const size = 512;
-            const canvas = document.createElement('canvas');
-            canvas.width = size; canvas.height = size;
-            const ctx = canvas.getContext('2d');
-            ctx.fillStyle = "#e30000"; ctx.fillRect(0, 0, size, size);
-            ctx.beginPath(); ctx.arc(size/2, size/2, size/3, 0, Math.PI * 2); ctx.fillStyle = "#ffffff"; ctx.fill();
-            ctx.strokeStyle = "#1a1a1a"; ctx.lineWidth = 30; ctx.lineCap = "round";
-            ctx.beginPath(); ctx.moveTo(size/2, size/2); ctx.lineTo(size/2 + 60, size/2 - 60); ctx.stroke();
-            ctx.beginPath(); ctx.moveTo(size/2, size/2); ctx.lineTo(size/2, size/2 - 110); ctx.stroke();
-            ctx.beginPath(); ctx.arc(size/2, size/2, 20, 0, Math.PI * 2); ctx.fillStyle = "#1a1a1a"; ctx.fill();
-
-            const iconBase64 = canvas.toDataURL('image/png');
-            document.getElementById('dynamic-favicon').href = iconBase64;
-            document.getElementById('dynamic-apple-icon').href = iconBase64;
-
-            // マニフェスト生成
-            const manifestJson = {
-                "name": "爆音時計",
-                "short_name": "爆音時計",
-                "start_url": window.location.href,
-                "display": "standalone",
-                "background_color": "#e30000",
-                "theme_color": "#e30000",
-                "orientation": "portrait",
-                "description": "Web Audio APIを使用した爆音アラーム",
-                "icons": [{ "src": iconBase64, "sizes": "512x512", "type": "image/png" }]
-            };
-            const base64Manifest = btoa(unescape(encodeURIComponent(JSON.stringify(manifestJson))));
-            document.getElementById('dynamic-manifest').href = "data:application/manifest+json;base64," + base64Manifest;
-
-            // Service Worker (通知操作に対応)
-            if ('serviceWorker' in navigator) {
-                const swCode = `
-                    self.addEventListener('install', e => e.waitUntil(self.skipWaiting()));
-                    self.addEventListener('activate', e => e.waitUntil(self.clients.claim()));
-                    self.addEventListener('fetch', e => e.respondWith(fetch(e.request)));
-
-                    // ▼▼▼ 通知クリック時の処理 ▼▼▼
-                    self.addEventListener('notificationclick', event => {
-                        event.notification.close(); // 通知を消す
-
-                        if (event.action === 'stop') {
-                            // 「音を止める」ボタンが押された場合
-                            const channel = new BroadcastChannel('alarm-channel');
-                            channel.postMessage({ command: 'stop' });
-                        } else {
-                            // 通知自体をタップした場合（アプリを開く）
-                            event.waitUntil(
-                                clients.matchAll({ type: 'window', includeUncontrolled: true }).then(clientList => {
-                                    // 既に開いているウィンドウがあればフォーカス
-                                    for (const client of clientList) {
-                                        if ('focus' in client) return client.focus();
-                                    }
-                                    // なければ開く
-                                    if (clients.openWindow) return clients.openWindow('./');
-                                })
-                            );
-                        }
-                    });
-                `;
-                const swBlob = new Blob([swCode], {type: 'application/javascript'});
-                navigator.serviceWorker.register(URL.createObjectURL(swBlob))
-                    .then(reg => console.log('SW Registered', reg))
-                    .catch(err => console.log('SW Error', err));
-            }
-        })();
-    </script>
 </head>
 <body>
 
-    <header>
-        <div class="app-title">⚠️ 爆音時計</div>
-        <button id="install-btn">↓ アプリを入れる</button>
-    </header>
+    <header>⚠️ 爆音時計 ⚠️</header>
 
     <nav>
         <button onclick="switchTab('timer')" id="nav-timer" class="active">タイマー</button>
@@ -278,11 +212,18 @@
         <div id="view-timer" class="view active">
             <div id="timer-setup">
                 <div class="timer-inputs">
-                    <div><input type="number" id="t-min" value="3" min="0" max="99"><br><label>分</label></div>
-                    <div><input type="number" id="t-sec" value="0" min="0" max="59"><br><label>秒</label></div>
+                    <div>
+                        <input type="number" id="t-min" value="3" min="0" max="99">
+                        <br><label>分</label>
+                    </div>
+                    <div>
+                        <input type="number" id="t-sec" value="0" min="0" max="59">
+                        <br><label>秒</label>
+                    </div>
                 </div>
             </div>
             <div id="timer-count" class="time-display" style="display:none;">03:00</div>
+            
             <div class="controls">
                 <button class="btn btn-start" id="timer-start" onclick="timerStart()">開始</button>
                 <button class="btn btn-stop" id="timer-stop" onclick="timerStop()" style="display:none;">停止</button>
@@ -302,176 +243,321 @@
 
         <!-- ALARM -->
         <div id="view-alarm" class="view">
-            <input type="datetime-local" id="alarm-datetime">
-            <div class="time-display" id="alarm-status" style="font-size: 1.2rem; color: #888; white-space: pre-wrap; text-align: center;">OFF</div>
+            <input type="time" id="alarm-time">
+            <div class="time-display" id="alarm-status" style="font-size: 1.5rem; color: #888;">OFF</div>
             <button class="btn btn-set" id="alarm-toggle" onclick="toggleAlarm()">アラームセット</button>
         </div>
     </main>
 
-    <!-- Stop Overlay -->
+    <!-- Full Screen Stop Overlay -->
     <div id="stop-alarm-overlay">
         <h1 style="color:white; margin-bottom: 20px;">時間です！</h1>
         <button class="btn" id="stop-alarm-btn" onclick="stopSound()">音を止める</button>
     </div>
 
     <script>
-        // --- BroadcastChannel for Notification Action ---
-        // Service Workerからの「停止」コマンドを受け取る
-        const channel = new BroadcastChannel('alarm-channel');
-        channel.onmessage = (event) => {
-            if (event.data && event.data.command === 'stop') {
-                stopSound();
-            }
-        };
+        // ==========================================
+        //  PWA Dynamic Generation (Icons, Manifest, Service Worker)
+        // ==========================================
+        (function generatePWA() {
+            // 1. Icon SVG Data (Red background, White Clock)
+            const iconSVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><rect width="512" height="512" fill="#e30000"/><path d="M256 100c-66.2 0-120 53.8-120 120v110l-40 40h320l40-40V220c0-66.2-53.8-120-120-120z" fill="#fff"/><path d="M256 420c22 0 40-18 40-40h-80c0 22 18 40 40 40z" fill="#fff"/></svg>`;
+            const iconUrl = "data:image/svg+xml;base64," + btoa(iconSVG);
 
-        // --- Audio Logic ---
-        let audioCtx, oscillators = [], isPlaying = false;
-        function initAudio() { if(!audioCtx) { audioCtx = new (window.AudioContext || window.webkitAudioContext)(); } if(audioCtx.state==='suspended') audioCtx.resume(); }
-        
-        // ▼▼▼ 通知を表示する関数 ▼▼▼
-        function showNotification() {
-            if (Notification.permission === 'granted') {
-                // Service Worker経由で通知を出す（これがないとスマホでアクションボタンが出にくい）
-                navigator.serviceWorker.ready.then(function(registration) {
-                    registration.showNotification('爆音時計', {
-                        body: '時間です！タップしてアプリを開くか、ボタンで停止してください。',
-                        icon: document.getElementById('dynamic-favicon').href,
-                        vibrate: [200, 100, 200, 100, 200], // バイブレーション
-                        tag: 'loud-alarm',
-                        renotify: true,
-                        requireInteraction: true, // ユーザーが操作するまで消えない
-                        actions: [
-                            { action: 'stop', title: '🔕 音を止める' } // Android/Chrome用ボタン
-                        ]
-                    });
+            // 2. Inject Icon Links
+            const head = document.head;
+            const linkIcon = document.createElement('link');
+            linkIcon.rel = 'icon';
+            linkIcon.href = iconUrl;
+            head.appendChild(linkIcon);
+
+            const linkApple = document.createElement('link');
+            linkApple.rel = 'apple-touch-icon';
+            linkApple.href = iconUrl;
+            head.appendChild(linkApple);
+
+            // 3. Generate Manifest
+            const manifest = {
+                "name": "爆音時計",
+                "short_name": "爆音時計",
+                "start_url": ".",
+                "display": "standalone",
+                "background_color": "#e30000",
+                "theme_color": "#e30000",
+                "icons": [{
+                    "src": iconUrl,
+                    "type": "image/svg+xml",
+                    "sizes": "512x512"
+                }]
+            };
+            const manifestBlob = new Blob([JSON.stringify(manifest)], {type: 'application/manifest+json'});
+            const manifestUrl = URL.createObjectURL(manifestBlob);
+            
+            const linkManifest = document.createElement('link');
+            linkManifest.rel = 'manifest';
+            linkManifest.href = manifestUrl;
+            head.appendChild(linkManifest);
+
+            // 4. Service Worker Logic (Blob)
+            // Note: Inline SW via Blob has scope limitations but works for caching the current page in many cases.
+            const swCode = `
+                self.addEventListener('install', (event) => {
+                    self.skipWaiting();
                 });
+                self.addEventListener('activate', (event) => {
+                    event.waitUntil(self.clients.claim());
+                });
+                self.addEventListener('fetch', (event) => {
+                    // Simple passthrough or basic cache strategy could go here
+                    // ensuring the app works offline by caching the main document
+                    event.respondWith(
+                        fetch(event.request).catch(() => {
+                            return caches.match(event.request);
+                        })
+                    );
+                });
+            `;
+            
+            if ('serviceWorker' in navigator) {
+                const blob = new Blob([swCode], { type: 'text/javascript' });
+                const swUrl = URL.createObjectURL(blob);
+                
+                // Attempt to register with ./ scope to capture this page
+                navigator.serviceWorker.register(swUrl, { scope: './' })
+                    .then(reg => console.log('SW Registered', reg))
+                    .catch(err => console.log('SW Fail', err));
+            }
+        })();
+
+        // ==========================================
+        //  App Logic (Original)
+        // ==========================================
+
+        // --- Web Audio API (The Loud Part) ---
+        let audioCtx;
+        let oscillators = [];
+        let isPlaying = false;
+
+        function initAudio() {
+            if (!audioCtx) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            }
+            if (audioCtx.state === 'suspended') {
+                audioCtx.resume();
             }
         }
 
         function playLoudSound() {
-            initAudio(); if(isPlaying) return; isPlaying=true;
-            
-            // 通知を表示
-            showNotification();
-            
+            initAudio();
+            if (isPlaying) return;
+            isPlaying = true;
+
             document.getElementById('stop-alarm-overlay').style.display = 'flex';
+
+            // Create a Siren effect
             const t = audioCtx.currentTime;
-            const osc1 = audioCtx.createOscillator(); const gain1 = audioCtx.createGain();
-            const osc2 = audioCtx.createOscillator(); const gain2 = audioCtx.createGain();
-            osc1.type = 'square'; osc1.frequency.setValueAtTime(800, t);
-            osc2.type = 'sawtooth'; osc2.frequency.setValueAtTime(810, t);
-            gain1.gain.value = 1.0; gain2.gain.value = 0.8;
-            osc1.connect(gain1); osc2.connect(gain2);
-            gain1.connect(audioCtx.destination); gain2.connect(audioCtx.destination);
-            osc1.start(); osc2.start();
+
+            // Oscillator 1: Square wave (Harsh)
+            const osc1 = audioCtx.createOscillator();
+            const gain1 = audioCtx.createGain();
+            osc1.type = 'square';
+            osc1.frequency.setValueAtTime(800, t);
+            osc1.frequency.linearRampToValueAtTime(1200, t + 0.3); // Siren up
+            osc1.frequency.linearRampToValueAtTime(800, t + 0.6);  // Siren down
             
+            // Oscillator 2: Sawtooth (Buzz)
+            const osc2 = audioCtx.createOscillator();
+            const gain2 = audioCtx.createGain();
+            osc2.type = 'sawtooth';
+            osc2.frequency.setValueAtTime(810, t); // Slightly detuned
+            osc2.frequency.linearRampToValueAtTime(1210, t + 0.3);
+            
+            // Connect
+            gain1.gain.value = 1.0; // Max volume
+            gain2.gain.value = 0.8;
+
+            osc1.connect(gain1);
+            osc2.connect(gain2);
+            gain1.connect(audioCtx.destination);
+            gain2.connect(audioCtx.destination);
+
+            osc1.start();
+            osc2.start();
+
+            // Loop the siren effect
             const sirenInterval = setInterval(() => {
-                if(!isPlaying) { clearInterval(sirenInterval); return; }
+                if(!isPlaying) {
+                    clearInterval(sirenInterval);
+                    return;
+                }
                 const now = audioCtx.currentTime;
-                osc1.frequency.linearRampToValueAtTime(1200, now + 0.3); osc1.frequency.linearRampToValueAtTime(800, now + 0.6);
-                osc2.frequency.linearRampToValueAtTime(1210, now + 0.3); osc2.frequency.linearRampToValueAtTime(810, now + 0.6);
+                osc1.frequency.setValueAtTime(800, now);
+                osc1.frequency.linearRampToValueAtTime(1200, now + 0.3);
+                osc1.frequency.linearRampToValueAtTime(800, now + 0.6);
+                
+                osc2.frequency.setValueAtTime(810, now);
+                osc2.frequency.linearRampToValueAtTime(1210, now + 0.3);
+                osc2.frequency.linearRampToValueAtTime(810, now + 0.6);
             }, 600);
+
             oscillators = [osc1, osc2];
         }
 
         function stopSound() {
-            isPlaying=false; 
-            oscillators.forEach(osc=>{try{osc.stop()}catch(e){}}); 
-            oscillators=[]; 
-            document.getElementById('stop-alarm-overlay').style.display='none';
-            // 通知も閉じる
-            navigator.serviceWorker.ready.then(reg => {
-                reg.getNotifications().then(notifications => {
-                    notifications.forEach(n => n.close());
-                });
+            isPlaying = false;
+            oscillators.forEach(osc => {
+                try { osc.stop(); } catch(e){}
             });
+            oscillators = [];
+            document.getElementById('stop-alarm-overlay').style.display = 'none';
         }
 
-        // Tabs
+        // --- Tab Switching ---
         function switchTab(tab) {
-            initAudio();
-            document.querySelectorAll('.view').forEach(el=>el.classList.remove('active'));
-            document.querySelectorAll('nav button').forEach(el=>el.classList.remove('active'));
-            document.getElementById('view-'+tab).classList.add('active');
-            document.getElementById('nav-'+tab).classList.add('active');
+            initAudio(); // Initialize audio context on first interaction
+            document.querySelectorAll('.view').forEach(el => el.classList.remove('active'));
+            document.querySelectorAll('nav button').forEach(el => el.classList.remove('active'));
+            
+            document.getElementById('view-' + tab).classList.add('active');
+            document.getElementById('nav-' + tab).classList.add('active');
         }
 
-        // Timer
-        function formatTime(s) { return `${Math.floor(s/60).toString().padStart(2,'0')}:${(s%60).toString().padStart(2,'0')}`; }
-        let timerInterval, timerSeconds=0;
+        // --- Formatting ---
+        function formatTime(totalSec) {
+            const m = Math.floor(totalSec / 60).toString().padStart(2, '0');
+            const s = (totalSec % 60).toString().padStart(2, '0');
+            return `${m}:${s}`;
+        }
+
+        // --- Timer Logic ---
+        let timerInterval;
+        let timerSeconds = 0;
+
         function timerStart() {
             initAudio();
-            // ▼▼▼ 通知の許可を求める ▼▼▼
-            Notification.requestPermission();
+            const minInput = document.getElementById('t-min');
+            const secInput = document.getElementById('t-sec');
+            const display = document.getElementById('timer-count');
+            const setup = document.getElementById('timer-setup');
             
-            const min=document.getElementById('t-min'), sec=document.getElementById('t-sec'), disp=document.getElementById('timer-count'), setup=document.getElementById('timer-setup');
-            if(setup.style.display!=='none') { timerSeconds=(parseInt(min.value)||0)*60+(parseInt(sec.value)||0); if(timerSeconds<=0)return; setup.style.display='none'; disp.style.display='block'; }
-            document.getElementById('timer-start').style.display='none'; document.getElementById('timer-stop').style.display='flex';
+            if (setup.style.display !== 'none') {
+                timerSeconds = (parseInt(minInput.value) || 0) * 60 + (parseInt(secInput.value) || 0);
+                if (timerSeconds <= 0) return;
+                setup.style.display = 'none';
+                display.style.display = 'block';
+            }
+
+            document.getElementById('timer-start').style.display = 'none';
+            document.getElementById('timer-stop').style.display = 'flex';
+            
             updateTimerDisplay();
-            timerInterval = setInterval(()=>{ timerSeconds--; updateTimerDisplay(); if(timerSeconds<=0){ clearInterval(timerInterval); playLoudSound(); timerResetUI(); } }, 1000);
-        }
-        function updateTimerDisplay() { document.getElementById('timer-count').innerText = formatTime(timerSeconds); }
-        function timerStop() { clearInterval(timerInterval); document.getElementById('timer-start').style.display='flex'; document.getElementById('timer-stop').style.display='none'; }
-        function timerReset() { timerStop(); timerResetUI(); }
-        function timerResetUI() { document.getElementById('timer-setup').style.display='flex'; document.getElementById('timer-count').style.display='none'; document.getElementById('timer-start').style.display='flex'; document.getElementById('timer-stop').style.display='none'; }
 
-        // Stopwatch
-        let swInterval, swStartT, swElapsed=0;
+            timerInterval = setInterval(() => {
+                timerSeconds--;
+                updateTimerDisplay();
+                if (timerSeconds <= 0) {
+                    clearInterval(timerInterval);
+                    playLoudSound();
+                    timerResetUI();
+                }
+            }, 1000);
+        }
+
+        function updateTimerDisplay() {
+            document.getElementById('timer-count').innerText = formatTime(timerSeconds);
+        }
+
+        function timerStop() {
+            clearInterval(timerInterval);
+            document.getElementById('timer-start').style.display = 'flex';
+            document.getElementById('timer-stop').style.display = 'none';
+        }
+
+        function timerReset() {
+            timerStop();
+            timerResetUI();
+        }
+
+        function timerResetUI() {
+            document.getElementById('timer-setup').style.display = 'flex';
+            document.getElementById('timer-count').style.display = 'none';
+            document.getElementById('timer-start').style.display = 'flex';
+            document.getElementById('timer-stop').style.display = 'none';
+        }
+
+        // --- Stopwatch Logic ---
+        let swInterval;
+        let swStartTime;
+        let swElapsed = 0;
+
         function swStart() {
-            initAudio(); swStartT = Date.now()-swElapsed;
-            swInterval = setInterval(()=>{ swElapsed=Date.now()-swStartT; let d=new Date(swElapsed); document.getElementById('sw-display').innerText=`${d.getUTCMinutes().toString().padStart(2,'0')}:${d.getUTCSeconds().toString().padStart(2,'0')}.${Math.floor(d.getUTCMilliseconds()/10).toString().padStart(2,'0')}`; }, 10);
-            document.getElementById('sw-start').style.display='none'; document.getElementById('sw-stop').style.display='flex';
+            initAudio();
+            swStartTime = Date.now() - swElapsed;
+            swInterval = setInterval(() => {
+                swElapsed = Date.now() - swStartTime;
+                let date = new Date(swElapsed);
+                let m = date.getUTCMinutes().toString().padStart(2, '0');
+                let s = date.getUTCSeconds().toString().padStart(2, '0');
+                let ms = Math.floor(date.getUTCMilliseconds() / 10).toString().padStart(2, '0');
+                document.getElementById('sw-display').innerText = `${m}:${s}.${ms}`;
+            }, 10);
+            
+            document.getElementById('sw-start').style.display = 'none';
+            document.getElementById('sw-stop').style.display = 'flex';
         }
-        function swStop() { clearInterval(swInterval); document.getElementById('sw-start').style.display='flex'; document.getElementById('sw-stop').style.display='none'; }
-        function swReset() { swStop(); swElapsed=0; document.getElementById('sw-display').innerText="00:00.00"; }
 
-        // Alarm
-        let alarmCheckInt, isAlarmSet=false, alarmTargetStr="";
+        function swStop() {
+            clearInterval(swInterval);
+            document.getElementById('sw-start').style.display = 'flex';
+            document.getElementById('sw-stop').style.display = 'none';
+        }
+
+        function swReset() {
+            swStop();
+            swElapsed = 0;
+            document.getElementById('sw-display').innerText = "00:00.00";
+        }
+
+        // --- Alarm Logic ---
+        let alarmCheckInterval;
+        let isAlarmSet = false;
+        let alarmTargetStr = "";
+
         function toggleAlarm() {
             initAudio();
-            // ▼▼▼ 通知の許可を求める ▼▼▼
-            Notification.requestPermission().then(permission => {
-                if (permission !== 'granted') {
-                    alert('通知を許可しないと、アプリを閉じている時に気付けない場合があります。');
-                }
-            });
+            const input = document.getElementById('alarm-time');
+            const status = document.getElementById('alarm-status');
+            const btn = document.getElementById('alarm-toggle');
 
-            const input=document.getElementById('alarm-datetime');
-            const status=document.getElementById('alarm-status');
-            const btn=document.getElementById('alarm-toggle');
-
-            if(!isAlarmSet) {
-                if(!input.value) { alert("日時を設定してください"); return; }
-                const targetTime = new Date(input.value);
-                const now = new Date();
-                if(targetTime < now) { alert("現在より未来の日時を設定してください"); return; }
-
+            if (!isAlarmSet) {
+                if (!input.value) return;
                 alarmTargetStr = input.value;
                 isAlarmSet = true;
-                const displayStr = targetTime.toLocaleString('ja-JP', {month:'numeric', day:'numeric', hour:'2-digit', minute:'2-digit'});
-                status.innerText = "設定中:\n" + displayStr; status.style.color = "#00b84c"; btn.innerText = "解除"; btn.style.backgroundColor = "#d60000"; input.disabled = true;
+                status.innerText = "ON: " + alarmTargetStr;
+                status.style.color = "#00b84c";
+                btn.innerText = "解除";
+                btn.style.backgroundColor = "#d60000";
+                input.disabled = true;
 
-                alarmCheckInt = setInterval(()=>{
-                    const currentNow = new Date();
-                    const localIso = new Date(currentNow.getTime() - (currentNow.getTimezoneOffset() * 60000)).toISOString().slice(0, 16);
-                    if(localIso === alarmTargetStr && currentNow.getSeconds() === 0) { 
-                        playLoudSound(); toggleAlarm(); 
+                alarmCheckInterval = setInterval(() => {
+                    const now = new Date();
+                    const currentStr = now.getHours().toString().padStart(2,'0') + ":" + now.getMinutes().toString().padStart(2,'0');
+                    if (currentStr === alarmTargetStr && now.getSeconds() === 0) {
+                        playLoudSound();
+                        toggleAlarm(); // Turn off automatically after triggering
                     }
                 }, 1000);
+
             } else {
-                isAlarmSet = false; clearInterval(alarmCheckInt);
-                status.innerText = "OFF"; status.style.color = "#888"; btn.innerText = "アラームセット"; btn.style.backgroundColor = "#007acc"; input.disabled = false;
+                isAlarmSet = false;
+                clearInterval(alarmCheckInterval);
+                status.innerText = "OFF";
+                status.style.color = "#888";
+                btn.innerText = "アラームセット";
+                btn.style.backgroundColor = "#007acc";
+                input.disabled = false;
             }
         }
-
-        // Install
-        const installBtn=document.getElementById('install-btn'); let deferredPrompt;
-        window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); deferredPrompt=e; installBtn.style.display='block'; });
-        installBtn.addEventListener('click', async () => {
-            if(deferredPrompt) { deferredPrompt.prompt(); deferredPrompt=null; }
-            else { alert("【iOS】共有ボタン→「ホーム画面に追加」\n【PC】メニュー→「保存して共有」→「アプリをインストール」"); }
-        });
-        if(window.matchMedia('(display-mode: standalone)').matches) installBtn.style.display='none';
     </script>
 </body>
 </html>
