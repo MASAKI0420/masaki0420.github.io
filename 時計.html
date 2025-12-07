@@ -1,271 +1,263 @@
-<!-- 
-  【ファイル名: index.html として保存推奨】
-  画像不要・単一ファイルで動作するPWA対応アラームアプリ
--->
 <!DOCTYPE html>
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>爆音時計</title>
-    <meta name="description" content="ブラウザで動く強力なアラームアプリ">
     
-    <!-- iOS / PWA用メタデータ -->
+    <!-- PWA用の設定 -->
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="theme-color" content="#e30000">
 
-    <!-- アイコン・マニフェスト（JSで動的に流し込みます） -->
+    <!-- アイコンとマニフェスト（動的生成用） -->
     <link id="pwa-icon" rel="icon" type="image/png" href="">
     <link id="pwa-apple-icon" rel="apple-touch-icon" href="">
     <link id="pwa-manifest" rel="manifest" href="">
 
     <style>
-        /* --- リセット & ベーススタイル --- */
         :root {
             --primary: #e30000;
-            --dark: #121212;
-            --gray-bg: #1e1e1e;
-            --text: #ffffff;
-            --safe-area-top: env(safe-area-inset-top, 0px);
-            --safe-area-bottom: env(safe-area-inset-bottom, 0px);
+            --dark: #1a1a1a;
+            --light: #ffffff;
+            --gray: #333;
         }
 
-        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-        
+        * { box-sizing: border-box; user-select: none; -webkit-tap-highlight-color: transparent; }
+
         body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
             background-color: var(--dark);
-            color: var(--text);
-            margin: 0; padding: 0;
-            display: flex; flex-direction: column;
-            height: 100vh; height: 100dvh; /* モバイル対応 */
+            color: var(--light);
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
             overflow: hidden;
-            user-select: none;
         }
 
-        /* --- ヘッダー --- */
+        /* ヘッダー */
         header {
             background-color: var(--primary);
-            padding: calc(10px + var(--safe-area-top)) 15px 10px 15px;
-            display: flex; justify-content: space-between; align-items: center;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.5);
-            z-index: 100;
+            padding: 10px 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.5);
+            z-index: 10;
         }
-        .app-title { font-weight: 800; font-size: 1.2rem; letter-spacing: 1px; }
+
+        .app-title { font-weight: bold; font-size: 1.2rem; }
 
         /* インストールボタン */
         #install-btn {
-            display: none;
-            background: white; color: var(--primary);
-            border: none; padding: 6px 12px;
-            font-size: 0.8rem; font-weight: bold;
-            border-radius: 20px; cursor: pointer;
+            display: none; /* 初期は非表示 */
+            background-color: #fff;
+            color: var(--primary);
+            border: none;
+            padding: 8px 12px;
+            font-size: 0.8rem;
+            font-weight: bold;
+            border-radius: 20px;
+            cursor: pointer;
             box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+            animation: pulse 2s infinite;
         }
-        @media all and (display-mode: standalone) { #install-btn { display: none !important; } }
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
 
-        /* --- ナビゲーション --- */
+        /* アプリとして起動中はボタンを隠す */
+        @media all and (display-mode: standalone) {
+            #install-btn { display: none !important; }
+        }
+
+        /* ナビゲーション */
         nav {
-            display: flex; justify-content: space-around;
-            background-color: #222; border-top: 1px solid #333;
-            padding-bottom: var(--safe-area-bottom);
+            display: flex;
+            justify-content: space-around;
+            background-color: #2a2a2a;
+            padding: 10px 0;
         }
         nav button {
-            background: none; border: none; color: #666;
-            font-size: 0.9rem; padding: 15px 0; width: 100%;
-            cursor: pointer; transition: 0.2s; position: relative;
+            background: none; border: none; color: #888;
+            font-size: 1rem; padding: 10px 20px;
+            cursor: pointer; border-bottom: 3px solid transparent;
+            transition: 0.3s;
         }
-        nav button.active { color: var(--text); font-weight: bold; }
-        nav button.active::after {
-            content: ''; position: absolute; top: 0; left: 0; width: 100%;
-            height: 3px; background: var(--primary);
+        nav button.active {
+            color: var(--light);
+            border-bottom: 3px solid var(--primary);
         }
 
-        /* --- メインエリア --- */
-        main {
-            flex: 1; position: relative; overflow: hidden;
-            background: var(--gray-bg);
-        }
+        /* メインエリア */
+        main { flex: 1; position: relative; overflow: hidden; }
 
         .view {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%;
             display: none; flex-direction: column;
             align-items: center; justify-content: center;
-            padding: 20px; opacity: 0; transition: opacity 0.2s;
+            padding: 20px;
         }
-        .view.active { display: flex; opacity: 1; z-index: 1; }
+        .view.active { display: flex; }
 
         .time-display {
-            font-size: 18vw; line-height: 1; font-weight: 700;
+            font-size: 4.5rem; font-weight: bold;
             font-variant-numeric: tabular-nums;
-            text-shadow: 0 0 20px rgba(227, 0, 0, 0.4);
-            margin: 20px 0;
+            margin-bottom: 30px;
+            text-shadow: 0 0 10px rgba(255, 0, 0, 0.3);
         }
-        @media (min-width: 600px) { .time-display { font-size: 6rem; } }
+        @media (max-width: 400px) { .time-display { font-size: 3.5rem; } }
 
-        /* --- ボタン共通 --- */
-        .controls { display: flex; gap: 20px; margin-top: 20px; }
+        /* 操作ボタン群 */
+        .controls { display: flex; gap: 20px; }
 
-        button.circle-btn {
-            width: 80px; height: 80px; border-radius: 50%;
-            border: none; font-size: 1rem; font-weight: bold; color: white;
-            cursor: pointer; box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+        button.btn {
+            border: none; border-radius: 50%;
+            width: 80px; height: 80px;
+            font-size: 1rem; font-weight: bold;
+            cursor: pointer; color: white;
             display: flex; align-items: center; justify-content: center;
-            transition: transform 0.1s;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
         }
-        button.circle-btn:active { transform: scale(0.95); }
-        .btn-start { background: linear-gradient(135deg, #00b84c, #008a38); }
-        .btn-stop  { background: linear-gradient(135deg, #ff3b30, #d60000); }
-        .btn-reset { background: #444; }
+        button.btn:active { transform: scale(0.95); }
 
-        /* 四角いボタン（アラームセット） */
-        .btn-rect {
-            background: #007acc; color: white; border: none;
-            padding: 15px 40px; border-radius: 12px;
-            font-size: 1.2rem; font-weight: bold; margin-top: 30px;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.3); cursor: pointer;
+        .btn-start { background-color: #00b84c; }
+        .btn-stop { background-color: #d60000; }
+        .btn-reset { background-color: #555; }
+
+        /* ▼ アラームセットボタン（四角いスタイル） ▼ */
+        button.btn-rect {
+            background-color: #007acc;
+            color: white; border: none;
+            width: auto; height: auto;
+            padding: 15px 40px;
+            border-radius: 8px; /* 四角 */
+            margin-top: 20px;
+            font-size: 1.2rem; font-weight: bold;
+            cursor: pointer;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
         }
-        .btn-rect.active { background: #d60000; animation: pulse 2s infinite; }
-        @keyframes pulse { 0% {opacity:1;} 50% {opacity:0.8;} 100% {opacity:1;} }
+        button.btn-rect:active { transform: scale(0.95); }
 
-        /* --- 入力フォーム --- */
-        .timer-setup { display: flex; gap: 10px; align-items: flex-end; margin-bottom: 20px; }
-        .input-group { text-align: center; }
-        .input-group input {
-            background: #333; border: 2px solid #444; color: white;
-            font-size: 2rem; width: 80px; text-align: center;
-            padding: 10px; border-radius: 8px; outline: none;
+        /* タイマー入力 */
+        .timer-inputs { display: flex; gap: 10px; margin-bottom: 20px; justify-content: center; }
+        .timer-inputs input {
+            background: #333; border: none; color: white;
+            font-size: 1.5rem; width: 70px; text-align: center;
+            padding: 10px; border-radius: 5px;
         }
-        .input-group input:focus { border-color: var(--primary); }
-        .input-group label { font-size: 0.8rem; color: #aaa; margin-top: 5px; display: block; }
+        .timer-inputs label { font-size: 0.8rem; color: #aaa; display:block; text-align:center;}
 
+        /* アラーム入力（日時） */
         input[type="datetime-local"] {
-            background: #333; border: 2px solid #444; color: white;
-            font-size: 1.3rem; padding: 15px; border-radius: 10px;
-            width: 100%; max-width: 350px; text-align: center;
-            color-scheme: dark; margin-bottom: 10px; outline: none;
+            background: #333; border: none; color: white;
+            font-size: 1.2rem; padding: 15px; border-radius: 10px;
+            margin-bottom: 20px; color-scheme: dark;
+            width: 90%; max-width: 350px; text-align: center; font-weight: bold;
         }
 
-        /* --- アラーム停止オーバーレイ --- */
-        #overlay {
+        /* 全画面停止オーバーレイ */
+        #stop-alarm-overlay {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(220, 0, 0, 0.96); z-index: 9999;
-            display: none; flex-direction: column;
-            align-items: center; justify-content: center;
+            background: rgba(227, 0, 0, 0.95);
+            z-index: 9999; display: none;
+            flex-direction: column; align-items: center; justify-content: center;
             animation: flash 0.5s infinite alternate;
         }
-        @keyframes flash { from { background: rgba(220,0,0,0.96); } to { background: rgba(50,0,0,0.96); } }
-        
-        #overlay h1 { font-size: 3rem; margin-bottom: 40px; text-align: center; }
-        
-        #stop-btn {
-            width: 200px; height: 200px; border-radius: 50%;
-            background: transparent; border: 6px solid white;
-            color: white; font-size: 1.5rem; font-weight: 900;
-            cursor: pointer;
+        @keyframes flash {
+            from { background-color: rgba(227, 0, 0, 0.95); }
+            to { background-color: rgba(0, 0, 0, 0.95); }
+        }
+        #stop-alarm-btn {
+            width: 200px; height: 200px; font-size: 1.5rem;
+            border: 5px solid white; background: transparent; border-radius: 50%;
         }
 
-        .status-msg { color: #888; margin-top: 10px; white-space: pre-wrap; text-align: center; line-height: 1.5; }
+        .warn-msg { font-size: 0.8rem; color: #ffaa00; margin-top: 10px; }
     </style>
 
-    <!-- ▼ PWA & Service Worker 動的生成ロジック ▼ -->
+    <!-- ▼▼▼ ここからPWA化・アイコン生成ロジック（一から書き直し） ▼▼▼ -->
     <script>
-    (function() {
-        // 1. アイコンの生成 (Canvas)
-        const canvas = document.createElement('canvas');
-        canvas.width = 512; canvas.height = 512;
-        const ctx = canvas.getContext('2d');
-        
-        // 背景: 赤
-        ctx.fillStyle = "#e30000"; ctx.fillRect(0,0,512,512);
-        // 時計盤
-        ctx.beginPath(); ctx.arc(256,256,180,0,Math.PI*2); ctx.fillStyle="#fff"; ctx.fill();
-        // 針
-        ctx.strokeStyle="#111"; ctx.lineWidth=35; ctx.lineCap="round";
-        ctx.beginPath(); ctx.moveTo(256,256); ctx.lineTo(256, 120); ctx.stroke(); // 長針
-        ctx.beginPath(); ctx.moveTo(256,256); ctx.lineTo(360, 300); ctx.stroke(); // 短針
-        ctx.beginPath(); ctx.arc(256,256,25,0,Math.PI*2); ctx.fillStyle="#111"; ctx.fill();
+        (function() {
+            // 1. アイコンをCanvasで描画 (赤い背景に白い時計)
+            const size = 512;
+            const canvas = document.createElement('canvas');
+            canvas.width = size; canvas.height = size;
+            const ctx = canvas.getContext('2d');
 
-        const iconUrl = canvas.toDataURL('image/png');
-        document.getElementById('pwa-icon').href = iconUrl;
-        document.getElementById('pwa-apple-icon').href = iconUrl;
+            // 背景（赤）
+            ctx.fillStyle = "#e30000";
+            ctx.fillRect(0, 0, size, size);
 
-        // 2. マニフェストの生成 (Blob)
-        // scopeとstart_urlを './' (カレント) にすることで他プロジェクトとの干渉を防ぐ
-        const manifest = {
-            "name": "爆音時計",
-            "short_name": "爆音時計",
-            "start_url": "./",
-            "scope": "./",
-            "display": "standalone",
-            "background_color": "#e30000",
-            "theme_color": "#e30000",
-            "orientation": "portrait",
-            "icons": [{ "src": iconUrl, "sizes": "512x512", "type": "image/png" }]
-        };
-        const manifestBlob = new Blob([JSON.stringify(manifest)], {type: 'application/json'});
-        document.getElementById('pwa-manifest').href = URL.createObjectURL(manifestBlob);
+            // 時計の文字盤（白）
+            ctx.beginPath();
+            ctx.arc(size/2, size/2, size/3, 0, Math.PI * 2);
+            ctx.fillStyle = "#ffffff";
+            ctx.fill();
 
-        // 3. Service Workerの生成と登録 (Blob)
-        // キャッシュ名にランダムなIDを含め、更新時に古いキャッシュと競合しないようにする
-        const cacheId = 'loud-clock-v' + Date.now(); 
+            // 針（黒）
+            ctx.strokeStyle = "#1a1a1a";
+            ctx.lineWidth = 30;
+            ctx.lineCap = "round";
+            // 短針
+            ctx.beginPath(); ctx.moveTo(size/2, size/2);
+            ctx.lineTo(size/2 + 60, size/2 - 60); ctx.stroke();
+            // 長針
+            ctx.beginPath(); ctx.moveTo(size/2, size/2);
+            ctx.lineTo(size/2, size/2 - 110); ctx.stroke();
+            // 中心
+            ctx.beginPath(); ctx.arc(size/2, size/2, 20, 0, Math.PI * 2);
+            ctx.fillStyle = "#1a1a1a"; ctx.fill();
 
-        const swCode = `
-            const CACHE_NAME = '${cacheId}';
-            
-            self.addEventListener('install', e => {
-                // 即座に有効化
-                e.waitUntil(self.skipWaiting());
-            });
+            const iconData = canvas.toDataURL('image/png');
+            document.getElementById('pwa-icon').href = iconData;
+            document.getElementById('pwa-apple-icon').href = iconData;
 
-            self.addEventListener('activate', e => {
-                // 古いキャッシュ（他のバージョンのこのアプリ）を削除
-                e.waitUntil(
-                    caches.keys().then(keys => Promise.all(
-                        keys.map(key => {
-                            if(key !== CACHE_NAME) return caches.delete(key);
-                        })
-                    )).then(() => self.clients.claim())
-                );
-            });
+            // 2. マニフェストファイル (JSON) を作成
+            const manifest = {
+                "name": "爆音時計",
+                "short_name": "爆音時計",
+                "start_url": ".",
+                "display": "standalone",
+                "background_color": "#e30000",
+                "theme_color": "#e30000",
+                "orientation": "portrait",
+                "description": "Loud Alarm Clock PWA",
+                "icons": [{ "src": iconData, "sizes": "512x512", "type": "image/png" }]
+            };
+            const manifestBlob = new Blob([JSON.stringify(manifest)], {type: 'application/json'});
+            document.getElementById('pwa-manifest').href = URL.createObjectURL(manifestBlob);
 
-            self.addEventListener('fetch', e => {
-                // 基本はネットワーク優先、失敗時にキャッシュ（今回は単一ファイルなのでシンプルに）
-                // ただし、Blob URL等はキャッシュできないのでスルー
-                if(e.request.url.startsWith('http')) {
-                    e.respondWith(fetch(e.request).catch(() => {
-                        return caches.match(e.request);
-                    }));
-                }
-            });
-
-            // 通知ボタンの処理
-            self.addEventListener('notificationclick', e => {
-                e.notification.close();
-                if (e.action === 'stop') {
-                    const bc = new BroadcastChannel('alarm_channel');
-                    bc.postMessage('STOP');
-                } else {
-                    e.waitUntil(
-                        clients.matchAll({type: 'window'}).then(cl => {
-                            for(let c of cl) if(c.focus) return c.focus();
-                            if(clients.openWindow) return clients.openWindow('./');
-                        })
-                    );
-                }
-            });
-        `;
-        
-        if ('serviceWorker' in navigator) {
-            const swBlob = new Blob([swCode], {type: 'text/javascript'});
-            const swUrl = URL.createObjectURL(swBlob);
-            // scope: './' を明示して、このファイルがあるフォルダ以下のみを制御対象にする
-            navigator.serviceWorker.register(swUrl, { scope: './' })
-                .then(reg => console.log('SW Registered', reg))
-                .catch(err => console.log('SW Fail', err));
-        }
-    })();
+            // 3. Service Workerの登録 (通知アクション対応)
+            if ('serviceWorker' in navigator) {
+                const swScript = `
+                    self.addEventListener('install', e => e.waitUntil(self.skipWaiting()));
+                    self.addEventListener('activate', e => e.waitUntil(self.clients.claim()));
+                    self.addEventListener('fetch', e => e.respondWith(fetch(e.request)));
+                    
+                    // 通知のボタンが押された時の処理
+                    self.addEventListener('notificationclick', event => {
+                        event.notification.close();
+                        if (event.action === 'stop') {
+                            const bc = new BroadcastChannel('alarm_channel');
+                            bc.postMessage('STOP');
+                        } else {
+                            // 通知本体をタップしたらアプリを開く
+                            event.waitUntil(clients.matchAll({type:'window'}).then(cl => {
+                                for(let c of cl) if(c.focus) return c.focus();
+                                if(clients.openWindow) return clients.openWindow('./');
+                            }));
+                        }
+                    });
+                `;
+                const swBlob = new Blob([swScript], {type: 'text/javascript'});
+                navigator.serviceWorker.register(URL.createObjectURL(swBlob))
+                    .catch(e => console.log('SW Error:', e));
+            }
+        })();
     </script>
 </head>
 <body>
@@ -275,305 +267,357 @@
         <button id="install-btn">アプリを入れる</button>
     </header>
 
+    <nav>
+        <button onclick="switchTab('timer')" id="nav-timer" class="active">タイマー</button>
+        <button onclick="switchTab('stopwatch')" id="nav-stopwatch">ウォッチ</button>
+        <button onclick="switchTab('alarm')" id="nav-alarm">アラーム</button>
+    </nav>
+
     <main>
-        <!-- タイマー画面 -->
+        <!-- タイマー機能 -->
         <div id="view-timer" class="view active">
-            <div id="timer-ui-setup" class="timer-setup">
-                <div class="input-group">
-                    <input type="number" id="t-min" value="3" min="0" max="99" inputmode="numeric">
-                    <label>分</label>
-                </div>
-                <div class="input-group">
-                    <input type="number" id="t-sec" value="0" min="0" max="59" inputmode="numeric">
-                    <label>秒</label>
+            <div id="timer-setup">
+                <div class="timer-inputs">
+                    <div>
+                        <input type="number" id="t-min" value="3" min="0" max="99">
+                        <label>分</label>
+                    </div>
+                    <div>
+                        <input type="number" id="t-sec" value="0" min="0" max="59">
+                        <label>秒</label>
+                    </div>
                 </div>
             </div>
+            <div id="timer-count" class="time-display" style="display:none;">03:00</div>
             
-            <div id="timer-ui-count" class="time-display" style="display:none">03:00</div>
-
             <div class="controls">
-                <button class="circle-btn btn-start" id="btn-t-start" onclick="startTimer()">開始</button>
-                <button class="circle-btn btn-stop" id="btn-t-stop" onclick="stopTimer()" style="display:none">停止</button>
-                <button class="circle-btn btn-reset" onclick="resetTimer()">復帰</button>
+                <button class="btn btn-start" id="timer-start" onclick="timerStart()">開始</button>
+                <button class="btn btn-stop" id="timer-stop" onclick="timerStop()" style="display:none;">停止</button>
+                <button class="btn btn-reset" onclick="timerReset()">リセット</button>
             </div>
         </div>
 
-        <!-- ストップウォッチ画面 -->
+        <!-- ストップウォッチ機能 -->
         <div id="view-stopwatch" class="view">
             <div class="time-display" id="sw-display">00:00.00</div>
             <div class="controls">
-                <button class="circle-btn btn-start" id="btn-sw-start" onclick="startSw()">開始</button>
-                <button class="circle-btn btn-stop" id="btn-sw-stop" onclick="stopSw()" style="display:none">停止</button>
-                <button class="circle-btn btn-reset" onclick="resetSw()">復帰</button>
+                <button class="btn btn-start" id="sw-start" onclick="swStart()">開始</button>
+                <button class="btn btn-stop" id="sw-stop" onclick="swStop()" style="display:none;">停止</button>
+                <button class="btn btn-reset" onclick="swReset()">リセット</button>
             </div>
         </div>
 
-        <!-- アラーム画面 -->
+        <!-- アラーム機能 (四角いボタン復刻) -->
         <div id="view-alarm" class="view">
-            <div style="width:100%; max-width:400px; text-align:center;">
-                <input type="datetime-local" id="alarm-input">
-                <div id="alarm-msg" class="status-msg">アラーム未設定</div>
-                <button id="btn-alarm-toggle" class="btn-rect" onclick="toggleAlarm()">アラームセット</button>
-                <div id="perm-warn" style="color:#ffaa00; font-size:0.8rem; margin-top:10px; display:none;">⚠️通知権限が必要です</div>
-            </div>
+            <input type="datetime-local" id="alarm-datetime">
+            <div class="time-display" id="alarm-status" style="font-size: 1.2rem; color: #888; white-space: pre-wrap; text-align: center;">OFF</div>
+            <!-- 四角いボタン -->
+            <button class="btn-rect" id="alarm-toggle" onclick="toggleAlarm()">アラームセット</button>
+            <div id="perm-warn" class="warn-msg" style="display:none;">⚠️通知が許可されていません</div>
         </div>
     </main>
 
-    <nav>
-        <button onclick="setView('timer')" id="nav-timer" class="active">タイマー</button>
-        <button onclick="setView('stopwatch')" id="nav-stopwatch">ウォッチ</button>
-        <button onclick="setView('alarm')" id="nav-alarm">アラーム</button>
-    </nav>
-
     <!-- 音停止用オーバーレイ -->
-    <div id="overlay">
-        <h1 style="color:white;">時間です！</h1>
-        <button id="stop-btn" onclick="stopAll()">音を止める</button>
+    <div id="stop-alarm-overlay">
+        <h1 style="color:white; margin-bottom: 20px;">時間です！</h1>
+        <button class="btn" id="stop-alarm-btn" onclick="stopSound()">音を止める</button>
     </div>
 
     <script>
-        /* --- システム・音声処理 --- */
+        // --- 1. インストールボタンの処理 (PWA) ---
+        const installBtn = document.getElementById('install-btn');
+        let deferredPrompt;
+
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            deferredPrompt = e;
+            installBtn.style.display = 'block';
+        });
+
+        installBtn.addEventListener('click', async () => {
+            if (deferredPrompt) {
+                deferredPrompt.prompt();
+                deferredPrompt = null;
+            } else {
+                alert("【インストール方法】\n\niPhone/iPad: 共有ボタン → 「ホーム画面に追加」\n\nAndroid/PC: メニュー → 「アプリをインストール」");
+            }
+        });
+
+        // --- 2. 音響エンジン (Web Audio API) ---
         let audioCtx;
         let oscillators = [];
-        let isSoundPlaying = false;
-        let silentSource = null; // スリープ防止用
+        let isPlaying = false;
+        let silentSource = null; // スリープ対策用
 
+        // Service Workerからの停止命令を受け取る
         const bc = new BroadcastChannel('alarm_channel');
-        bc.onmessage = (e) => { if(e.data === 'STOP') stopAll(); };
+        bc.onmessage = (e) => { if(e.data === 'STOP') stopSound(); };
 
         function initAudio() {
-            if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-            if (audioCtx.state === 'suspended') audioCtx.resume();
+            if (!audioCtx) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            }
+            if (audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
         }
 
-        // スリープ防止（無音再生）
-        function startSilent() {
+        // スリープ対策：無音を再生し続ける
+        function startSilentLoop() {
             initAudio();
             if (silentSource) return;
-            const buf = audioCtx.createBuffer(1, 1, 22050);
+            const buffer = audioCtx.createBuffer(1, 1, 22050);
             silentSource = audioCtx.createBufferSource();
-            silentSource.buffer = buf;
+            silentSource.buffer = buffer;
             silentSource.loop = true;
             silentSource.connect(audioCtx.destination);
             silentSource.start();
         }
 
-        function stopSilent() {
+        function stopSilentLoop() {
             if (silentSource) {
                 try { silentSource.stop(); } catch(e){}
                 silentSource = null;
             }
         }
 
-        // 通知
-        function notify() {
+        // 通知を表示する
+        function showNotification() {
             if (Notification.permission === 'granted') {
-                const opt = {
-                    body: 'タップして停止',
+                const title = '爆音時計';
+                const options = {
+                    body: '時間です！タップして停止',
                     icon: document.getElementById('pwa-icon').href,
-                    tag: 'alarm',
+                    vibrate: [200, 100, 200],
+                    tag: 'loud-alarm',
                     renotify: true,
                     requireInteraction: true,
-                    actions: [{action:'stop', title:'🔕 停止'}]
+                    actions: [{action: 'stop', title: '🔕 音を止める'}]
                 };
-                if(navigator.serviceWorker && navigator.serviceWorker.ready) {
-                    navigator.serviceWorker.ready.then(r => r.showNotification('爆音時計', opt));
+                if (navigator.serviceWorker && navigator.serviceWorker.ready) {
+                    navigator.serviceWorker.ready.then(reg => reg.showNotification(title, options));
                 } else {
-                    new Notification('爆音時計', opt);
+                    new Notification(title, options);
                 }
+            } else {
+                document.getElementById('perm-warn').style.display = 'block';
             }
         }
 
-        // 爆音再生
-        function playAlarm() {
-            if (isSoundPlaying) return;
+        function playLoudSound() {
             initAudio();
-            isSoundPlaying = true;
+            if (isPlaying) return;
+            isPlaying = true;
             
-            document.getElementById('overlay').style.display = 'flex';
-            notify();
-
-            // 2つのオシレーターで不協和音を作る
+            showNotification();
+            document.getElementById('stop-alarm-overlay').style.display = 'flex';
+            
             const t = audioCtx.currentTime;
             const osc1 = audioCtx.createOscillator();
             const osc2 = audioCtx.createOscillator();
-            const gain = audioCtx.createGain();
+            const gain1 = audioCtx.createGain();
+            const gain2 = audioCtx.createGain();
 
-            osc1.type = 'square'; osc1.frequency.setValueAtTime(800, t);
-            osc2.type = 'sawtooth'; osc2.frequency.setValueAtTime(900, t);
+            osc1.type = 'square'; // 矩形波
+            osc2.type = 'sawtooth'; // ノコギリ波
 
-            // 音量変化
-            gain.gain.setValueAtTime(1, t);
+            osc1.frequency.setValueAtTime(800, t);
+            osc2.frequency.setValueAtTime(810, t);
 
-            osc1.connect(gain); osc2.connect(gain);
-            gain.connect(audioCtx.destination);
+            gain1.gain.value = 1.0; 
+            gain2.gain.value = 0.8;
 
-            osc1.start(); osc2.start();
-            oscillators = [osc1, osc2];
+            osc1.connect(gain1).connect(audioCtx.destination);
+            osc2.connect(gain2).connect(audioCtx.destination);
 
-            // サイレン効果
-            const sirentInt = setInterval(() => {
-                if(!isSoundPlaying) { clearInterval(sirentInt); return; }
+            osc1.start();
+            osc2.start();
+
+            // サイレンのような揺らぎ
+            const sirenInterval = setInterval(() => {
+                if(!isPlaying) { clearInterval(sirenInterval); return; }
                 const now = audioCtx.currentTime;
-                osc1.frequency.linearRampToValueAtTime(1200, now+0.3);
-                osc1.frequency.linearRampToValueAtTime(800, now+0.6);
-                osc2.frequency.linearRampToValueAtTime(1300, now+0.3);
-                osc2.frequency.linearRampToValueAtTime(900, now+0.6);
+                osc1.frequency.linearRampToValueAtTime(1200, now + 0.3);
+                osc1.frequency.linearRampToValueAtTime(800, now + 0.6);
+                osc2.frequency.linearRampToValueAtTime(1210, now + 0.3);
+                osc2.frequency.linearRampToValueAtTime(810, now + 0.6);
             }, 600);
+
+            oscillators = [osc1, osc2];
         }
 
-        function stopAll() {
-            isSoundPlaying = false;
-            stopSilent();
-            oscillators.forEach(o => { try{o.stop()}catch(e){} });
+        function stopSound() {
+            isPlaying = false;
+            stopSilentLoop();
+            oscillators.forEach(osc => { try{osc.stop()}catch(e){} });
             oscillators = [];
-            document.getElementById('overlay').style.display = 'none';
-            if(navigator.serviceWorker) navigator.serviceWorker.ready.then(r => r.getNotifications().then(ns => ns.forEach(n=>n.close())));
-        }
-
-        /* --- UI切替 --- */
-        function setView(id) {
-            initAudio();
-            document.querySelectorAll('.view').forEach(e => e.classList.remove('active'));
-            document.querySelectorAll('nav button').forEach(e => e.classList.remove('active'));
-            document.getElementById('view-'+id).classList.add('active');
-            document.getElementById('nav-'+id).classList.add('active');
-        }
-
-        /* --- タイマー --- */
-        let tmrInt, tmrSec = 0;
-        function startTimer() {
-            startSilent();
-            Notification.requestPermission();
-            
-            const min = parseInt(document.getElementById('t-min').value)||0;
-            const sec = parseInt(document.getElementById('t-sec').value)||0;
-            
-            // 初回開始時のみ時間をセット（一時停止からの再開時は今のtmrSecを使う）
-            if(document.getElementById('timer-ui-setup').style.display !== 'none') {
-                tmrSec = min * 60 + sec;
+            document.getElementById('stop-alarm-overlay').style.display = 'none';
+            // 通知も消す
+            if(navigator.serviceWorker) {
+                navigator.serviceWorker.ready.then(r => r.getNotifications().then(ns => ns.forEach(n => n.close())));
             }
-            if(tmrSec <= 0) return;
+        }
 
-            document.getElementById('timer-ui-setup').style.display = 'none';
-            document.getElementById('timer-ui-count').style.display = 'block';
-            document.getElementById('btn-t-start').style.display = 'none';
-            document.getElementById('btn-t-stop').style.display = 'flex';
+        // --- 3. タブ切り替え ---
+        function switchTab(tab) {
+            initAudio();
+            document.querySelectorAll('.view').forEach(el => el.classList.remove('active'));
+            document.querySelectorAll('nav button').forEach(el => el.classList.remove('active'));
+            document.getElementById('view-' + tab).classList.add('active');
+            document.getElementById('nav-' + tab).classList.add('active');
+        }
+
+        // --- 4. タイマー機能 ---
+        function formatTime(totalSec) {
+            const m = Math.floor(totalSec / 60).toString().padStart(2, '0');
+            const s = (totalSec % 60).toString().padStart(2, '0');
+            return `${m}:${s}`;
+        }
+
+        let timerInterval;
+        let timerSeconds = 0;
+
+        function timerStart() {
+            initAudio();
+            startSilentLoop(); // バックグラウンド対策
+            Notification.requestPermission();
+
+            const minInput = document.getElementById('t-min');
+            const secInput = document.getElementById('t-sec');
+            const display = document.getElementById('timer-count');
+            const setup = document.getElementById('timer-setup');
             
-            updateTimerDisplay();
+            if (setup.style.display !== 'none') {
+                timerSeconds = (parseInt(minInput.value) || 0) * 60 + (parseInt(secInput.value) || 0);
+                if (timerSeconds <= 0) return;
+                setup.style.display = 'none';
+                display.style.display = 'block';
+            }
+
+            document.getElementById('timer-start').style.display = 'none';
+            document.getElementById('timer-stop').style.display = 'flex';
             
-            tmrInt = setInterval(() => {
-                tmrSec--;
-                updateTimerDisplay();
-                if(tmrSec <= 0) {
-                    clearInterval(tmrInt);
-                    playAlarm();
-                    resetTimer();
+            document.getElementById('timer-count').innerText = formatTime(timerSeconds);
+
+            timerInterval = setInterval(() => {
+                timerSeconds--;
+                document.getElementById('timer-count').innerText = formatTime(timerSeconds);
+                if (timerSeconds <= 0) {
+                    clearInterval(timerInterval);
+                    playLoudSound();
+                    timerResetUI();
                 }
             }, 1000);
         }
-        function updateTimerDisplay() {
-            const m = Math.floor(tmrSec/60).toString().padStart(2,'0');
-            const s = (tmrSec%60).toString().padStart(2,'0');
-            document.getElementById('timer-ui-count').innerText = `${m}:${s}`;
-        }
-        function stopTimer() {
-            clearInterval(tmrInt);
-            stopSilent();
-            document.getElementById('btn-t-start').style.display = 'flex';
-            document.getElementById('btn-t-stop').style.display = 'none';
-        }
-        function resetTimer() {
-            stopTimer();
-            document.getElementById('timer-ui-setup').style.display = 'flex';
-            document.getElementById('timer-ui-count').style.display = 'none';
+
+        function timerStop() {
+            clearInterval(timerInterval);
+            stopSilentLoop();
+            document.getElementById('timer-start').style.display = 'flex';
+            document.getElementById('timer-stop').style.display = 'none';
         }
 
-        /* --- ストップウォッチ --- */
-        let swInt, swStartT, swElap = 0;
-        function startSw() {
-            startSilent();
-            swStartT = Date.now() - swElap;
-            document.getElementById('btn-sw-start').style.display='none';
-            document.getElementById('btn-sw-stop').style.display='flex';
-            swInt = setInterval(() => {
-                swElap = Date.now() - swStartT;
-                const date = new Date(swElap);
-                const m = date.getUTCMinutes().toString().padStart(2,'0');
-                const s = date.getUTCSeconds().toString().padStart(2,'0');
-                const ms = Math.floor(date.getUTCMilliseconds()/10).toString().padStart(2,'0');
+        function timerReset() {
+            timerStop();
+            timerResetUI();
+        }
+
+        function timerResetUI() {
+            document.getElementById('timer-setup').style.display = 'flex';
+            document.getElementById('timer-count').style.display = 'none';
+            document.getElementById('timer-start').style.display = 'flex';
+            document.getElementById('timer-stop').style.display = 'none';
+        }
+
+        // --- 5. ストップウォッチ機能 ---
+        let swInterval;
+        let swStartTime;
+        let swElapsed = 0;
+
+        function swStart() {
+            initAudio();
+            startSilentLoop();
+            swStartTime = Date.now() - swElapsed;
+            swInterval = setInterval(() => {
+                swElapsed = Date.now() - swStartTime;
+                let date = new Date(swElapsed);
+                let m = date.getUTCMinutes().toString().padStart(2, '0');
+                let s = date.getUTCSeconds().toString().padStart(2, '0');
+                let ms = Math.floor(date.getUTCMilliseconds() / 10).toString().padStart(2, '0');
                 document.getElementById('sw-display').innerText = `${m}:${s}.${ms}`;
-            }, 16); // 60fps
+            }, 10);
+            
+            document.getElementById('sw-start').style.display = 'none';
+            document.getElementById('sw-stop').style.display = 'flex';
         }
-        function stopSw() {
-            clearInterval(swInt);
-            stopSilent();
-            document.getElementById('btn-sw-start').style.display='flex';
-            document.getElementById('btn-sw-stop').style.display='none';
+
+        function swStop() {
+            clearInterval(swInterval);
+            stopSilentLoop();
+            document.getElementById('sw-start').style.display = 'flex';
+            document.getElementById('sw-stop').style.display = 'none';
         }
-        function resetSw() {
-            stopSw();
-            swElap = 0;
+
+        function swReset() {
+            swStop();
+            swElapsed = 0;
             document.getElementById('sw-display').innerText = "00:00.00";
         }
 
-        /* --- アラーム --- */
-        let alarmInt, isAlarmSet = false, alarmIso = "";
+        // --- 6. アラーム機能 (日付指定) ---
+        let alarmCheckInterval;
+        let isAlarmSet = false;
+        let alarmTargetStr = "";
+
         function toggleAlarm() {
-            const inp = document.getElementById('alarm-input');
-            const msg = document.getElementById('alarm-msg');
-            const btn = document.getElementById('btn-alarm-toggle');
+            initAudio();
+            const input = document.getElementById('alarm-datetime');
+            const status = document.getElementById('alarm-status');
+            const btn = document.getElementById('alarm-toggle');
 
-            if(!isAlarmSet) {
-                if(!inp.value) return alert('日時を入力してください');
-                const target = new Date(inp.value);
-                if(target < new Date()) return alert('未来の日時を設定してください');
+            if (!isAlarmSet) {
+                if (!input.value) { alert("日時を設定してください"); return; }
+                const targetTime = new Date(input.value);
+                const now = new Date();
+                if (targetTime < now) { alert("現在より未来の日時を設定してください"); return; }
 
-                Notification.requestPermission().then(p=>{
-                    document.getElementById('perm-warn').style.display = (p!=='granted')?'block':'none';
+                Notification.requestPermission().then(p => {
+                    if(p !== 'granted') document.getElementById('perm-warn').style.display='block';
+                    else document.getElementById('perm-warn').style.display='none';
                 });
-                startSilent();
+                startSilentLoop(); // バックグラウンド対策
 
+                alarmTargetStr = input.value;
                 isAlarmSet = true;
-                alarmIso = inp.value;
-                inp.disabled = true;
+                
+                const displayStr = targetTime.toLocaleString('ja-JP', {month:'numeric', day:'numeric', hour:'2-digit', minute:'2-digit'});
+                status.innerText = "設定中:\n" + displayStr;
+                status.style.color = "#00b84c";
                 btn.innerText = "解除";
-                btn.classList.add('active');
-                msg.innerText = "待機中: " + target.toLocaleString();
-                msg.style.color = "#00b84c";
+                btn.style.backgroundColor = "#d60000";
+                input.disabled = true;
 
-                alarmInt = setInterval(() => {
-                    const now = new Date();
-                    // ローカル時間のISO文字列(分まで)を作成して比較
-                    const nowIso = new Date(now.getTime() - (now.getTimezoneOffset()*60000)).toISOString().slice(0,16);
-                    if(nowIso === alarmIso && now.getSeconds() < 2) {
-                        playAlarm();
-                        toggleAlarm(); // 解除
+                alarmCheckInterval = setInterval(() => {
+                    const currentNow = new Date();
+                    const localIso = new Date(currentNow.getTime() - (currentNow.getTimezoneOffset() * 60000)).toISOString().slice(0, 16);
+                    
+                    if (localIso === alarmTargetStr && currentNow.getSeconds() === 0) {
+                        playLoudSound();
+                        toggleAlarm(); // 鳴ったら解除
                     }
                 }, 1000);
+
             } else {
                 isAlarmSet = false;
-                clearInterval(alarmInt);
-                stopSilent();
-                inp.disabled = false;
+                clearInterval(alarmCheckInterval);
+                stopSilentLoop();
+                status.innerText = "OFF";
+                status.style.color = "#888";
                 btn.innerText = "アラームセット";
-                btn.classList.remove('active');
-                msg.innerText = "アラーム未設定";
-                msg.style.color = "#888";
+                btn.style.backgroundColor = "#007acc";
+                input.disabled = false;
             }
         }
-
-        /* --- PWAインストール --- */
-        let defPrompt;
-        const instBtn = document.getElementById('install-btn');
-        window.addEventListener('beforeinstallprompt', e => {
-            e.preventDefault(); defPrompt = e;
-            instBtn.style.display = 'block';
-        });
-        instBtn.addEventListener('click', () => {
-            if(defPrompt) defPrompt.prompt();
-            else alert("ブラウザのメニューから「ホーム画面に追加」を選択してください");
-        });
     </script>
 </body>
 </html>
