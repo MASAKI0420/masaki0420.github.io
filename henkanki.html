@@ -126,6 +126,22 @@
         #t2o-download-btn { background-color: #e91e63; }
         #t2o-download-btn:hover { background-color: #c2185b; }
 
+        /* 追加リンクのスタイル */
+        .external-link-container {
+            margin-top: 15px;
+            text-align: right;
+        }
+        .external-link {
+            color: #888;
+            text-decoration: none;
+            font-size: 14px;
+            transition: color 0.2s;
+        }
+        .external-link:hover {
+            color: #ff66aa;
+            text-decoration: underline;
+        }
+
         .footer { margin-top: 30px; font-size: 12px; color: #888; text-align: center; }
     </style>
 </head>
@@ -188,6 +204,11 @@
             <label>保存するファイル名 (.zip)</label>
             <input type="text" id="o2t-filename" placeholder="ファイル名 (自動入力)">
             <button id="o2t-download-btn" disabled>ZIPをダウンロード</button>
+            
+            <!-- ここにリンクを追加 -->
+            <div class="external-link-container">
+                <a href="https://masaki0420.github.io/osu2zip.html" class="external-link" target="_blank" rel="noopener noreferrer">OSU2zip</a>
+            </div>
         </div>
     </div>
 
