@@ -2,1385 +2,769 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <title>OSU! ⇔ TJA Taiko Converter</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <!-- JSZipライブラリの追加 -->
+    <title>Rhythm Game Chart Converter Suite</title>
+    
+    <!-- 外部ライブラリ (CDN) -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
-    <!-- Encoding.jsライブラリの追加 (Shift_JIS変換用) -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/encoding-japanese/2.0.0/encoding.min.js"></script>
+
     <style>
         body {
-            font-family: 'Segoe UI', 'Meiryo', sans-serif;
-            line-height: 1.6;
-            margin: 0;
-            background-color: #f4f4f4;
+            font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f4f4f9;
             color: #333;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
         }
         .container {
-            max-width: 850px;
-            margin: 20px auto;
-            background: #fff;
-            padding: 20px;
+            background: white;
+            padding: 20px 30px 30px;
             border-radius: 8px;
-            box-shadow: 0 0 15px rgba(0,0,0,0.1);
-        }
-        h1 {
-            text-align: center;
-            color: #333;
-            margin-bottom: 20px;
-        }
-        .tab {
-            overflow: hidden;
-            border-bottom: 2px solid #ccc;
-            margin-bottom: 20px;
-        }
-        .tab button {
-            background-color: inherit;
-            float: left;
-            border: none;
-            outline: none;
-            cursor: pointer;
-            padding: 14px 16px;
-            transition: 0.3s;
-            font-size: 17px;
-            border-radius: 5px 5px 0 0;
-        }
-        .tab button:hover {
-            background-color: #ddd;
-        }
-        .tab button.active {
-            background-color: #ccc;
-            font-weight: bold;
-        }
-        .tabcontent {
-            display: none;
-            padding: 6px 12px;
-            border-top: none;
-        }
-        .converter-area {
-            margin-top: 20px;
-            border: 2px dashed #ccc;
-            padding: 20px;
-            border-radius: 5px;
-            text-align: center;
-            background-color: #fafafa;
-        }
-        input[type="file"] {
-            margin: 10px 0;
-            display: block;
-            margin-left: auto;
-            margin-right: auto;
-        }
-        .input-group p {
-             margin-bottom: 5px;
-        }
-        button.convert-btn {
-            background-color: #d9534f;
-            color: white;
-            padding: 12px 25px;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-            font-size: 16px;
-            transition: background-color 0.3s;
-            margin-top: 15px;
-        }
-        button.convert-btn:hover {
-            background-color: #c9302c;
-        }
-        button.convert-btn:disabled {
-            background-color: #ccc;
-            cursor: not-allowed;
-        }
-        .output-area {
-            margin-top: 20px;
-        }
-        textarea {
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
             width: 100%;
-            height: 250px;
-            padding: 10px;
-            box-sizing: border-box;
-            border: 1px solid #ccc;
-            border-radius: 5px;
-            font-family: 'Consolas', 'Monaco', monospace;
-            font-size: 14px;
+            max-width: 900px;
         }
-        a.download-link {
-            display: none; /* Initially hidden */
-            text-decoration: none;
-            padding: 10px 20px;
-            border-radius: 5px;
-            text-align: center;
-            margin-top: 10px;
-            transition: background-color 0.3s;
-            font-weight: bold;
+
+        /* Tabs */
+        .tabs {
+            display: flex;
+            border-bottom: 2px solid #ddd;
+            margin-bottom: 20px;
+        }
+        .tab-btn {
+            padding: 15px 20px;
             cursor: pointer;
-            display: inline-block;
+            font-weight: bold;
+            color: #666;
+            border: none;
+            background: none;
+            font-size: 16px;
+            transition: all 0.2s;
+            border-bottom: 3px solid transparent;
+            margin-bottom: -2px;
         }
-        .download-link.single {
-            background-color: #5bc0de;
-            color: white;
+        .tab-btn:hover { background-color: #f9f9f9; color: #333; }
+        .tab-btn.active {
+            color: #333;
+            border-bottom: 3px solid;
         }
-         .download-link.single:hover {
-            background-color: #31b0d5;
+        /* Tab Colors */
+        .tab-btn[data-target="o2t"].active { color: #ff66aa; border-color: #ff66aa; }
+        .tab-btn[data-target="t2o"].active { color: #e91e63; border-color: #e91e63; }
+
+        /* Sections */
+        .converter-section { display: none; }
+        .converter-section.active { display: block; animation: fadeIn 0.3s; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+        h2 { margin-top: 0; font-size: 20px; }
+        .o2t-color { color: #ff66aa; }
+        .t2o-color { color: #e91e63; }
+
+        .row { display: flex; gap: 20px; margin-bottom: 20px; flex-wrap: wrap; }
+        .col { flex: 1; min-width: 250px; }
+        
+        label { display: block; margin-bottom: 5px; font-weight: bold; font-size: 14px; }
+        
+        input[type="text"], input[type="number"], select {
+            width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box;
         }
-        .download-link.zip {
-            background-color: #5cb85c;
-            color: white;
+
+        /* Drop Zone */
+        .drop-zone {
+            border: 2px dashed #ccc;
+            border-radius: 6px;
+            padding: 20px;
+            text-align: center;
+            background: #fafafa;
+            cursor: pointer;
+            transition: all 0.2s;
+            margin-bottom: 10px;
+            position: relative;
         }
-        .download-link.zip:hover {
-            background-color: #449d44;
+        .active-o2t .drop-zone:hover { background: #fff0f5; border-color: #ff66aa; }
+        .active-t2o .drop-zone:hover { background: #fff0f5; border-color: #e91e63; }
+        .drop-zone.active { background: #e6ffea; border-color: #4CAF50 !important; }
+        .drop-zone p { margin: 0; font-size: 14px; color: #666; pointer-events: none; }
+        .drop-zone .file-name { font-weight: bold; color: #333; margin-top: 5px; display: block; }
+        
+        textarea {
+            width: 100%; height: 350px;
+            font-family: "Consolas", "Monaco", monospace;
+            font-size: 13px; line-height: 1.4;
+            padding: 10px; box-sizing: border-box;
+            border: 1px solid #ccc; border-radius: 4px;
+            background-color: #2d2d2d; color: #f8f8f2;
+            resize: vertical;
         }
-        .download-buttons {
-            display: none; /* Initially hidden */
-            margin-top: 10px;
-        }
-        .info {
+
+        .filename-group {
             margin-top: 20px;
+            background: #f9f9f9;
             padding: 15px;
-            background-color: #fcf8e3;
-            border: 1px solid #faebcc;
-            color: #8a6d3b;
-            border-radius: 4px;
+            border-radius: 6px;
+            border: 1px solid #eee;
         }
+
+        button {
+            color: white; border: none;
+            padding: 15px 30px; border-radius: 4px;
+            cursor: pointer; font-size: 18px;
+            width: 100%; margin-top: 10px; font-weight: bold;
+            transition: background 0.2s;
+        }
+        button:disabled { background-color: #ccc !important; cursor: not-allowed; }
+
+        /* Button Colors based on section */
+        #o2t-download-btn { background-color: #ff66aa; }
+        #o2t-download-btn:hover { background-color: #e65c99; }
+        
+        #t2o-download-btn { background-color: #e91e63; }
+        #t2o-download-btn:hover { background-color: #c2185b; }
+
+        /* 追加リンクのスタイル */
+        .external-link-container {
+            margin-top: 15px;
+            text-align: right;
+        }
+        .external-link {
+            color: #888;
+            text-decoration: none;
+            font-size: 14px;
+            transition: color 0.2s;
+        }
+        .external-link:hover {
+            color: #ff66aa;
+            text-decoration: underline;
+        }
+
+        .footer { margin-top: 30px; font-size: 12px; color: #888; text-align: center; }
     </style>
 </head>
 <body>
 
-    <div class="container">
-        <h1>OSU!太鼓 ⇔ 太鼓さん次郎 譜面相互変換</h1>
+<div class="container">
+    <div class="tabs">
+        <button class="tab-btn active" data-target="o2t">osu! to TJA</button>
+        <button class="tab-btn" data-target="t2o">TJA to osu!</button>
+    </div>
 
-        <div class="tab">
-            <button class="tablinks active" onclick="openConverter(event, 'OsuToTja')">OSU! (.osu) → TJA (.tja)</button>
-            <button class="tablinks" onclick="openConverter(event, 'TjaToOsu')">TJA (.tja) → OSU! (.osu)</button>
-        </div>
-
-        <div id="OsuToTja" class="tabcontent" style="display: block;">
-            <h2>OSU! (.osu) から TJA (.tja) へ変換</h2>
-            <div class="converter-area">
-                <div class="input-group">
-                    <p><strong>1. OSU!の譜面ファイル (.osu) を選択</strong></p>
-                    <input type="file" id="osu-file-input" accept=".osu">
-                </div>
-                <div class="input-group">
-                    <p><strong>2. 音楽ファイル (任意)</strong></p>
-                    <input type="file" id="osu-audio-input" accept="audio/*">
-                </div>
-                <button id="convert-to-tja-button" class="convert-btn" disabled>TJAへ変換実行 (Shift_JIS出力)</button>
+    <!-- ========================================== -->
+    <!-- SECTION: osu! to TJA -->
+    <!-- ========================================== -->
+    <div id="o2t-section" class="converter-section active active-o2t">
+        <h2 class="o2t-color">osu! to TJA Converter (Output: .zip)</h2>
+        
+        <div class="row">
+            <div class="col">
+                <label>COURSE (難易度)</label>
+                <select id="o2t-course">
+                    <option value="Oni">Oni (おに)</option>
+                    <option value="Hard">Hard (むずかしい)</option>
+                    <option value="Normal">Normal (ふつう)</option>
+                    <option value="Easy">Easy (かんたん)</option>
+                    <option value="Edit">Edit (エディット)</option>
+                </select>
             </div>
-            <div class="output-area">
-                <h3>変換結果 (.tja) - 編集可能</h3>
-                <textarea id="tja-output" placeholder="ここに変換後のTJA譜面データが表示されます。編集してダウンロードできます。"></textarea>
-                <div id="tja-download-buttons" class="download-buttons">
-                    <a id="download-tja-link" class="download-link single">譜面 (.tja) のみダウンロード</a>
-                    <a id="download-tja-zip-link" class="download-link zip">譜面と音楽をZIPでダウンロード</a>
-                </div>
+            <div class="col">
+                <label>LEVEL (★の数)</label>
+                <input type="number" id="o2t-level" value="8" min="1" max="10">
             </div>
         </div>
 
-        <div id="TjaToOsu" class="tabcontent">
-            <h2>TJA (.tja) から OSU! (.osu) へ変換</h2>
-            <div class="converter-area">
-                <div class="input-group">
-                    <p><strong>1. TJAの譜面ファイル (.tja) を選択</strong></p>
-                    <input type="file" id="tja-file-input" accept=".tja">
+        <div class="row">
+            <div class="col">
+                <label>1. osu!ファイル (.osu)</label>
+                <div class="drop-zone" id="o2t-zone-osu">
+                    <p>クリックまたはドロップ</p>
+                    <span class="file-name" id="o2t-name-osu">未選択</span>
+                    <input type="file" id="o2t-input-osu" accept=".osu" style="display:none">
                 </div>
-                 <div class="input-group">
-                    <p><strong>2. 音楽ファイル (任意)</strong></p>
-                    <input type="file" id="tja-audio-input" accept="audio/*">
-                </div>
-                <div class="input-group">
-                    <p><strong>3. 背景画像 (任意)</strong></p>
-                    <input type="file" id="tja-bg-input" accept="image/*">
-                </div>
-                <button id="convert-to-osu-button" class="convert-btn" disabled>OSU!へ変換実行</button>
             </div>
-            <div class="output-area">
-                <h3>変換結果 (.osu) - 編集可能</h3>
-                <textarea id="osu-output" placeholder="ここに変換後のOSU!譜面データが表示されます。編集してダウンロードできます。"></textarea>
-                 <div id="osu-download-buttons" class="download-buttons">
-                    <a id="download-osu-link" class="download-link single">譜面 (.osu) のみダウンロード</a>
-                    <a id="download-osu-zip-link" class="download-link zip">譜面と音楽をOSZでダウンロード</a>
+            <div class="col">
+                <label>2. 音楽ファイル (.mp3/.ogg)</label>
+                <div class="drop-zone" id="o2t-zone-audio">
+                    <p>クリックまたはドロップ</p>
+                    <span class="file-name" id="o2t-name-audio">なし (TJAのみ)</span>
+                    <input type="file" id="o2t-input-audio" accept="audio/*" style="display:none">
                 </div>
             </div>
         </div>
 
-        <div class="info">
-            <h4>共通の注意点</h4>
-            <ul>
-                <li>変換はすべてお使いのブラウザ上で完結し、ファイルが外部に送信されることはありません。</li>
-                <li><strong>変換結果のテキストエリアは自由に編集できます。ダウンロードボタンを押すと、その時点の内容がファイルとして保存されます。</strong></li>
-                <li><strong>TJAファイルはShift_JIS (ANSI) エンコーディングで出力されます。</strong></li>
-                <li>このツールは基本的な譜面の変換に対応しています。複雑なギミック（譜面停止、#SCROLL以外のスクロール速度変化など）には対応できない場合があります。</li>
-            </ul>
+        <div class="editor-area">
+            <label>TJA プレビュー・編集</label>
+            <textarea id="o2t-editor" placeholder="osu!ファイルを読み込むとここに変換結果が表示されます..."></textarea>
+        </div>
+
+        <div class="filename-group">
+            <label>保存するファイル名 (.zip)</label>
+            <input type="text" id="o2t-filename" placeholder="ファイル名 (自動入力)">
+            <button id="o2t-download-btn" disabled>ZIPをダウンロード</button>
+            
+            <!-- ここにリンクを追加 -->
+            <div class="external-link-container">
+                <a href="https://masaki0420.github.io/osu2zip.html" class="external-link" target="_blank" rel="noopener noreferrer">OSU2zip</a>
+            </div>
         </div>
     </div>
 
-    <script>
-        function openConverter(evt, converterName) {
-            let i, tabcontent, tablinks;
-            tabcontent = document.getElementsByClassName("tabcontent");
-            for (i = 0; i < tabcontent.length; i++) {
-                tabcontent[i].style.display = "none";
-            }
-            tablinks = document.getElementsByClassName("tablinks");
-            for (i = 0; i < tablinks.length; i++) {
-                tablinks[i].className = tablinks[i].className.replace(" active", "");
-            }
-            document.getElementById(converterName).style.display = "block";
-            evt.currentTarget.className += " active";
-        }
+    <!-- ========================================== -->
+    <!-- SECTION: TJA to osu! -->
+    <!-- ========================================== -->
+    <div id="t2o-section" class="converter-section active-t2o">
+        <h2 class="t2o-color">TJA to osu! Converter (Output: .osz)</h2>
 
-        // --- OSU to TJA Converter Logic (Modified Port from osu2tja.py) ---
+        <div class="row">
+            <div class="col">
+                <label>1. TJAファイル (.tja)</label>
+                <div class="drop-zone" id="t2o-zone-tja">
+                    <p>クリックまたはドロップ</p>
+                    <span class="file-name" id="t2o-name-tja">未選択</span>
+                    <input type="file" id="t2o-input-tja" accept=".tja,.txt" style="display:none">
+                </div>
+            </div>
+            <div class="col">
+                <label>2. 音楽ファイル (.mp3/.ogg)</label>
+                <div class="drop-zone" id="t2o-zone-audio">
+                    <p>クリックまたはドロップ</p>
+                    <span class="file-name" id="t2o-name-audio">なし (osuのみ)</span>
+                    <input type="file" id="t2o-input-audio" accept="audio/*" style="display:none">
+                </div>
+            </div>
+        </div>
+
+        <div class="editor-area">
+            <label>osu! プレビュー・編集</label>
+            <textarea id="t2o-editor" placeholder="TJAファイルを読み込むとここに変換結果が表示されます..."></textarea>
+        </div>
+
+        <div class="filename-group">
+            <label>保存するファイル名 (.osz)</label>
+            <input type="text" id="t2o-filename" placeholder="ファイル名 (自動入力)">
+            <button id="t2o-download-btn" disabled>.osz をダウンロード</button>
+        </div>
+    </div>
+
+</div>
+
+<div class="footer">
+    Requires Internet Connection for JSZip & Encoding.js.
+</div>
+
+<script>
+    // --- SHARED UTILITIES ---
+    function gcd(a, b) { return b === 0 ? a : gcd(b, a % b); }
+    function gcdOfList(list) { return list.length === 0 ? 1 : list.reduce((a, b) => gcd(a, b)); }
+    function round2(num) { return Math.round(num * 100) / 100; }
+
+    function setupDropZone(zone, input, callback) {
+        zone.addEventListener('dragover', (e) => { e.preventDefault(); zone.classList.add('active'); });
+        zone.addEventListener('dragleave', () => zone.classList.remove('active'));
+        zone.addEventListener('drop', (e) => {
+            e.preventDefault(); zone.classList.remove('active');
+            if(e.dataTransfer.files.length) callback(e.dataTransfer.files[0]);
+        });
+        zone.addEventListener('click', () => input.click());
+        input.addEventListener('change', () => { if(input.files.length) callback(input.files[0]); });
+    }
+
+    // --- TAB SWITCHING ---
+    const tabs = document.querySelectorAll('.tab-btn');
+    const sections = {
+        'o2t': document.getElementById('o2t-section'),
+        't2o': document.getElementById('t2o-section')
+    };
+
+    tabs.forEach(tab => {
+        tab.addEventListener('click', () => {
+            // UI Toggle
+            tabs.forEach(t => t.classList.remove('active'));
+            tab.classList.add('active');
+            
+            // Section Toggle
+            Object.values(sections).forEach(s => s.classList.remove('active'));
+            sections[tab.dataset.target].classList.add('active');
+        });
+    });
+
+    // ==========================================
+    // LOGIC: osu! to TJA
+    // ==========================================
+    (function() {
+        // Constants
+        const T_MINUTE = 60000;
+        const WATER_MARK = "//Auto generated by osu2tja (Web)";
+        const MEASURE_TABLE = [[0.25,"1/16"],[1,"1/4"],[1.25,"5/16"],[1.5,"3/8"],[2,"2/4"],[2.25,"9/16"],[2.5,"5/8"],[3,"3/4"],[3.75,"15/16"],[4,"4/4"],[4.5,"9/8"],[5,"5/4"],[6,"6/4"],[7,"7/4"],[8,"8/4"],[9,"9/4"]];
+
         class OsuToTjaConverter {
-            constructor() {
-                this.T_MINUTE = 60000;
-                
-                // Constants
-                this.OSU_NOTE_NC = 4;
-                this.OSU_NOTE_CIRCLE = 1;
-                this.OSU_NOTE_SLIDER = 2;
-                this.OSU_NOTE_SPINNER = 8;
-
-                this.HITSND_NORMAL = 0;
-                this.HITSND_CLAP = 8;
-                this.HITSND_WHISTLE = 2;
-                this.HITSND_FINISH = 4;
-
-                this.ONP_NONE = '0';
-                this.ONP_DON = '1';
-                this.ONP_KATSU = '2';
-                this.ONP_DON_DAI = '3';
-                this.ONP_KATSU_DAI = '4';
-                this.ONP_RENDA = '5';
-                this.ONP_RENDA_DAI = '6';
-                this.ONP_BALLOON = '7';
-                this.ONP_END = '8';
-                this.ONP_IMO = '9';
-
-                this.FMT_SCROLLCHANGE = '#SCROLL %f';
-                this.FMT_BPMCHANGE = '#BPMCHANGE %f';
-                this.FMT_GOGOSTART = '#GOGOSTART';
-                this.FMT_GOGOEND = '#GOGOEND';
-                this.FMT_MEASURECHANGE = '#MEASURE %d/%d';
-                this.FMT_DELAY = '#DELAY %f';
-
-                // Globals state equivalent
-                this.timingpoints = [];
-                this.balloons = [];
-                this.slider_velocity = null;
-                this.tail_fix = false;
-                this.taiko_mode = false;
-                this.osu_format_ver = 0;
-                this.commands_within = [];
-                this.combo_cnt = 0;
-                this.guess_measure = false;
-                
-                // Beat-Measure Table for guessing
-                this.measure_table = [
-                    [0.25, "1/16"], [1, "1/4"], [1.25, "5/16"], [1.5, "3/8"],
-                    [2, "2/4"], [2.25, "9/16"], [2.5, "5/8"], [3, "3/4"],
-                    [3.75, "15/16"], [4, "4/4"], [4.5, "9/8"], [5, "5/4"],
-                    [6, "6/4"], [7, "7/4"], [8, "8/4"], [9, "9/4"]
-                ];
+            constructor(fileContent, course, level, audioFilename) {
+                this.lines = fileContent.split(/\r?\n/);
+                this.course = course; this.level = level;
+                this.audioFilename = audioFilename || "";
+                this.timingpoints = []; this.hitobjects = []; this.balloons = [];
+                this.sliderVelocity = 1.4; this.taikoMode = false;
+                this.commandsWithin = []; this.tailFix = false;
+                this.title = ""; this.subtitle = ""; this.creator = ""; this.artist = "";
+                this.preview = 0; this.audioFromOsu = "";
+                this.tjaHeads = []; this.tjaContents = []; this.comboCnt = 0;
             }
 
-            make_cmd(cmd, ...args) {
-                let res = cmd;
-                for (let arg of args) {
-                    if (res.includes('%f')) res = res.replace('%f', arg);
-                    else if (res.includes('%d')) res = res.replace('%d', arg);
-                }
-                return res;
+            getBaseTimingPoint(t, redlineOnly = false) {
+                let pool = redlineOnly ? this.timingpoints.filter(tp => tp.redline) : this.timingpoints;
+                if (pool.length === 0) return null;
+                if (t < pool[0].offset) return {...pool[0]};
+                let base = pool[0];
+                for (let tp of pool) { if (tp.offset > t) break; base = tp; }
+                return {...base};
+            }
+            getRealOffset(intOffset) {
+                const tm = this.getBaseTimingPoint(intOffset, true);
+                if(!tm) return intOffset;
+                const intDelta = Math.abs(intOffset - tm.offset);
+                const sign = (intOffset - tm.offset > 0) ? 1 : -1;
+                const tUnitCnt = Math.round(intDelta * tm.bpm * 24 / T_MINUTE);
+                return tm.offset + (tUnitCnt / 24.0) * T_MINUTE * sign / tm.bpm;
+            }
+            getRealBeatCnt(tm, beatCnt) { return Math.round(beatCnt * 24) / 24; }
+            getSliderTime(l, tm) { return (l * (T_MINUTE / tm.bpm)) / (100 * this.sliderVelocity * tm.scroll); }
+            getSliderBeatCnt(l, tm) { return this.getRealBeatCnt(tm, l / (100 * this.sliderVelocity * tm.scroll)); }
+            getDonKatsu(sound) {
+                if (sound === 0) return '1'; // Normal
+                if (sound & 8 || sound & 2) return '2'; // Clap/Whistle
+                if (sound === 4) return '3'; // Finish
+                if ((sound & 4) && (sound & 8 || sound & 2)) return '4'; // Finish+Clap
+                return '1';
             }
 
-            gcd(a, b) {
-                return b === 0 ? a : this.gcd(b, a % b);
-            }
-
-            gcd_of_list(l) {
-                if (l.length === 0) return 1;
-                return l.reduce((a, b) => this.gcd(a, b));
-            }
-
-            copyObj(obj) {
-                return Object.assign({}, obj);
-            }
-
-            get_base_timing_point(tp_list, t) {
-                if (tp_list.length === 0) throw new Error("Need at least one timing point");
-                if (parseInt(t) < tp_list[0].offset) return this.copyObj(tp_list[0]);
-                
-                let base = tp_list[0];
-                for (let i = 0; i < tp_list.length; i++) {
-                    if (tp_list[i].offset > t) break; 
-                    base = tp_list[i];
-                }
-                return this.copyObj(base);
-            }
-
-            get_base_red_timing_point(tp_list, t) {
-                const red_tps = tp_list.filter(d => d.redline === true);
-                return this.get_base_timing_point(red_tps, t);
-            }
-
-            get_real_beat_cnt(tm, beat_cnt) {
-                let ticks = beat_cnt * 24;
-                ticks = Math.round(ticks * 100) / 100; 
-                return ticks / 24;
-            }
-
-            get_real_offset(int_offset) {
-                int_offset = parseInt(int_offset);
-                const tm = this.get_base_red_timing_point(this.timingpoints, int_offset);
-                const int_delta = Math.abs(int_offset - tm.offset);
-                const sign = (int_offset - tm.offset > 0) ? 1 : -1;
-                const t_unit_cnt = Math.round(int_delta * tm.bpm * 24 / this.T_MINUTE);
-                const beat_cnt = t_unit_cnt / 24;
-                return tm.offset + beat_cnt * this.T_MINUTE * sign / tm.bpm;
-            }
-
-            get_slider_time(l, tm) {
-                const tpb = 60.0 * 1000 / tm.bpm;
-                const sv = this.slider_velocity || 1.4; // Fallback if null
-                const scroll = tm.scroll;
-                const safe_scroll = scroll === 0 ? 1 : scroll; 
-                return (1.0 * l * tpb) / (100 * sv * safe_scroll);
-            }
-
-            get_slider_beat_cnt(l, tm) {
-                const sv = this.slider_velocity || 1.4; // Fallback if null
-                const scroll = tm.scroll;
-                const safe_scroll = scroll === 0 ? 1 : scroll;
-                return this.get_real_beat_cnt(tm, (1.0 * l) / (100 * sv * safe_scroll));
-            }
-
-            get_slider_sound(str) {
-                const ps = str.split(',');
-                const reverse_cnt = parseInt(ps[6]);
-                if (ps.length === 8) {
-                    return new Array(reverse_cnt + 1).fill(parseInt(ps[4]));
-                } else if (ps.length >= 9) {
-                    return ps[8].split('|').map(x => parseInt(x));
-                }
-                return [];
-            }
-
-            get_donkatsu_by_sound(sound) {
-                if (sound === this.HITSND_NORMAL) return this.ONP_DON;
-                if (sound & (this.HITSND_CLAP | this.HITSND_WHISTLE)) {
-                    if (sound & this.HITSND_FINISH) return this.ONP_KATSU_DAI;
-                    return this.ONP_KATSU;
-                }
-                if (sound & this.HITSND_FINISH) return this.ONP_DON_DAI;
-                return this.ONP_DON;
-            }
-
-            get_section_name(str) {
-                if (!str) return "";
-                if (str.startsWith('[') && str.endsWith(']')) return str.substring(1, str.length - 1);
-                return "";
-            }
-
-            get_var(str) {
-                if (!str) return ["", ""];
-                const idx = str.indexOf(':');
-                if (idx === -1) return ["", ""];
-                return [str.substring(0, idx).trim(), str.substring(idx + 1).trim()];
-            }
-
-            get_timing_point(str, prev_timing_point) {
-                if (!str) return null;
-                const ps = str.split(',');
-                if (ps.length < 2) return null;
-
-                const offset = parseInt(ps[0]);
-                const rawbpmv = parseFloat(ps[1]);
-                const beats = (ps.length >= 3) ? parseInt(ps[2]) : 4;
-                let is_ggt = false;
-                if (ps.length >= 8) is_ggt = (parseInt(ps[7]) !== 0);
-
-                let ret = {};
-                ret.offset = offset;
-                
-                if (rawbpmv > 0) {
-                    ret.bpm = 60.0 * 1000.0 / rawbpmv;
-                    ret.scroll = 1.0;
-                    ret.redline = true;
-                } else {
-                    ret.bpm = prev_timing_point ? prev_timing_point.bpm : 120;
-                    ret.scroll = -100.0 / rawbpmv;
-                    ret.redline = false;
-                    try {
-                        const red_tps = this.timingpoints.filter(d => d.redline === true);
-                        if(red_tps.length > 0) {
-                             const int_offset = parseInt(offset);
-                             let base = red_tps[0];
-                             for(let rp of red_tps) { if(rp.offset > int_offset) break; base = rp; }
-                             const tm = base;
-                             const int_delta = Math.abs(int_offset - tm.offset);
-                             const sign = (int_offset - tm.offset > 0) ? 1 : -1;
-                             const t_unit_cnt = Math.round(int_delta * tm.bpm * 24 / this.T_MINUTE);
-                             const beat_cnt = t_unit_cnt / 24;
-                             ret.offset = tm.offset + beat_cnt * this.T_MINUTE * sign / tm.bpm;
-                        }
-                    } catch(e) {}
-                }
-                ret.beats = beats;
-                ret.GGT = is_ggt;
-                return ret;
-            }
-
-            get_note(str) {
-                let ret = [];
-                if (!str) return ret;
-                const ps = str.split(',');
-                if (ps.length < 5) return ret;
-
-                let offset = this.get_real_offset(parseInt(ps[2]));
-                let type = parseInt(ps[3]);
-                let sound = parseInt(ps[4]);
-
-                type &= ~this.OSU_NOTE_NC; 
-
-                if (type === this.OSU_NOTE_CIRCLE) { 
-                    ret.push([this.get_donkatsu_by_sound(sound), offset]);
-                } else if (type === this.OSU_NOTE_SLIDER) {
-                    const curve_len = parseFloat(ps[7]);
-                    const reverse_cnt = parseInt(ps[6]);
-                    
-                    const tm = this.get_base_timing_point(this.timingpoints, offset);
-                    const beat_cnt = this.get_slider_beat_cnt(curve_len, tm);
-                    const t_noreverse = this.get_slider_time(curve_len, tm);
-                    
-                    // --- 修正箇所: 判定閾値の変更 ---
-                    // 元のPythonコードでは1拍未満(beat_cnt < 1.0)は連打ではなく通常音符に変換されていました。
-                    // TJAでは短い連打も表現できるため、この閾値を0.125(1/8拍)まで緩和しました。
-                    if ((this.taiko_mode && beat_cnt < 0.125) || 
-                        (!this.taiko_mode && beat_cnt * reverse_cnt < 0.25)) {
-                        
-                        const sounds = this.get_slider_sound(str);
-                        for (let i = 0; i <= reverse_cnt; i++) {
-                            let point_offset = offset + this.get_slider_time(curve_len * i, tm);
-                            point_offset = this.get_real_offset(parseInt(point_offset));
-                            let snd = sounds[i] !== undefined ? sounds[i] : sound;
-                            ret.push([this.get_donkatsu_by_sound(snd), point_offset]);
-                        }
-                    } else {
-                        // Yellow Roll Logic
-                        if (sound === 0) ret.push([this.ONP_RENDA, offset]);
-                        else ret.push([this.ONP_RENDA_DAI, offset]);
-                        
-                        ret.push([this.ONP_END, offset + t_noreverse * reverse_cnt]);
-                    }
-                } else if (type === this.OSU_NOTE_SPINNER) {
-                    ret.push([this.ONP_BALLOON, offset]);
-                    const endTime = this.get_real_offset(parseInt(ps[5]));
-                    ret.push([this.ONP_END, endTime]);
-                    this.balloons.push(parseInt((endTime - offset) / 122)); 
-                }
-                return ret;
-            }
-
-            write_incomplete_bar(tm, bar_data, begin, end, tja_contents) {
-                if (bar_data.length === 0 && Math.floor(begin) === Math.floor(end)) return;
-
-                if (bar_data.length === 0) {
-                     // #DELAY
-                     const diff = (end - begin) / 1000.0;
-                     if (diff > 0.001) tja_contents.push(this.make_cmd(this.FMT_DELAY, diff));
-                     return;
-                }
-
-                const tpb = this.T_MINUTE / tm.bpm;
-                const last_note_time = bar_data[bar_data.length - 1][1];
-                const min_beat_cnt = this.get_real_beat_cnt(tm, (tm.bpm * (last_note_time - begin)) / this.T_MINUTE) + 1.0/24;
-
-                if (!this.guess_measure) {
-                    for (let m of this.measure_table) {
-                        const beat_cnt = m[0];
-                        const str = m[1];
-                        const measure_end_time = begin + (beat_cnt * this.T_MINUTE / tm.bpm);
-
-                        if (beat_cnt >= min_beat_cnt && measure_end_time <= end + 1) { 
-                            tja_contents.push("#MEASURE " + str);
-                            this.write_bar_data(tm, bar_data, begin, measure_end_time, tja_contents);
-                            
-                            const delay_time = end - measure_end_time;
-                            if (delay_time >= 1) {
-                                tja_contents.push(this.make_cmd(this.FMT_DELAY, delay_time / 1000.0));
-                            }
-                            return;
-                        }
-                    }
-                }
-
-                const denominator = 48 * 48;
-                let numerator = Math.round(denominator * min_beat_cnt);
-                const _gcd = this.gcd(denominator, numerator);
-                let den = denominator / _gcd;
-                let num = numerator / _gcd;
-                
-                if (den === 1 || den === 2) {
-                    const fix_mul = 4 / den;
-                    den *= fix_mul;
-                    num *= fix_mul;
-                }
-
-                tja_contents.push("//[Warning] This may be erronous!!");
-                tja_contents.push(this.make_cmd(this.FMT_MEASURECHANGE, num, den));
-                const calc_end = begin + min_beat_cnt * tpb;
-                this.write_bar_data(tm, bar_data, begin, calc_end, tja_contents);
-                
-                const delay_time = end - calc_end;
-                if (delay_time >= 1) {
-                    tja_contents.push(this.make_cmd(this.FMT_DELAY, delay_time / 1000.0));
-                }
-            }
-
-            write_bar_data(tm, bar_data, begin, end, tja_contents) {
-                const t_unit = 60.0 * 1000 / tm.bpm / 24;
-                
-                let offset_list = [Math.floor(begin)];
-                bar_data.forEach(d => offset_list.push(d[1]));
-                offset_list.push(Math.floor(end));
-
-                let delta_list = [];
-                for (let i = 0; i < offset_list.length - 1; i++) {
-                    const delta = (offset_list[i+1] - offset_list[i]) / t_unit;
-                    delta_list.push(Math.round(delta));
-                }
-
-                if (Math.abs(delta_list[delta_list.length - 1]) < 1) {
-                    this.tail_fix = true;
-                    if (bar_data.length > 0) {
-                        this.write_bar_data(tm, bar_data.slice(0, -1), begin, end, tja_contents);
-                    }
-                    return;
-                }
-
-                let ret_str = "";
-                
-                if (bar_data.length === 0) {
-                     let offset = begin;
-                     while (this.commands_within.length > 0 && offset >= this.commands_within[0][0]) {
-                        ret_str += "\n" + this.make_cmd(this.commands_within[0][1], this.commands_within[0][2]) + "\n";
-                        this.commands_within.shift();
-                     }
-                }
-
-                const delta_gcd = this.gcd_of_list(delta_list);
-                if (delta_gcd === 0) return; 
-                
-                const initial_rest_count = Math.floor(delta_list[0] / delta_gcd);
-                ret_str += "0".repeat(initial_rest_count);
-
-                for (let i = 0; i < bar_data.length; i++) {
-                    const note = bar_data[i][0];
-                    const offset = bar_data[i][1];
-                    const gap = delta_list[i+1]; 
-                    
-                    while (this.commands_within.length > 0 && offset >= this.commands_within[0][0] - 1) { 
-                        ret_str += "\n" + this.make_cmd(this.commands_within[0][1], this.commands_within[0][2]) + "\n";
-                        this.commands_within.shift();
-                    }
-                    
-                    ret_str += note;
-                    const rest_count = Math.floor(gap / delta_gcd) - 1;
-                    if (rest_count > 0) ret_str += "0".repeat(rest_count);
-                }
-
-                tja_contents.push(ret_str + ",");
-
-                for (let d of bar_data) {
-                    if ([this.ONP_DON, this.ONP_KATSU, this.ONP_DON_DAI, this.ONP_KATSU_DAI].includes(d[0])) {
-                        this.combo_cnt++;
-                    }
-                }
-            }
-
-            convert(fileContent, audioFileNameOverride) {
-                const lines = fileContent.split(/\r?\n/);
-                let audio = "audio.mp3";
-                let title = "Unknown";
-                let subtitle = "";
-                let creator = "";
-                let artist = "";
-                let version = "";
-                let preview = 0;
-                let hitobjects = [];
-                let curr_sec = "";
-
-                // Reset
-                this.timingpoints = [];
-                this.balloons = [];
-                this.commands_within = [];
-                this.combo_cnt = 0;
-                this.tail_fix = false;
-                this.slider_velocity = null;
-                
-                for (let line of lines) {
+            parse() {
+                let currSec = "";
+                for (let line of this.lines) {
                     line = line.trim();
                     if (!line) continue;
+                    if (line.startsWith('[') && line.endsWith(']')) { currSec = line.slice(1, -1); continue; }
+                    let vname = "", vval = "";
+                    const idx = line.indexOf(':');
+                    if (idx !== -1) { vname = line.substring(0, idx).trim(); vval = line.substring(idx + 1).trim(); }
 
-                    if (line.startsWith("osu file format v")) {
-                         this.osu_format_ver = parseInt(line.substring(17));
-                    }
-
-                    let new_sec = this.get_section_name(line);
-                    if (new_sec) { curr_sec = new_sec; continue; }
-
-                    let [vname, vval] = this.get_var(line);
-
-                    if (curr_sec === "General") {
-                        if (vname === "AudioFilename") audio = vval;
-                        else if (vname === "PreviewTime") preview = parseInt(vval);
-                        else if (vname === "Mode") this.taiko_mode = (parseInt(vval) === 1);
-                    } else if (curr_sec === "Metadata") {
-                        if (vname === "Title" || vname === "TitleUnicode") title = vval || title;
-                        else if (vname === "Creator") creator = vval;
-                        else if (vname === "Version") version = vval;
-                        else if (vname === "Source") subtitle = vval;
-                        else if (vname === "Artist" || vname === "ArtistUnicode") artist = vval || artist;
-                    } else if (curr_sec === "Difficulty") {
-                        if (vname === "SliderMultiplier") this.slider_velocity = parseFloat(vval);
-                    } else if (curr_sec === "TimingPoints") {
-                        let prev = this.timingpoints.length > 0 ? this.timingpoints[this.timingpoints.length-1] : null;
-                        let data = this.get_timing_point(line, prev);
-                        if (data) this.timingpoints.push(data);
-                    } else if (curr_sec === "HitObjects") {
-                        let data = this.get_note(line);
-                        if (data) hitobjects.push(...data);
-                    }
+                    if (currSec === "General") {
+                        if (vname === "AudioFilename") this.audioFromOsu = vval;
+                        else if (vname === "PreviewTime") this.preview = parseInt(vval);
+                        else if (vname === "Mode") this.taikoMode = (parseInt(vval) === 1);
+                    } else if (currSec === "Metadata") {
+                        if (vname === "Title" || vname === "TitleUnicode") this.title = vval || this.title;
+                        else if (vname === "Creator") this.creator = vval;
+                        else if (vname === "Source") this.subtitle = vval;
+                        else if (vname === "Artist" || vname === "ArtistUnicode") this.artist = vval || this.artist;
+                    } else if (currSec === "Difficulty") {
+                        if (vname === "SliderMultiplier") this.sliderVelocity = parseFloat(vval);
+                    } else if (currSec === "TimingPoints") {
+                        const p = line.split(',');
+                        if (p.length >= 2) {
+                            const offset = parseInt(p[0]); const rawbpm = parseFloat(p[1]);
+                            const beats = p.length > 2 ? parseInt(p[2]) : 4;
+                            const isGGT = p.length > 7 ? (p[7] !== '0') : false;
+                            let tp = { offset, beats, GGT: isGGT, redline: true, scroll: 1.0, bpm: 0 };
+                            if (rawbpm > 0) { tp.bpm = 60000 / rawbpm; } 
+                            else {
+                                const prev = this.timingpoints.length ? this.timingpoints[this.timingpoints.length-1] : {bpm:120};
+                                tp.bpm = prev.bpm; tp.scroll = Math.max(0.1, -100.0 / rawbpm);
+                                tp.redline = false; tp.offset = this.getRealOffset(offset);
+                            }
+                            this.timingpoints.push(tp);
+                        }
+                    } else if (currSec === "HitObjects") { this.parseHitObject(line); }
                 }
+                if (!this.audioFilename && this.audioFromOsu) this.audioFilename = this.audioFromOsu;
+                this.processObjects();
+                return this.generateString();
+            }
 
-                if (hitobjects.length === 0 || this.timingpoints.length === 0) throw new Error("無効なOSUファイルです。HitObjectsまたはTimingPointsがありません。");
-
-                if (hitobjects[0][1] < this.timingpoints[0].offset) {
-                    let new_first = this.copyObj(this.timingpoints[0]);
-                    new_first.offset = hitobjects[0][1];
-                    this.timingpoints.unshift(new_first);
-                }
-
-                let cur_scroll = 1.0;
-                let cur_ggt = false;
-                for (let tm of this.timingpoints) {
-                    if (Math.abs(tm.scroll - cur_scroll) > 0.001) {
-                        this.commands_within.push([tm.offset, this.FMT_SCROLLCHANGE, tm.scroll]);
-                    }
-                    if (tm.GGT !== cur_ggt) {
-                        this.commands_within.push([tm.offset, tm.GGT ? this.FMT_GOGOSTART : this.FMT_GOGOEND]);
-                    }
-                    cur_scroll = tm.scroll;
-                    cur_ggt = tm.GGT;
-                }
-                this.commands_within.sort((a,b) => a[0] - b[0]);
-
-                let tja_contents = [];
-                let tja_heads = [];
-
-                let waveName = audioFileNameOverride ? audioFileNameOverride : audio;
-                 if (!audioFileNameOverride && waveName.toLowerCase().endsWith(".osu")) {
-                     waveName = waveName.replace(/\.osu$/i, '.mp3');
-                }
-
-                let course = "Oni";
-                let level = 8;
-                const v_low = version.toLowerCase();
-                if (v_low.includes("easy") || v_low.includes("kant")) { course = "Easy"; level = 1; }
-                else if (v_low.includes("normal") || v_low.includes("futsu")) { course = "Normal"; level = 3; }
-                else if (v_low.includes("hard") || v_low.includes("muzukashii")) { course = "Hard"; level = 5; }
-                else if (v_low.includes("tower")) { course = "Tower"; }
-                else if (v_low.includes("edit")) { course = "Edit"; }
-
-                tja_heads.push(`TITLE:${title}`);
-                tja_heads.push(`SUBTITLE:${subtitle || artist}`);
-                tja_heads.push(`WAVE:${waveName}`);
-                tja_heads.push(`BPM:${this.timingpoints[0].bpm}`);
-                tja_heads.push(`OFFSET:-${(this.timingpoints[0].offset/1000).toFixed(3)}`);
-                tja_heads.push(`DEMOSTART:${(preview/1000).toFixed(3)}`);
-                tja_heads.push(`COURSE:${course}`);
-                tja_heads.push(`LEVEL:${level}`);
-                tja_heads.push(`BALLOON:${this.balloons.join(',')}`);
-                
-                tja_contents.push("\n#START");
-
-                let bar_offset_begin = this.timingpoints[0].offset;
-                let measure = this.timingpoints[0].beats;
-                let curr_bpm = this.timingpoints[0].bpm;
-                let time_per_beat = (60.0 * 1000) / curr_bpm;
-                let bar_max_length = measure * time_per_beat;
-
-                let tm_idx = 0;
-                let obj_idx = 0;
-                let bar_data = [];
-
-                const is_new_measure = (tp) => {
-                    return Math.abs(tp.bpm - curr_bpm) > 0.01 || tp.beats !== measure || tp.redline;
-                };
-
-                let cleaned_ho = [];
-                if (hitobjects.length > 0) cleaned_ho.push(hitobjects[0]);
-                for (let i = 1; i < hitobjects.length; i++) {
-                    if (hitobjects[i][1] > hitobjects[i-1][1]) {
-                        cleaned_ho.push(hitobjects[i]);
-                    }
-                }
-                hitobjects = cleaned_ho;
-
-                const MAX_LOOP = 100000;
-                let safety = 0;
-
-                while (obj_idx < hitobjects.length && safety++ < MAX_LOOP) {
-                    let next_obj = hitobjects[obj_idx];
-                    let next_obj_offset = Math.floor(next_obj[1]);
+            parseHitObject(line) {
+                const p = line.split(','); if (p.length < 5) return;
+                const time = parseInt(p[2]); let type = parseInt(p[3]); const sound = parseInt(p[4]);
+                const offset = this.getRealOffset(time); type &= (~4);
+                if (type === 1) { // Circle
+                    this.hitobjects.push({ note: this.getDonKatsu(sound), offset });
+                } else if (type === 2) { // Slider
+                    const slides = parseInt(p[6]); const len = parseFloat(p[7]);
+                    const tm = this.getBaseTimingPoint(this.timingpoints, offset);
+                    const beatCnt = this.getSliderBeatCnt(len, tm);
+                    let edgeSounds = [];
+                    if (p.length > 8) edgeSounds = p[8].split('|').map(Number);
+                    else edgeSounds = Array(slides+1).fill(parseInt(p[4]));
                     
-                    let next_measure_offset = (tm_idx < this.timingpoints.length) ? this.timingpoints[tm_idx].offset : (bar_offset_begin + bar_max_length + 1000000);
-
-                    if (tm_idx < this.timingpoints.length && !is_new_measure(this.timingpoints[tm_idx])) {
-                        tm_idx++;
-                        continue;
-                    }
-
-                    const tpb = this.T_MINUTE / curr_bpm;
-                    const end = Math.min(bar_offset_begin + bar_max_length, next_measure_offset);
-
-                    if (next_obj_offset + tpb/24 >= Math.floor(end)) {
-                        
-                        if (Math.abs(end - (bar_offset_begin + bar_max_length)) < 1.0) {
-                            const tm = this.get_base_timing_point(this.timingpoints, bar_offset_begin);
-                            this.write_bar_data(tm, bar_data, bar_offset_begin, end, tja_contents);
-                            bar_data = [];
-                            
-                            bar_offset_begin = this.get_real_offset(end);
-                        } else if (Math.abs(end - next_measure_offset) < 1.0) {
-                            this.write_incomplete_bar(this.get_base_timing_point(this.timingpoints, bar_offset_begin), bar_data, bar_offset_begin, end, tja_contents);
-                            bar_data = [];
-                            
-                            measure = this.timingpoints[tm_idx].beats;
-                            if (this.timingpoints[tm_idx].redline) {
-                                curr_bpm = this.timingpoints[tm_idx].bpm;
-                                bar_offset_begin = next_measure_offset;
-                                tja_contents.push(this.make_cmd(this.FMT_BPMCHANGE, curr_bpm));
-                            } else {
-                                bar_offset_begin = end;
+                    if ((this.taikoMode && beatCnt < 1.0) || (!this.taikoMode && beatCnt * slides < 2.0)) {
+                        for(let i=0; i<=slides; i++) {
+                            if (i < edgeSounds.length) {
+                                const pOffset = this.getRealOffset(offset + this.getSliderTime(len*i, tm));
+                                this.hitobjects.push({ note: this.getDonKatsu(edgeSounds[i]), offset: pOffset });
                             }
-                            time_per_beat = (60.0 * 1000) / curr_bpm;
-                            bar_max_length = measure * time_per_beat;
-
-                            if (this.tail_fix) {
-                                this.tail_fix = false;
-                                obj_idx--; 
-                                if(obj_idx < 0) obj_idx = 0; 
-                            }
-
-                            tja_contents.push(this.make_cmd(this.FMT_MEASURECHANGE, measure, 4));
-                            tm_idx++;
-                        } else {
-                            bar_offset_begin = end;
                         }
-
                     } else {
-                        if (next_obj[1] < bar_offset_begin) {
-                             bar_data.push([next_obj[0], bar_offset_begin]); 
-                        } else {
-                             bar_data.push(next_obj);
-                        }
-                        obj_idx++;
+                        const note = (sound === 0) ? '5' : '6';
+                        const dur = this.getSliderTime(len, tm) * slides;
+                        this.hitobjects.push({ note, offset });
+                        this.hitobjects.push({ note: '8', offset: offset + dur });
+                    }
+                } else if (type === 8) { // Spinner
+                    const endT = parseInt(p[5]);
+                    this.hitobjects.push({ note: '7', offset });
+                    const rEnd = this.getRealOffset(endT);
+                    this.hitobjects.push({ note: '8', offset: rEnd });
+                    this.balloons.push(Math.max(1, Math.floor((rEnd - offset) / 60)));
+                }
+            }
+
+            writeBar(tm, data, begin, end) {
+                const tUnit = (T_MINUTE / tm.bpm) / 24;
+                let offsets = [begin, ...data.map(d=>d.offset), end];
+                let deltas = [];
+                for(let i=0; i<offsets.length-1; i++) deltas.push(Math.round((offsets[i+1]-offsets[i])/tUnit));
+                if(deltas.length && Math.abs(deltas[deltas.length-1]) < 1) {
+                    this.tailFix = true; if(data.length) this.writeBar(tm, data.slice(0,-1), begin, end); return;
+                }
+                let s = ""; const g = gcdOfList(deltas); if(g <= 0) return;
+                s += "0".repeat(Math.floor(deltas[0]/g));
+                for(let i=0; i<deltas.length-1; i++) {
+                    const note = data[i];
+                    while(this.commandsWithin.length && note.offset >= this.commandsWithin[0].offset) {
+                        this.tjaContents.push(this.commandsWithin.shift().val);
+                    }
+                    s += note.note; s += "0".repeat(Math.floor(deltas[i+1]/g) - 1);
+                    if(['1','2','3','4'].includes(note.note)) this.comboCnt++;
+                }
+                this.tjaContents.push(s + ",");
+            }
+
+            writeIncomplete(tm, data, begin, end) {
+                if(!data.length && Math.abs(begin-end)<1) return;
+                if(!data.length) {
+                    const d = (end-begin)/1000.0;
+                    if(d > 0.001) this.tjaContents.push(`#DELAY ${d.toFixed(3)}`);
+                    return;
+                }
+                const lastOff = data[data.length-1].offset;
+                const minBeats = this.getRealBeatCnt(tm, tm.bpm*(lastOff-begin)/T_MINUTE) + 1.0/24;
+                for(let m of MEASURE_TABLE) {
+                    const dur = m[0] * T_MINUTE / tm.bpm;
+                    if(m[0] >= minBeats && (begin+dur) <= end+1) {
+                        this.tjaContents.push("#MEASURE " + m[1]);
+                        const mEnd = begin+dur; this.writeBar(tm, data, begin, mEnd);
+                        const delay = end - mEnd;
+                        if(delay >= 1) this.tjaContents.push(`#DELAY ${(delay/1000.0).toFixed(3)}`);
+                        return;
                     }
                 }
+                this.tjaContents.push("// Irregular Measure");
+                this.writeBar(tm, data, begin, end);
+            }
 
-                if (bar_data.length > 0) {
-                     const tm = this.get_base_timing_point(this.timingpoints, bar_offset_begin);
-                     const end = bar_offset_begin + bar_max_length;
-                     this.write_bar_data(tm, bar_data, bar_offset_begin, end, tja_contents);
+            processObjects() {
+                if(!this.hitobjects.length || !this.timingpoints.length) return;
+                this.hitobjects.sort((a,b)=>a.offset-b.offset); this.timingpoints.sort((a,b)=>a.offset-b.offset);
+                if(this.hitobjects[0].offset < this.timingpoints[0].offset) {
+                    let n = {...this.timingpoints[0], offset: this.hitobjects[0].offset}; this.timingpoints.unshift(n);
                 }
-
-                tja_contents.push("#END");
-                tja_contents.push("//Auto generated by osu2tja");
-                return tja_heads.join("\n") + "\n" + tja_contents.join("\n");
-            }
-        }
-
-        function convertOsuToTja(fileContent, audioFileNameOverride) {
-            const converter = new OsuToTjaConverter();
-            return converter.convert(fileContent, audioFileNameOverride);
-        }
-
-        // --- OSU to TJA Converter Interaction Logic ---
-        const osuFileInput = document.getElementById('osu-file-input');
-        const osuAudioInput = document.getElementById('osu-audio-input');
-        const convertToTjaButton = document.getElementById('convert-to-tja-button');
-        const tjaOutput = document.getElementById('tja-output');
-        const tjaDownloadButtons = document.getElementById('tja-download-buttons');
-        const downloadTjaLink = document.getElementById('download-tja-link');
-        const downloadTjaZipLink = document.getElementById('download-tja-zip-link');
-        let osuFileContent = '', osuFileNameBase = 'converted', osuAudioFile = null;
-
-        osuFileInput.addEventListener('change', (event) => {
-            const file = event.target.files[0];
-            if (file) {
-                const reader = new FileReader();
-                reader.onload = (e) => {
-                    osuFileContent = e.target.result;
-                    osuFileNameBase = file.name.replace(/\.[^/.]+$/, "");
-                    convertToTjaButton.disabled = false;
-                };
-                reader.readAsText(file, 'UTF-8');
-            } else {
-                osuFileContent = '';
-                convertToTjaButton.disabled = true;
-            }
-        });
-        
-        osuAudioInput.addEventListener('change', (event) => {
-            osuAudioFile = event.target.files[0] || null;
-        });
-
-        convertToTjaButton.addEventListener('click', () => {
-            if (!osuFileContent) return;
-            try {
-                const audioNameToUse = osuAudioFile ? osuAudioFile.name : undefined;
-                const tjaContent = convertOsuToTja(osuFileContent, audioNameToUse);
-                tjaOutput.value = tjaContent;
+                let cScroll=1.0, cGgt=false;
+                for(let tp of this.timingpoints) {
+                    if(tp.scroll !== cScroll) this.commandsWithin.push({offset:tp.offset, val:`#SCROLL ${tp.scroll}`});
+                    if(tp.GGT !== cGgt) this.commandsWithin.push({offset:tp.offset, val:tp.GGT ? '#GOGOSTART' : '#GOGOEND'});
+                    cScroll=tp.scroll; cGgt=tp.GGT;
+                }
+                let tmIdx=0, objIdx=0; let meas = this.timingpoints[0].beats; let cBpm = this.timingpoints[0].bpm;
+                let barBegin = this.timingpoints[0].offset; let barMax = meas * T_MINUTE / cBpm; let barData = [];
                 
-                tjaDownloadButtons.style.display = 'block';
+                this.tjaHeads.push(`TITLE:${this.title}`);
+                this.tjaHeads.push(`SUBTITLE:${this.subtitle || this.artist}`);
+                this.tjaHeads.push(`WAVE:${this.audioFilename}`);
+                this.tjaHeads.push(`BPM:${round2(this.timingpoints[0].bpm)}`);
+                this.tjaHeads.push(`OFFSET:${-(this.timingpoints[0].offset/1000.0).toFixed(3)}`);
+                this.tjaHeads.push(`DEMOSTART:${(this.preview/1000.0).toFixed(3)}`);
+                this.tjaHeads.push(`COURSE:${this.course}`);
+                this.tjaHeads.push(`LEVEL:${this.level}`);
+                this.tjaHeads.push(`BALLOON:${this.balloons.join(',')}`);
+                this.tjaHeads.push(""); this.tjaHeads.push("#START");
 
-                if (osuAudioFile) {
-                    downloadTjaZipLink.style.display = 'inline-block';
-                } else {
-                    downloadTjaZipLink.style.display = 'none';
+                const isNew = (tp) => tp.bpm !== cBpm || tp.beats !== meas || tp.redline;
+                while(objIdx < this.hitobjects.length) {
+                    const obj = this.hitobjects[objIdx];
+                    let nextM = (tmIdx < this.timingpoints.length) ? this.timingpoints[tmIdx].offset : barBegin+barMax+1;
+                    if(tmIdx < this.timingpoints.length && !isNew(this.timingpoints[tmIdx])) { tmIdx++; continue; }
+                    const tpb = T_MINUTE / cBpm; const end = Math.min(barBegin+barMax, nextM);
+                    if(obj.offset + tpb/24 >= end) {
+                        if(Math.abs(end - (barBegin+barMax)) < 1) {
+                            this.writeBar(this.getBaseTimingPoint(barBegin), barData, barBegin, end);
+                            barData = []; barBegin = this.getRealOffset(end); barMax = meas * T_MINUTE / cBpm;
+                        } else {
+                            this.writeIncomplete(this.getBaseTimingPoint(barBegin), barData, barBegin, end);
+                            barData = []; const nTp = this.timingpoints[tmIdx]; meas = nTp.beats;
+                            if(nTp.redline) { cBpm = nTp.bpm; barBegin = nextM; this.tjaContents.push(`#BPMCHANGE ${cBpm}`); } 
+                            else { barBegin = end; }
+                            barMax = meas * T_MINUTE / cBpm;
+                            if(this.tailFix) { this.tailFix = false; objIdx--; this.hitobjects[objIdx].offset = barBegin; }
+                            this.tjaContents.push(`#MEASURE ${meas}/4`); tmIdx++;
+                        }
+                    } else {
+                        if(obj.offset < barBegin) barData.push({...obj, offset:barBegin}); else barData.push(obj);
+                        objIdx++;
+                    }
                 }
-
-            } catch (error) {
-                alert('OSU→TJA変換中にエラー: ' + error.message);
-                console.error(error);
+                if(barData.length) this.writeBar(this.getBaseTimingPoint(barBegin), barData, barBegin, barBegin+barMax);
+                this.tjaContents.push("#END"); this.tjaContents.push(WATER_MARK);
             }
+            generateString() { return this.tjaHeads.concat(this.tjaContents).join('\r\n'); }
+        }
+
+        // --- UI Interactions (o2t) ---
+        let currentOsuFile = null, currentAudioFile = null;
+        const els = {
+            zoneOsu: document.getElementById('o2t-zone-osu'), inputOsu: document.getElementById('o2t-input-osu'), nameOsu: document.getElementById('o2t-name-osu'),
+            zoneAudio: document.getElementById('o2t-zone-audio'), inputAudio: document.getElementById('o2t-input-audio'), nameAudio: document.getElementById('o2t-name-audio'),
+            editor: document.getElementById('o2t-editor'), downloadBtn: document.getElementById('o2t-download-btn'),
+            course: document.getElementById('o2t-course'), level: document.getElementById('o2t-level'), filename: document.getElementById('o2t-filename')
+        };
+
+        setupDropZone(els.zoneOsu, els.inputOsu, file => {
+            if (!file.name.toLowerCase().endsWith('.osu')) return alert("osuファイルを選択してください");
+            currentOsuFile = file;
+            els.filename.value = file.name.replace(/\.osu$/i, "");
+            els.nameOsu.textContent = file.name; els.nameOsu.style.color = "#ff66aa";
+            runConversion();
+        });
+        setupDropZone(els.zoneAudio, els.inputAudio, file => {
+            currentAudioFile = file;
+            els.nameAudio.textContent = file.name; els.nameAudio.style.color = "#4CAF50";
+            let text = els.editor.value;
+            if (text && /^(WAVE:).*$/m.test(text)) els.editor.value = text.replace(/^(WAVE:).*$/m, `WAVE:${file.name}`);
         });
 
-        // TJA 単体ダウンロード
-        downloadTjaLink.addEventListener('click', (e) => {
-            e.preventDefault();
-            const content = tjaOutput.value;
-            if(!content) return;
-            
-            const unicodeList = Encoding.stringToCode(content);
-            const sjisList = Encoding.convert(unicodeList, { to: 'SJIS', from: 'UNICODE' });
-            const u8a = new Uint8Array(sjisList);
-            
-            const blob = new Blob([u8a], { type: 'text/plain;charset=shift_jis' });
-            const url = URL.createObjectURL(blob);
-            
-            const tempLink = document.createElement('a');
-            tempLink.href = url;
-            tempLink.download = `${osuFileNameBase}.tja`;
-            document.body.appendChild(tempLink);
-            tempLink.click();
-            document.body.removeChild(tempLink);
-            URL.revokeObjectURL(url);
-        });
-        
-        // TJA ZIPダウンロード
-        downloadTjaZipLink.addEventListener('click', (e) => {
-            e.preventDefault();
-            const content = tjaOutput.value;
-            if(!content) return;
+        const runConversion = () => {
+            if (!currentOsuFile) return;
+            const reader = new FileReader();
+            reader.onload = e => {
+                try {
+                    const conv = new OsuToTjaConverter(e.target.result, els.course.value, parseInt(els.level.value), currentAudioFile?.name);
+                    els.editor.value = conv.parse(); els.downloadBtn.disabled = false;
+                } catch(err) { els.editor.value = "Error:\n" + err.message; }
+            };
+            reader.readAsText(currentOsuFile, "UTF-8");
+        };
+        els.course.addEventListener('change', () => currentOsuFile && runConversion());
+        els.level.addEventListener('change', () => currentOsuFile && runConversion());
 
-            const unicodeList = Encoding.stringToCode(content);
-            const sjisList = Encoding.convert(unicodeList, { to: 'SJIS', from: 'UNICODE' });
-            const u8a = new Uint8Array(sjisList);
-
-            const zip = new JSZip();
-            zip.file(`${osuFileNameBase}.tja`, u8a);
-            if(osuAudioFile) zip.file(osuAudioFile.name, osuAudioFile);
-
-            zip.generateAsync({ type: "blob" }).then(function(content) {
-                const link = document.createElement('a');
-                link.href = URL.createObjectURL(content);
-                link.download = `${osuFileNameBase}.zip`;
-                link.click();
-                URL.revokeObjectURL(link.href);
-            });
-        });
-
-        // --- TJA to OSU Converter Logic (Original) ---
-        const tjaFileInput = document.getElementById('tja-file-input');
-        const tjaAudioInput = document.getElementById('tja-audio-input');
-        const tjaBgInput = document.getElementById('tja-bg-input');
-        const convertToOsuButton = document.getElementById('convert-to-osu-button');
-        const osuOutput = document.getElementById('osu-output');
-        const osuDownloadButtons = document.getElementById('osu-download-buttons');
-        const downloadOsuLink = document.getElementById('download-osu-link');
-        const downloadOsuZipLink = document.getElementById('download-osu-zip-link');
-        let tjaFileContent = '', tjaAudioFile = null, tjaBgFile = null, tjaFileNameBase = 'converted';
-        let osuGeneratedFiles = []; 
-
-        tjaFileInput.addEventListener('change', (event) => {
-            const file = event.target.files[0];
-            if (file) {
-                const reader = new FileReader();
-                reader.onload = (e) => {
-                    tjaFileContent = e.target.result;
-                    tjaFileNameBase = file.name.replace(/\.[^/.]+$/, "");
-                    convertToOsuButton.disabled = false;
-                };
-                reader.readAsText(file, 'shift-jis');
-            } else {
-                convertToOsuButton.disabled = true;
-            }
-        });
-        
-        tjaAudioInput.addEventListener('change', (event) => {
-            tjaAudioFile = event.target.files[0] || null;
-        });
-
-        tjaBgInput.addEventListener('change', (event) => {
-            tjaBgFile = event.target.files[0] || null;
-        });
-
-        convertToOsuButton.addEventListener('click', () => {
-            if (!tjaFileContent) return;
+        els.downloadBtn.addEventListener('click', async () => {
+            const text = els.editor.value; if (!text) return;
+            let fname = els.filename.value.trim() || "converted";
             try {
-                const audioNameToUse = tjaAudioFile ? tjaAudioFile.name : undefined;
-                const bgNameToUse = tjaBgFile ? tjaBgFile.name : undefined;
-                osuGeneratedFiles = convertTjaToOsu(tjaFileContent, audioNameToUse, bgNameToUse);
-
-                if (osuGeneratedFiles.length === 0) {
-                    throw new Error('変換可能な譜面が見つかりませんでした。');
-                }
-                osuOutput.value = osuGeneratedFiles[0].content;
-                if (osuGeneratedFiles.length > 1) {
-                     alert(`${osuGeneratedFiles.length}個の譜面が生成されました。\nテキストエリアには1つ目の譜面「${osuGeneratedFiles[0].fileName}」が表示されています。`);
-                }
-                osuDownloadButtons.style.display = 'block';
-                downloadOsuLink.innerHTML = `譜面 (.osu) のみダウンロード`;
-                downloadOsuZipLink.innerHTML = `譜面と音楽をOSZでダウンロード (${osuGeneratedFiles.length}譜面)`;
-
-            } catch (error) {
-                alert('TJA→OSU変換中にエラー: ' + error.message);
-                console.error(error);
-            }
+                els.downloadBtn.disabled = true; els.downloadBtn.textContent = "ZIP作成中...";
+                const zip = new JSZip();
+                const buffer = Encoding.convert(text, { to: 'SJIS', from: 'UNICODE', type: 'arraybuffer' });
+                zip.file(`${fname}.tja`, new Uint8Array(buffer));
+                if (currentAudioFile) zip.file(currentAudioFile.name, currentAudioFile);
+                const content = await zip.generateAsync({type: "blob"});
+                const a = document.createElement("a"); a.href = URL.createObjectURL(content);
+                a.download = `${fname}.zip`; document.body.appendChild(a); a.click(); document.body.removeChild(a);
+            } catch(e) { alert("Error: " + e.message); } 
+            finally { els.downloadBtn.disabled = false; els.downloadBtn.textContent = "ZIPをダウンロード"; }
         });
+    })();
 
-        downloadOsuLink.addEventListener('click', (e) => {
-            e.preventDefault();
-            const content = osuOutput.value;
-            if(!content) return;
-            const fileName = osuGeneratedFiles.length > 0 ? osuGeneratedFiles[0].fileName : `${tjaFileNameBase}.osu`;
-            const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
-            const url = URL.createObjectURL(blob);
-            const tempLink = document.createElement('a');
-            tempLink.href = url;
-            tempLink.download = fileName;
-            document.body.appendChild(tempLink);
-            tempLink.click();
-            document.body.removeChild(tempLink);
-            URL.revokeObjectURL(url);
-        });
-
-        downloadOsuZipLink.addEventListener('click', (e) => {
-            e.preventDefault();
-            if(osuGeneratedFiles.length === 0) return;
-            const zip = new JSZip();
-            zip.file(osuGeneratedFiles[0].fileName, osuOutput.value);
-            for(let i=1; i < osuGeneratedFiles.length; i++) {
-                zip.file(osuGeneratedFiles[i].fileName, osuGeneratedFiles[i].content);
+    // ==========================================
+    // LOGIC: TJA to osu!
+    // ==========================================
+    (function() {
+        class TjaToOsuConverter {
+            constructor(tjaContent, audioFilename) {
+                this.lines = tjaContent.split(/\r?\n/);
+                this.audioFilename = audioFilename || "";
+                this.TITLE = "NO TITLE"; this.SUBTITLE = ""; this.BPM = 120.0; this.WAVE = "audio.mp3";
+                this.OFFSET = 0.0; this.DEMOSTART = 0.0; this.COURSE = "Oni";
+                this.SliderMultiplier = 1.4; this.SampleSet = "Normal";
+                this.timingPoints = []; this.hitObjects = []; this.barData = [];
+                this.currentTime = 0.0; this.hasStarted = false; this.lastingNote = null;
+                this.parseMetadata(); this.parseBody();
             }
-            if (tjaAudioFile) zip.file(tjaAudioFile.name, tjaAudioFile);
-            if (tjaBgFile) zip.file(tjaBgFile.name, tjaBgFile);
-            zip.generateAsync({ type: "blob" }).then(function(content) {
-                const link = document.createElement('a');
-                link.href = URL.createObjectURL(content);
-                link.download = `${tjaFileNameBase}.osz`;
-                link.click();
-                URL.revokeObjectURL(link.href);
-            });
-        });
 
-        // --- TJA to OSU Classes (Unchanged) ---
-        const CMD_BPMCHANGE = "BPMCHANGE";
-        const CMD_MEASURE = "MEASURE";
-        const CMD_GOGOSTART = "GOGOSTART";
-        const CMD_GOGOEND = "GOGOEND";
-        const CMD_DELAY = "DELAY";
-        const CMD_SCROLL = "SCROLL";
-        
-        const OSU_CIRCLE = 1;
-        const OSU_SLIDER = 2;
-        const OSU_SPINNER = 8;
-        const OSU_SLIDER_END = 12;
-        const OSU_SPINNER_END = 13;
-
-        const OSU_EMPTY = 0;
-        const OSU_CLAP = 8;
-        const OSU_FINISH = 4;
-
-        class TjaToOsuParser {
-            constructor() {
-                this.TITLE = "NO TITLE";
-                this.SUBTITLE = "NO SUB TITLE";
-                this.BPM = 0.0;
-                this.WAVE = "NO WAVE FILE";
-                this.OFFSET = 0.0;
-                this.DEMOSTART = 0.0;
-                this.COURSE = "Oni";
-                this.LEVEL = 5;
-
-                this.Tags = "taiko jiro tja";
-                this.Artist = "unknown";
-                this.Creator = "unknown";
-                this.AudioLeadIn = 2000;
-                this.CountDown = 0;
-                this.SampleSet = "Normal";
-                this.StackLeniency = 0.7;
-                this.Mode = 1;
-                this.LetterboxInBreaks = 1;
-                this.HPDrainRate = 3;
-                this.CircleSize = 5;
-                this.OverallDifficulty = 3;
-                this.ApproachRate = 5;
-                this.SliderMultiplier = 1.4;
-                this.SliderTickRate = 4;
-                this.CircleX = 256; 
-                this.CircleY = 192; 
-
-                this.TimingPoints = [];
-                this.HitObjects = [];
-                this.bar_data = [];
-                this.curr_time = 0.0;
-                this.lasting_note = null;
-                this.has_started = false;
-            }
-            // (Previous methods remain the same, adding just skeleton for size optimization in response if needed, 
-            // but keeping full functionality as requested)
-            resetState() {
-                this.TimingPoints = [];
-                this.HitObjects = [];
-                this.bar_data = [];
-                this.curr_time = 0.0;
-                this.lasting_note = null;
-                this.has_started = false;
-            }
-            getOsuType(snd) {
-                snd = parseInt(snd);
-                if (snd === 0) throw new Error("snd 0 is invalid here");
-                if ([1, 2, 3, 4].includes(snd)) return OSU_CIRCLE;
-                if ([5, 6].includes(snd)) return OSU_SLIDER;
-                if ([7, 9].includes(snd)) return OSU_SPINNER;
-                if (snd === 8) {
-                    if (this.lasting_note && this.lasting_note.type === OSU_SLIDER) return OSU_SLIDER_END;
-                    if (this.lasting_note && this.lasting_note.type === OSU_SPINNER) return OSU_SPINNER_END;
+            parseMetadata() {
+                for (let line of this.lines) {
+                    line = line.trim(); if (line.startsWith("//") || line === "") continue;
+                    const p = line.split(":");
+                    if (p.length >= 2) {
+                        const key = p[0].trim().toUpperCase(); const val = p.slice(1).join(":").trim();
+                        if (key === "TITLE") this.TITLE = val;
+                        else if (key === "SUBTITLE") this.SUBTITLE = val;
+                        else if (key === "BPM") this.BPM = parseFloat(val);
+                        else if (key === "WAVE") this.WAVE = val;
+                        else if (key === "OFFSET") this.OFFSET = parseFloat(val);
+                        else if (key === "DEMOSTART") this.DEMOSTART = parseFloat(val);
+                        else if (key === "COURSE") this.COURSE = val;
+                    }
+                    if (line.startsWith("#START")) break;
                 }
-                return null; 
+                if (this.audioFilename) this.WAVE = this.audioFilename;
             }
-            getOsuSound(snd) {
-                snd = parseInt(snd);
-                if (snd === 1) return OSU_EMPTY;
-                else if (snd === 2) return OSU_CLAP;
-                else if (snd === 3) return OSU_FINISH;
-                else if (snd === 4) return OSU_FINISH + OSU_CLAP;
-                else if (snd === 5) return OSU_EMPTY;
-                else if (snd === 6) return OSU_FINISH;
-                else if (snd === 7) return OSU_EMPTY;
-                else if (snd === 8) return OSU_EMPTY;
-                else if (snd === 9) return OSU_EMPTY;
-                throw new Error("Unknown sound: " + snd);
-            }
-            getLastTm() { return this.TimingPoints[this.TimingPoints.length - 1]; }
-            getLastGreenTm() {
-                for (let i = this.TimingPoints.length - 1; i >= 0; i--) {
-                    if (!this.TimingPoints[i].redline) return this.TimingPoints[i];
-                }
-                return null;
-            }
-            getLastRedTm() {
-                for (let i = this.TimingPoints.length - 1; i >= 0; i--) {
-                    if (this.TimingPoints[i].redline) return this.TimingPoints[i];
-                }
-                throw new Error("No red timing point found");
-            }
-            getTmAt(t) {
-                if (this.TimingPoints.length === 0) throw new Error("Need at least one timing point");
-                if (Math.floor(t) < this.TimingPoints[0].offset) return this.TimingPoints[0];
-                let ret_tm = this.TimingPoints[0];
-                for (let tm of this.TimingPoints) {
-                    if (tm.offset > t) break;
-                    ret_tm = tm;
-                }
-                return ret_tm;
-            }
-            getRealOffset(int_offset) {
-                const tm = this.getRedTmAt(int_offset);
-                const int_delta = Math.abs(int_offset - tm.offset);
-                const sign = (int_offset - tm.offset > 0) ? 1 : -1;
-                const t_unit_cnt = Math.round(int_delta * tm.bpm * 24 / 60000);
-                const beat_cnt = t_unit_cnt / 24;
-                return tm.offset + beat_cnt * 60000 * sign / tm.bpm;
-            }
-            getRedTmAt(t) {
-                if (this.TimingPoints.length === 0) throw new Error("Need timing points");
-                if (Math.floor(t) < this.TimingPoints[0].offset) return this.TimingPoints[0];
-                let ret_tm = this.TimingPoints[0];
-                for (let tm of this.TimingPoints) {
-                    if (tm.offset > t) break;
-                    if (tm.redline) ret_tm = tm;
-                }
-                return ret_tm;
-            }
-            createNewTm() {
-                const last_tm = this.getLastTm();
-                const last_green_tm = this.getLastGreenTm();
-                const last_red_tm = this.getLastRedTm();
-                return {
-                    offset: Math.floor(this.curr_time),
-                    redline: null, 
-                    scroll: last_green_tm ? last_green_tm.scroll : 1.0,
-                    measure: last_tm.measure,
-                    GGT: last_tm.GGT,
-                    bpm: last_red_tm.bpm
-                };
-            }
+
             addDefaultTimingPoint() {
-                this.TimingPoints.push({
-                    offset: -this.OFFSET * 1000.0,
-                    redline: true,
-                    scroll: 1.0,
-                    measure: 4.0,
-                    GGT: false,
-                    bpm: this.BPM
-                });
+                this.currentTime = -this.OFFSET * 1000.0;
+                this.timingPoints.push({ offset: this.currentTime, bpm: this.BPM, beatLength: 60000.0 / this.BPM, meter: 4, redline: true, scroll: 1.0, ggt: false });
             }
-            handleCmd(cmd) {
-                if (cmd.type === CMD_DELAY) {
-                    this.curr_time += cmd.val * 1000;
-                    return;
-                }
-                if (cmd.type === CMD_BPMCHANGE) {
-                    const tm = this.getLastRedTm();
-                    if (Math.floor(this.curr_time) === Math.floor(tm.offset)) {
-                        tm.bpm = cmd.val;
-                    } else {
-                        const new_tm = this.createNewTm();
-                        new_tm.redline = true;
-                        new_tm.bpm = cmd.val;
-                        this.TimingPoints.push(new_tm);
-                        this.curr_time = new_tm.offset;
-                        const tmg = this.getLastGreenTm();
-                        const last_scroll = tmg ? tmg.scroll : 1.0;
-                        if (last_scroll !== 1.0) {
-                            this.handleCmd({type: CMD_SCROLL, val: last_scroll});
-                        }
-                    }
-                } else if (cmd.type === CMD_MEASURE) {
-                    const tm = this.getLastRedTm();
-                    if (Math.floor(this.curr_time) === Math.floor(tm.offset)) {
-                        tm.measure = cmd.val;
-                    } else {
-                        const new_tm = this.createNewTm();
-                        new_tm.redline = true;
-                        new_tm.measure = cmd.val;
-                        this.TimingPoints.push(new_tm);
-                        this.curr_time = new_tm.offset;
-                        const tmg = this.getLastGreenTm();
-                        const last_scroll = tmg ? tmg.scroll : 1.0;
-                        if (last_scroll !== 1.0) {
-                            this.handleCmd({type: CMD_SCROLL, val: last_scroll});
-                        }
-                    }
-                } else if (cmd.type === CMD_SCROLL) {
-                    const tm = this.getLastGreenTm();
-                    if (tm && Math.floor(this.curr_time) === Math.floor(tm.offset)) {
-                        tm.scroll = cmd.val;
-                    } else {
-                        const new_tm = this.createNewTm();
-                        new_tm.redline = false;
-                        new_tm.scroll = cmd.val;
-                        this.TimingPoints.push(new_tm);
-                    }
-                } else if (cmd.type === CMD_GOGOSTART) {
-                    const tm = this.getLastTm();
-                    if (Math.floor(this.curr_time) === Math.floor(tm.offset)) {
-                        tm.GGT = true;
-                    } else {
-                        const new_tm = this.createNewTm();
-                        new_tm.redline = false;
-                        new_tm.GGT = true;
-                        this.TimingPoints.push(new_tm);
-                    }
-                } else if (cmd.type === CMD_GOGOEND) {
-                    const tm = this.getLastTm();
-                    if (Math.floor(this.curr_time) === Math.floor(tm.offset)) {
-                        tm.GGT = false;
-                    } else {
-                        const new_tm = this.createNewTm();
-                        new_tm.redline = false;
-                        new_tm.GGT = false;
-                        this.TimingPoints.push(new_tm);
-                    }
+
+            parseBody() {
+                this.addDefaultTimingPoint();
+                for (let line of this.lines) {
+                    line = line.trim(); const cIdx = line.indexOf("//"); if (cIdx !== -1) line = line.substring(0, cIdx).trim();
+                    if (!line) continue;
+                    if (line.startsWith("#START")) { this.hasStarted = true; continue; }
+                    if (line.startsWith("#END")) break;
+                    if (!this.hasStarted) continue;
+                    if (line.startsWith("#")) this.handleCommand(line); else this.handleNote(line);
                 }
             }
-            addANote(snd, offset) {
-                const osuType = this.getOsuType(snd);
-                if (osuType === null) return; 
-                const sndVal = parseInt(snd);
-                const hitObj = { type: osuType, sound: this.getOsuSound(snd), offset: offset, rawSnd: sndVal };
-                this.HitObjects.push(hitObj);
-                if (osuType === OSU_SLIDER || osuType === OSU_SPINNER) this.lasting_note = hitObj;
-                if (osuType === OSU_SLIDER_END || osuType === OSU_SPINNER_END) this.lasting_note = null;
-            }
-            getTUnit(tm, tot_note) { return tm.measure * 60000.0 / (tm.bpm * tot_note); }
-            handleABar() {
-                if (this.bar_data.length === 0) return;
-                let tot_note = 0;
-                for (let data of this.bar_data) { if (typeof data === 'string') tot_note++; }
-                const tm = this.getLastTm();
-                const t_unit = this.getTUnit(tm, tot_note);
-                for (let data of this.bar_data) {
-                    if (typeof data === 'string') { 
-                        if (data === "0" || (this.lasting_note !== null && data !== '8')) {
-                            this.curr_time += t_unit;
-                            continue;
-                        }
-                        this.addANote(data, this.curr_time);
-                        this.curr_time += t_unit;
-                    } else { this.handleCmd(data); }
-                }
-                this.bar_data = [];
-            }
-            processLine(line) {
-                line = line.trim();
-                if (line.includes("//")) line = line.split("//")[0].trim();
-                if (!line) return;
-                if (!this.has_started) {
-                    if (line.includes("#" + CMD_START)) this.has_started = true;
-                    return;
-                }
-                if (line.includes("#" + CMD_END)) return; 
-                if (line.startsWith("#")) {
-                    let cmd = null;
-                    if (line.includes("#" + CMD_BPMCHANGE)) {
-                        const val = parseFloat(line.split(CMD_BPMCHANGE)[1]);
-                        cmd = { type: CMD_BPMCHANGE, val: val };
-                    } else if (line.includes("#" + CMD_MEASURE)) {
-                        const parts = line.split(CMD_MEASURE)[1].trim().split("/");
-                        cmd = { type: CMD_MEASURE, val: 4.0 * parseInt(parts[0]) / parseInt(parts[1]) };
-                    } else if (line.includes("#" + CMD_SCROLL)) {
-                        const val = parseFloat(line.split(CMD_SCROLL)[1]);
-                        cmd = { type: CMD_SCROLL, val: val };
-                    } else if (line.includes("#" + CMD_GOGOSTART)) cmd = { type: CMD_GOGOSTART };
-                    else if (line.includes("#" + CMD_GOGOEND)) cmd = { type: CMD_GOGOEND };
-                    else if (line.includes("#" + CMD_DELAY)) {
-                        const val = parseFloat(line.split(CMD_DELAY)[1]);
-                        cmd = { type: CMD_DELAY, val: val };
-                    }
-                    if (cmd) {
-                        if (this.bar_data.length === 0) this.handleCmd(cmd);
-                        else this.bar_data.push(cmd);
-                    }
-                } else {
-                    for (let ch of line) {
-                        if (/[0-9]/.test(ch)) this.bar_data.push(ch);
-                        else if (ch === ',') this.handleABar();
-                    }
+
+            handleCommand(line) { if (this.barData.length > 0) this.barData.push(line); else this.executeCommand(line); }
+            handleNote(line) { for (let char of line) { if (char.match(/[0-9]/)) this.barData.push(char); else if (char === ',') this.processBar(); } }
+
+            executeCommand(cmdStr) {
+                const parts = cmdStr.split(/[ \t]+/); const cmd = parts[0].toUpperCase(); const val = parts.length > 1 ? parseFloat(parts[1]) : 0;
+                if (cmd === "#DELAY") { this.currentTime += val * 1000; return; }
+                const lastTp = this.getLastTimingPoint();
+                let newTp = { ...lastTp, offset: this.currentTime, redline: false }; let changed = false;
+                if (cmd === "#BPMCHANGE") { newTp.bpm = val; newTp.beatLength = 60000.0 / val; newTp.redline = true; changed = true; }
+                else if (cmd === "#MEASURE") { const frac = parts[1].split('/'); if(frac.length===2) { newTp.meter = (parseFloat(frac[0])/parseFloat(frac[1]))*4; newTp.redline = true; changed = true; } }
+                else if (cmd === "#SCROLL") { newTp.scroll = val; newTp.redline = false; changed = true; }
+                else if (cmd === "#GOGOSTART") { newTp.ggt = true; newTp.redline = false; changed = true; }
+                else if (cmd === "#GOGOEND") { newTp.ggt = false; newTp.redline = false; changed = true; }
+
+                if (changed) {
+                    const existingIdx = this.timingPoints.findIndex(tp => Math.abs(tp.offset - this.currentTime) < 1);
+                    if (existingIdx !== -1) {
+                        if (cmd === "#BPMCHANGE") { Object.assign(this.timingPoints[existingIdx], {bpm:newTp.bpm, beatLength:newTp.beatLength, redline:true}); }
+                        else if (cmd === "#MEASURE") { this.timingPoints[existingIdx].meter = newTp.meter; this.timingPoints[existingIdx].redline = true; }
+                        else if (cmd === "#SCROLL") this.timingPoints[existingIdx].scroll = newTp.scroll;
+                        else if (cmd.includes("GOGO")) this.timingPoints[existingIdx].ggt = newTp.ggt;
+                    } else this.timingPoints.push(newTp);
                 }
             }
-            generateOsuString(bgFileName, audioFileName) {
+
+            processBar() {
+                if (this.barData.length === 0) return;
+                const notes = this.barData.filter(d => d.length === 1 && d.match(/[0-9]/));
+                const lastTp = this.getLastTimingPoint();
+                const measureTime = (60000.0 / lastTp.bpm) * lastTp.meter;
+                const timePerUnit = notes.length > 0 ? measureTime / notes.length : 0;
+                for (let data of this.barData) {
+                    if (data.startsWith("#")) this.executeCommand(data);
+                    else {
+                        const char = data;
+                        if (char !== '0' && !(this.lastingNote && char !== '8')) this.addNote(char, this.currentTime);
+                        this.currentTime += timePerUnit;
+                    }
+                }
+                this.barData = [];
+            }
+
+            addNote(char, time) {
+                const type = parseInt(char); const offset = Math.round(time);
+                let hitType = 1, sound = 0;
+                if (type === 1) sound = 0; else if (type === 2) sound = 8; else if (type === 3) sound = 4; else if (type === 4) sound = 12;
+                else if (type === 5 || type === 6) { this.lastingNote = { type: 'slider', startTime: time, sound: (type===6?4:0) }; return; }
+                else if (type === 7 || type === 9) { this.lastingNote = { type: 'spinner', startTime: time, sound: 0 }; return; }
+                else if (type === 8) { if (this.lastingNote) { this.endLastingNote(time); this.lastingNote = null; } return; }
+                else return;
+                this.hitObjects.push({ x: 256, y: 192, time: offset, type: hitType, hitSound: sound, extras: "0:0:0:0:" });
+            }
+
+            endLastingNote(endTime) {
+                const ln = this.lastingNote; const startOffset = Math.round(ln.startTime);
+                if (ln.type === 'slider') {
+                    const dur = endTime - ln.startTime;
+                    const tp = this.getTimingPointAt(ln.startTime);
+                    const length = (this.SliderMultiplier * 100 * tp.scroll) * (dur / (60000.0 / tp.bpm));
+                    this.hitObjects.push({ x: 256, y: 192, time: startOffset, type: 2, hitSound: ln.sound, extras: `L|${Math.round(256+length)}:192,1,${length.toFixed(2)}` });
+                } else if (ln.type === 'spinner') {
+                    this.hitObjects.push({ x: 256, y: 192, time: startOffset, type: 8, hitSound: ln.sound, extras: Math.round(endTime) });
+                }
+            }
+
+            getLastTimingPoint() { return this.timingPoints.length > 0 ? this.timingPoints[this.timingPoints.length - 1] : {bpm: 120, meter: 4, scroll: 1}; }
+            getTimingPointAt(time) {
+                let best = this.timingPoints[0];
+                for (let tp of this.timingPoints) { if (tp.offset <= time + 1) best = tp; else break; }
+                return best;
+            }
+
+            generateOsu() {
                 let s = "osu file format v14\n\n[General]\n";
-                s += `AudioFilename: ${audioFileName || this.WAVE}\nAudioLeadIn: ${this.AudioLeadIn}\nPreviewTime: ${parseInt(this.DEMOSTART * 1000)}\nCountdown: ${this.CountDown}\nSampleSet: ${this.SampleSet}\nStackLeniency: ${this.StackLeniency}\nMode: 1\nLetterboxInBreaks: ${this.LetterboxInBreaks}\n\n[Metadata]\n`;
-                s += `Title:${this.TITLE}\nTitleUnicode:${this.TITLE}\nArtist:${this.Artist}\nArtistUnicode:${this.Artist}\nCreator:Converted\nVersion:${this.COURSE}\nSource:${this.SUBTITLE}\nTags:${this.Tags}\n\n[Difficulty]\n`;
-                s += `HPDrainRate:${this.HPDrainRate}\nCircleSize:${this.CircleSize}\nOverallDifficulty:${this.OverallDifficulty}\nApproachRate:${this.ApproachRate}\nSliderMultiplier:${this.SliderMultiplier}\nSliderTickRate:${this.SliderTickRate}\n\n[Events]\n//Background and Video events\n`;
-                if (bgFileName) s += `0,0,"${bgFileName}",0,0\n`;
-                s += "\n[TimingPoints]\n";
-                for (let tm of this.TimingPoints) {
-                    let val = tm.redline ? (60000.0 / tm.bpm) : (-100.0 / tm.scroll);
-                    s += `${Math.floor(tm.offset)},${val.toFixed(10)},${Math.round(tm.measure)},1,0,100,${tm.redline ? 1 : 0},${tm.GGT ? 1 : 0}\n`;
+                s += `AudioFilename: ${this.WAVE}\nAudioLeadIn: 0\nPreviewTime: ${Math.round(this.DEMOSTART * 1000)}\n`;
+                s += `Countdown: 0\nSampleSet: ${this.SampleSet}\nStackLeniency: 0.7\nMode: 1\nLetterboxInBreaks: 0\n\n[Metadata]\n`;
+                s += `Title:${this.TITLE}\nTitleUnicode:${this.TITLE}\nArtist:Unknown\nArtistUnicode:Unknown\nCreator:TJA2OSU\nVersion:${this.COURSE}\nSource:${this.SUBTITLE}\nTags:Taiko Jiro Convert\n\n`;
+                s += `[Difficulty]\nHPDrainRate:5\nCircleSize:5\nOverallDifficulty:5\nApproachRate:9\nSliderMultiplier:${this.SliderMultiplier}\nSliderTickRate:1\n\n[TimingPoints]\n`;
+                for (let tp of this.timingPoints) {
+                    let val = tp.redline ? tp.beatLength : -100.0 / Math.max(0.1, tp.scroll);
+                    s += `${Math.round(tp.offset)},${val.toFixed(6)},${Math.round(tp.meter)},1,0,100,${tp.redline?1:0},${tp.ggt?1:0}\n`;
                 }
                 s += "\n[HitObjects]\n";
-                this.HitObjects.sort((a,b) => a.offset - b.offset);
-                let localLasting = null;
-                 for (let ho of this.HitObjects) {
-                    if (ho.type === OSU_CIRCLE) {
-                        s += `${this.CircleX},${this.CircleY},${Math.floor(this.getRealOffset(ho.offset))},1,${ho.sound},0:0:0:0:\n`;
-                    } else if (ho.type === OSU_SLIDER) {
-                        localLasting = ho;
-                    } else if (ho.type === OSU_SPINNER) {
-                        localLasting = ho;
-                    } else if (ho.type === OSU_SLIDER_END) {
-                        if (localLasting && localLasting.type === OSU_SLIDER) {
-                            let ln = localLasting;
-                            let tm = this.getTmAt(ln.offset);
-                            let curve_len = 100.0 * (ho.offset - ln.offset) * tm.bpm * this.SliderMultiplier * tm.scroll / 60000.0;
-                            curve_len = Math.max(0, curve_len);
-                            s += `${this.CircleX},${this.CircleY},${Math.floor(this.getRealOffset(ln.offset))},2,${ln.sound},L|${parseInt(this.CircleX + curve_len)}:${this.CircleY},1,${curve_len.toFixed(4)}\n`;
-                            localLasting = null;
-                        }
-                    } else if (ho.type === OSU_SPINNER_END) {
-                        if (localLasting && localLasting.type === OSU_SPINNER) {
-                            let ln = localLasting;
-                            s += `${this.CircleX},${this.CircleY},${Math.floor(this.getRealOffset(ln.offset))},12,${ln.sound},${Math.floor(this.getRealOffset(ho.offset))},0:0:0:0:\n`;
-                            localLasting = null;
-                        }
-                    }
+                for (let ho of this.hitObjects) {
+                    if (ho.type === 8) s += `${ho.x},${ho.y},${ho.time},${ho.type},${ho.hitSound},${ho.extras},0:0:0:0:\n`;
+                    else s += `${ho.x},${ho.y},${ho.time},${ho.type},${ho.hitSound},${ho.extras}\n`;
                 }
                 return s;
             }
         }
 
-        function convertTjaToOsu(tjaContent, audioFileNameOverride, bgFileNameOverride) {
-            const lines = tjaContent.split(/\r?\n/);
-            const globalHeaderLines = [];
-            const courses = [];
-            let currentCourseLines = null;
-            let headerParsed = false;
-            for (let line of lines) {
-                const trLine = line.trim();
-                if (!trLine) continue;
-                if (trLine.toUpperCase().startsWith("COURSE:")) {
-                    if (currentCourseLines) courses.push(currentCourseLines);
-                    currentCourseLines = [];
-                    currentCourseLines.push(trLine);
-                    headerParsed = true; 
-                } else {
-                    if (!headerParsed) globalHeaderLines.push(trLine);
-                    else if (currentCourseLines) currentCourseLines.push(trLine);
-                }
-            }
-            if (currentCourseLines) courses.push(currentCourseLines);
-            if (courses.length === 0 && globalHeaderLines.length > 0) courses.push([]);
-            const results = [];
-            for (let courseLines of courses) {
-                const parser = new TjaToOsuParser();
-                const allLines = [...globalHeaderLines, ...courseLines];
-                for (let line of allLines) {
-                    if (line.includes("//")) line = line.split("//")[0].trim();
-                    if (!line) continue;
-                    const parts = line.split(":");
-                    if (parts.length >= 2) {
-                        const key = parts[0].trim().toUpperCase();
-                        const val = parts.slice(1).join(":").trim();
-                        if (key === "TITLE") parser.TITLE = val;
-                        else if (key === "SUBTITLE") parser.SUBTITLE = val;
-                        else if (key === "BPM") parser.BPM = parseFloat(val);
-                        else if (key === "WAVE") parser.WAVE = val;
-                        else if (key === "OFFSET") parser.OFFSET = parseFloat(val);
-                        else if (key === "DEMOSTART") parser.DEMOSTART = parseFloat(val);
-                        else if (key === "COURSE") parser.COURSE = val;
-                        else if (key === "LEVEL") parser.LEVEL = parseInt(val);
-                    }
-                    if (line.startsWith("#START")) break; 
-                }
-                parser.addDefaultTimingPoint();
-                parser.curr_time = -parser.OFFSET * 1000.0;
-                parser.has_started = false;
-                for (let line of allLines) parser.processLine(line);
-                const waveName = audioFileNameOverride ? audioFileNameOverride : parser.WAVE;
-                const osuContent = parser.generateOsuString(bgFileNameOverride, waveName);
-                const safeTitle = parser.TITLE.replace(/[\\/:*?"<>|]/g, '');
-                const filename = `${safeTitle} (${parser.COURSE}).osu`;
-                results.push({ fileName: filename, content: osuContent });
-            }
-            return results;
-        }
-    </script>
+        // --- UI Interactions (t2o) ---
+        let currentTjaFile = null, currentAudioFile = null;
+        const els = {
+            zoneTja: document.getElementById('t2o-zone-tja'), inputTja: document.getElementById('t2o-input-tja'), nameTja: document.getElementById('t2o-name-tja'),
+            zoneAudio: document.getElementById('t2o-zone-audio'), inputAudio: document.getElementById('t2o-input-audio'), nameAudio: document.getElementById('t2o-name-audio'),
+            editor: document.getElementById('t2o-editor'), downloadBtn: document.getElementById('t2o-download-btn'), filename: document.getElementById('t2o-filename')
+        };
+
+        setupDropZone(els.zoneTja, els.inputTja, file => {
+            if (!file.name.match(/\.(tja|txt)$/i)) return alert("TJAファイルを選択してください");
+            currentTjaFile = file;
+            els.filename.value = file.name.replace(/\.(tja|txt)$/i, "");
+            els.nameTja.textContent = file.name; els.nameTja.style.color = "#e91e63";
+            const reader = new FileReader();
+            reader.onload = e => {
+                const buffer = e.target.result;
+                const detected = Encoding.detect(new Uint8Array(buffer));
+                const text = Encoding.codeToString(Encoding.convert(new Uint8Array(buffer), { to: 'UNICODE', from: detected }));
+                try {
+                    const conv = new TjaToOsuConverter(text, currentAudioFile?.name);
+                    els.editor.value = conv.generateOsu(); els.downloadBtn.disabled = false;
+                } catch(err) { els.editor.value = "Error:\n" + err.message; }
+            };
+            reader.readAsArrayBuffer(file);
+        });
+
+        setupDropZone(els.zoneAudio, els.inputAudio, file => {
+            currentAudioFile = file;
+            els.nameAudio.textContent = file.name; els.nameAudio.style.color = "#4CAF50";
+            let text = els.editor.value;
+            if (text && /^(AudioFilename:).*$/m.test(text)) els.editor.value = text.replace(/^(AudioFilename:).*$/m, `AudioFilename: ${file.name}`);
+        });
+
+        els.downloadBtn.addEventListener('click', async () => {
+            const text = els.editor.value; if (!text) return;
+            let fname = els.filename.value.trim() || "converted";
+            try {
+                els.downloadBtn.disabled = true; els.downloadBtn.textContent = ".osz 作成中...";
+                const zip = new JSZip();
+                zip.file(`${fname}.osu`, text);
+                if (currentAudioFile) zip.file(currentAudioFile.name, currentAudioFile);
+                const content = await zip.generateAsync({type: "blob"});
+                const a = document.createElement("a"); a.href = URL.createObjectURL(content);
+                a.download = `${fname}.osz`; document.body.appendChild(a); a.click(); document.body.removeChild(a);
+            } catch(e) { alert("Error: " + e.message); } 
+            finally { els.downloadBtn.disabled = false; els.downloadBtn.textContent = ".osz をダウンロード"; }
+        });
+    })();
+</script>
+
 </body>
 </html>
