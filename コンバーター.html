@@ -129,7 +129,7 @@
         /* 追加リンクのスタイル */
         .external-link-container {
             margin-top: 15px;
-            text-align: right;
+            text-align: center;
         }
         .external-link {
             color: #888;
@@ -205,9 +205,8 @@
             <input type="text" id="o2t-filename" placeholder="ファイル名 (自動入力)">
             <button id="o2t-download-btn" disabled>ZIPをダウンロード</button>
             
-            <!-- ここにリンクを追加 -->
             <div class="external-link-container">
-                <a href="https://masaki0420.github.io/osu2zip.html" class="external-link" target="_blank" rel="noopener noreferrer">PCの時OSZをzipに変換したい人はこちら→OSU2zip</a>
+                <a href="https://masaki0420.github.io/osu2zip.html" class="external-link" target="_blank" rel="noopener noreferrer">PCの時oszをzipに変換したい人はこちら(osu2zip)</a><a></a>
             </div>
         </div>
     </div>
@@ -757,7 +756,14 @@
                 const zip = new JSZip();
                 zip.file(`${fname}.osu`, text);
                 if (currentAudioFile) zip.file(currentAudioFile.name, currentAudioFile);
-                const content = await zip.generateAsync({type: "blob"});
+                
+                // --- .osz.zip 対策 ---
+                // mimeType を application/octet-stream に強制してブラウザが .zip を付けないようにする
+                const content = await zip.generateAsync({
+                    type: "blob",
+                    mimeType: "application/octet-stream"
+                });
+
                 const a = document.createElement("a"); a.href = URL.createObjectURL(content);
                 a.download = `${fname}.osz`; document.body.appendChild(a); a.click(); document.body.removeChild(a);
             } catch(e) { alert("Error: " + e.message); } 
