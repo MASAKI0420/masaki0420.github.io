@@ -1,0 +1,486 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>高機能動画プレイヤー</title>
+    <style>
+        /* --- 基本設定 --- */
+        body {
+            margin: 0;
+            background-color: #000;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-family: sans-serif;
+            overflow: hidden;
+        }
+
+        /* 動画エリア */
+        .video-wrapper {
+            position: relative;
+            width: 100%;
+            max-width: 900px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background: #000;
+        }
+
+        video {
+            width: 100%;
+            height: auto;
+            max-height: 100vh;
+            display: block;
+            outline: none;
+        }
+
+       /* --- スマホ縦画面：動画と操作バーをセットで上に上げる --- */
+@media (hover: none) and (orientation: portrait) {
+    /* 1. 動画とUIを包んでいる「箱」ごと上にずらす */
+    #videoWrapper {
+        /* この数値を調整（例: -150pxにするともっと上がります） */
+        transform: translateY(-50px) !important;
+        
+        /* 2. 重要：上にずらした時に動画が削れないようにする */
+        overflow: visible !important;
+    }
+
+    /* 3. video要素自体の位置設定が残っていたらリセット（見切れ防止） */
+    #myVideo {
+        position: static !important;
+        top: 0 !important;
+        transform: none !important;
+    }
+
+    /* 4. 操作バーの位置を固定（必要に応じて数値を調整） */
+    #controlsContainer {
+        bottom: 0px !important;
+    }
+}
+
+        /* --- マウス無効化 (PC) --- */
+        #mouseBlocker { display: none; }
+        @media (hover: hover) {
+            body, .video-wrapper, video { cursor: none !important; }
+            #mouseBlocker {
+                display: block; position: fixed;
+                top: 0; left: 0; width: 100vw; height: 100vh;
+                z-index: 2147483647; background: transparent;
+            }
+        }
+
+        /* --- 標準UI削除 --- */
+        video::-webkit-media-controls-fullscreen-button { display: none !important; }
+        video::-moz-fullscreen-button { display: none !important; }
+
+        /* --- UI要素の親コンテナ --- */
+        .controls-container {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            box-sizing: border-box;
+            background: linear-gradient(to top, rgba(0,0,0,0.7), transparent);
+            opacity: 0;
+            transition: opacity 0.2s;
+            pointer-events: none;
+            z-index: 2147483646;
+            padding: 15px calc(15px + env(safe-area-inset-right, 0)) calc(20px + env(safe-area-inset-bottom, 0)) calc(15px + env(safe-area-inset-left, 0));
+        }
+        .controls-container.visible {
+            opacity: 1;
+            pointer-events: auto;
+        }
+        
+        /* --- PC用設定 --- */
+        @media (hover: hover) {
+            .controls-container.shift-seek-mode,
+            .controls-container.z-time-mode {
+                opacity: 1;
+            }
+            .controls-container.z-time-mode #customSeekBar {
+                visibility: hidden;
+            }
+            .button-group {
+                display: none !important;
+            }
+        }
+
+        /* --- 自作シークバー --- */
+        #customSeekBar {
+            width: 100%;
+            height: 20px;
+            cursor: pointer;
+            margin-bottom: 10px;
+        }
+        #seekBarTrack {
+            position: relative; top: 50%; transform: translateY(-50%);
+            width: 100%; height: 5px;
+            background-color: rgba(255, 255, 255, 0.3);
+            border-radius: 3px;
+        }
+        #seekBarProgress {
+            width: 0%; height: 100%;
+            background-color: #ff2d55;
+            border-radius: 3px; position: relative;
+        }
+        #seekBarProgress::after {
+            content: ''; position: absolute; right: -8px; top: 50%;
+            transform: translateY(-50%);
+            width: 16px; height: 16px;
+            background-color: #ff2d55; border-radius: 50%;
+        }
+
+        /* --- 下部コントロールパネル --- */
+        .bottom-controls {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0 10px;
+        }
+
+        #timeDisplay {
+            color: rgba(255, 255, 255, 0.9);
+            font-size: 16px;
+            font-family: monospace;
+            text-shadow: 0 0 5px #000;
+        }
+
+        .button-group { display: flex; align-items: center; }
+        .control-btn {
+            background: none; border: none;
+            color: white; font-size: 24px;
+            padding: 5px 10px;
+            cursor: pointer;
+            text-shadow: 0 0 5px #000;
+        }
+
+        /* 中央のフィードバック */
+        .feedback-box {
+            position: absolute; top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.7); color: white;
+            padding: 20px 40px; border-radius: 10px;
+            font-size: 24px; font-weight: bold;
+            pointer-events: none; opacity: 0;
+            transition: opacity 0.2s;
+            z-index: 2000000001; white-space: nowrap;
+        }
+        
+        /* スマホ用アイコン（再生・一時停止） */
+        #pauseIcon {
+            position: absolute; top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 80px; color: rgba(255, 255, 255, 0.8);
+            text-shadow: 0 0 15px rgba(0,0,0,0.5);
+            pointer-events: none; opacity: 0;
+            transition: opacity 0.2s; z-index: 2000000000;
+        }
+        
+        /* iOS用擬似フルスクリーン */
+        .video-wrapper.ios-fullscreen {
+            position: fixed; top: 0; left: 0;
+            width: 100% !important; height: 100% !important;
+            max-width: none !important; z-index: 9999;
+        }
+        .video-wrapper.ios-fullscreen video { height: 100%; object-fit: contain; }
+
+        /* スマホ縦・横の調整 */
+        @media (hover: none) {
+            .video-wrapper:not(.ios-fullscreen) { overflow: hidden; }
+            .video-wrapper:not(.ios-fullscreen) .controls-container {
+                position: absolute; left: 0; right: 0; bottom: -5px; width: 100%;
+                box-sizing: border-box; padding: 6px 0; transform: none;
+                background: linear-gradient(to top, rgba(0,0,0,0.65), transparent);
+            }
+            .video-wrapper:not(.ios-fullscreen) #customSeekBar,
+            .video-wrapper:not(.ios-fullscreen) .bottom-controls { padding: 0 10px; box-sizing: border-box; }
+            .video-wrapper:not(.ios-fullscreen) #customSeekBar { height: 16px; margin-bottom: -4px; }
+            .video-wrapper:not(.ios-fullscreen) #timeDisplay { font-size: 14px; }
+            .video-wrapper:not(.ios-fullscreen) .control-btn { font-size: 20px; padding: 4px 6px; }
+        }
+        @media (hover: none) and (orientation: landscape) {
+            .video-wrapper.ios-fullscreen .controls-container,
+            .video-wrapper:fullscreen .controls-container {
+                left: 50%; transform: translateX(-50%); width: 88%; max-width: 900px;
+                padding-left: 12px; padding-right: 12px;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <div id="mouseBlocker"></div>
+
+    <div class="video-wrapper" id="videoWrapper">
+        <video id="myVideo" src="sample.mp4" playsinline controlsList="nofullscreen"></video>
+        
+        <div class="controls-container" id="controlsContainer">
+            <div id="customSeekBar">
+                <div id="seekBarTrack">
+                    <div id="seekBarProgress"></div>
+                </div>
+            </div>
+            <div class="bottom-controls">
+                <div id="timeDisplay">0:00 / 0:00</div>
+                <div class="button-group">
+                    <button class="control-btn" id="saveBtn">💾</button>
+                    <button class="control-btn" id="prevBtn">←</button>
+                    <button class="control-btn" id="nextBtn">→</button>
+                    <button class="control-btn" id="clearBtn">⟳</button>
+                    <button class="control-btn" id="fsBtn">⛶</button>
+                </div>
+            </div>
+        </div>
+        
+        <div id="feedbackBox" class="feedback-box"></div>
+        <div id="pauseIcon">❙❙</div>
+    </div>
+
+    <script>
+        const video = document.getElementById('myVideo');
+        const wrapper = document.getElementById('videoWrapper');
+        const feedbackBox = document.getElementById('feedbackBox');
+        const pauseIcon = document.getElementById('pauseIcon');
+        const controlsContainer = document.getElementById('controlsContainer');
+        const fsBtn = document.getElementById('fsBtn');
+        const timeDisplay = document.getElementById('timeDisplay');
+        const customSeekBar = document.getElementById('customSeekBar');
+        const seekBarProgress = document.getElementById('seekBarProgress');
+        const saveBtn = document.getElementById('saveBtn');
+        const prevBtn = document.getElementById('prevBtn');
+        const nextBtn = document.getElementById('nextBtn');
+        const clearBtn = document.getElementById('clearBtn');
+        
+        const HISTORY_KEY = 'video_history_' + video.getAttribute('src');
+
+        let isTouchDevice = false, isSeeking = false, uiVisibilityTimer = null;
+        let saveHistory = { times: [], index: -1 };
+        let rewindInterval = null, isFastSeeking = false;
+        let lastTapTime = 0, lastTapSide = null;
+
+        window.addEventListener('load', () => {
+            // 履歴読み込み
+            const loadedData = localStorage.getItem(HISTORY_KEY);
+            if (loadedData) {
+                try {
+                    saveHistory = JSON.parse(loadedData);
+                    if (saveHistory.times.length > 0 && saveHistory.index >= 0) {
+                        video.currentTime = saveHistory.times[saveHistory.index];
+                        showFeedback(`🔄 続きから (${saveHistory.index + 1}/${saveHistory.times.length})`);
+                    }
+                } catch (e) { console.error("履歴エラー"); }
+            }
+
+            isTouchDevice = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
+            video.removeAttribute('controls');
+            
+            if (!isTouchDevice) {
+                setInterval(updateUI, 250);
+            }
+            
+            video.addEventListener('timeupdate', updateUI);
+
+            // --- 【修正】スマホ用再生・一時停止アイコン表示 ---
+            video.addEventListener('play', () => {
+                if (!isTouchDevice) return;
+                pauseIcon.textContent = '▶';
+                pauseIcon.style.opacity = '1';
+                setTimeout(() => {
+                    if (!video.paused) pauseIcon.style.opacity = '0';
+                }, 500);
+            });
+
+            video.addEventListener('pause', () => {
+                if (!isTouchDevice) return;
+                pauseIcon.textContent = '❙❙';
+                pauseIcon.style.opacity = '1';
+            });
+        });
+
+        // 共通関数
+        function pushHistory(time) {
+            if (saveHistory.index < saveHistory.times.length - 1) { 
+                saveHistory.times = saveHistory.times.slice(0, saveHistory.index + 1); 
+            }
+            saveHistory.times.push(time);
+            if (saveHistory.times.length > 10) saveHistory.times.shift();
+            saveHistory.index = saveHistory.times.length - 1;
+            localStorage.setItem(HISTORY_KEY, JSON.stringify(saveHistory));
+        }
+
+        function navigateHistory(direction) {
+            if (saveHistory.times.length === 0) { showFeedback('⚠ 履歴なし'); return; }
+            if (direction === 'prev') { 
+                if (saveHistory.index > 0) { 
+                    saveHistory.index--; 
+                    video.currentTime = saveHistory.times[saveHistory.index]; 
+                    showFeedback(`↩ 戻る (${saveHistory.index + 1}/${saveHistory.times.length})`); 
+                    localStorage.setItem(HISTORY_KEY, JSON.stringify(saveHistory)); 
+                } else { showFeedback('⚠ これ以上戻れません'); }
+            } else { 
+                if (saveHistory.index < saveHistory.times.length - 1) { 
+                    saveHistory.index++; 
+                    video.currentTime = saveHistory.times[saveHistory.index]; 
+                    showFeedback(`↪ 進む (${saveHistory.index + 1}/${saveHistory.times.length})`); 
+                    localStorage.setItem(HISTORY_KEY, JSON.stringify(saveHistory)); 
+                } else { showFeedback('⚠ 最新の履歴です'); } 
+            }
+        }
+
+        function formatTime(seconds) {
+            if (isNaN(seconds)) return "0:00"; 
+            const h = Math.floor(seconds / 3600), m = Math.floor((seconds % 3600) / 60), s = Math.floor(seconds % 60);
+            const mStr = m < 10 && h > 0 ? '0' + m : m; const sStr = s < 10 ? '0' + s : s;
+            return h > 0 ? `${h}:${mStr}:${sStr}` : `${m}:${sStr}`;
+        }
+
+        let fadeTimer; 
+        function showFeedback(text) {
+            feedbackBox.textContent = text; feedbackBox.style.opacity = '1';
+            clearTimeout(fadeTimer); 
+            fadeTimer = setTimeout(() => { feedbackBox.style.opacity = '0'; }, 1000);
+        }
+        
+        async function toggleFullScreen() {
+            const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
+            const isFullscreen = document.fullscreenElement;
+            if (isTouchDevice) {
+                if (isIOS) { wrapper.classList.toggle('ios-fullscreen'); return; }
+                try {
+                    if (!isFullscreen) {
+                        await wrapper.requestFullscreen();
+                        await screen.orientation.lock('landscape').catch(() => {});
+                    } else {
+                        await document.exitFullscreen();
+                        screen.orientation.unlock();
+                    }
+                } catch (err) { console.error(err); }
+            } else {
+                if (!isFullscreen) wrapper.requestFullscreen().catch(e => {});
+                else document.exitFullscreen();
+            }
+        }
+
+        fsBtn.addEventListener('click', (e) => { e.stopPropagation(); toggleFullScreen(); });
+
+        // 履歴全消去ボタンの動作
+        clearBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            saveHistory = { times: [], index: -1 };
+            localStorage.removeItem(HISTORY_KEY);
+            showFeedback('🧹 履歴を全消去しました');
+        });
+
+        function updateUI() {
+            if (video.duration) {
+                const percentage = (video.currentTime / video.duration) * 100;
+                seekBarProgress.style.width = percentage + '%';
+                timeDisplay.textContent = `${formatTime(video.currentTime)} / ${formatTime(video.duration)}`;
+            }
+        }
+        
+        // PCキーボード
+        document.addEventListener('keydown', (e) => {
+            if (isTouchDevice || e.repeat) return;
+            if (e.key === 'Shift') controlsContainer.classList.add('shift-seek-mode');
+            if (e.code === 'KeyZ') controlsContainer.classList.add('z-time-mode');
+            if (e.code === 'KeyH') { video.currentTime = 0; video.play(); showFeedback('⏪ 最初から'); return; }
+            if (e.code === 'KeyS') { if (video.paused) { pushHistory(video.currentTime); showFeedback(`💾 セーブ`); } return; }
+            if (e.code === 'KeyF') { toggleFullScreen(); return; }
+            if (e.code === 'Space') { e.preventDefault(); video.paused ? video.play() : video.pause(); return; }
+            if (e.code === 'ArrowUp') { isFastSeeking = true; video.playbackRate = 5.0; showFeedback('⏫ 5倍速'); return; }
+            if (e.code === 'ArrowDown') { isFastSeeking = true; video.pause(); rewindInterval = setInterval(() => { video.currentTime -= 0.25; }, 50); showFeedback('⏬ 5倍戻し'); return; }
+            if (e.code === 'ArrowLeft' || e.code === 'ArrowRight') {
+                if (e.shiftKey) { e.preventDefault(); video.currentTime += (e.code === 'ArrowRight' ? 1 : -1); return; }
+                if (e.ctrlKey || e.metaKey) { e.preventDefault(); navigateHistory(e.code === 'ArrowLeft' ? 'prev' : 'next'); return; }
+                e.preventDefault(); video.currentTime += (e.code === 'ArrowRight' ? 10 : -10); showFeedback(e.code === 'ArrowRight' ? '10秒 ⏩' : '⏪ 10秒');
+            }
+        });
+
+        document.addEventListener('keyup', (e) => {
+            if (isTouchDevice) return;
+            if (e.key === 'Shift') controlsContainer.classList.remove('shift-seek-mode');
+            if (e.code === 'KeyZ') controlsContainer.classList.remove('z-time-mode');
+            if (e.code === 'ArrowUp') { video.playbackRate = 1.0; feedbackBox.style.opacity = '0'; }
+            if (e.code === 'ArrowDown') { clearInterval(rewindInterval); video.play(); feedbackBox.style.opacity = '0'; }
+        });
+
+        // スマホ操作
+        function toggleMobileUI(forceShow = false) {
+            const isVisible = controlsContainer.classList.contains('visible');
+            if (isVisible && !forceShow) {
+                controlsContainer.classList.remove('visible');
+                clearTimeout(uiVisibilityTimer);
+            } else {
+                controlsContainer.classList.add('visible');
+                updateUI();
+                clearTimeout(uiVisibilityTimer);
+                uiVisibilityTimer = setTimeout(() => { if (!isSeeking) controlsContainer.classList.remove('visible'); }, 5000);
+            }
+        }
+        
+        wrapper.addEventListener('touchstart', (e) => {
+            if (!isTouchDevice || e.target.closest('.controls-container')) return;
+            const currentTime = new Date().getTime();
+            const tapGap = currentTime - lastTapTime;
+            const touchX = e.changedTouches[0].clientX;
+            const side = touchX < window.innerWidth / 2 ? 'left' : 'right';
+            if (tapGap < 300 && tapGap > 0 && lastTapSide === side) {
+                e.preventDefault();
+                if (side === 'left') { video.currentTime -= 10; showFeedback('⏪ 10秒'); }
+                else { video.currentTime += 10; showFeedback('10秒 ⏩'); }
+                lastTapTime = 0;
+            } else {
+                lastTapTime = currentTime;
+                lastTapSide = side;
+                setTimeout(() => {
+                    if (new Date().getTime() - lastTapTime < 300) {
+                        if (controlsContainer.classList.contains('visible')) {
+                            video.paused ? video.play() : video.pause();
+                        } else { toggleMobileUI(); }
+                    }
+                }, 250);
+            }
+        });
+
+        function seek(e) {
+            const rect = customSeekBar.getBoundingClientRect();
+            const touchX = e.changedTouches[0].clientX;
+            let percentage = Math.max(0, Math.min(1, (touchX - rect.left) / rect.width));
+            video.currentTime = percentage * video.duration;
+            updateUI();
+        }
+
+        customSeekBar.addEventListener('touchstart', (e) => {
+            isSeeking = true;
+            seek(e);
+        });
+        customSeekBar.addEventListener('touchmove', (e) => {
+            if (isSeeking) seek(e);
+        });
+        customSeekBar.addEventListener('touchend', () => {
+            isSeeking = false;
+            toggleMobileUI(true);
+        });
+
+        saveBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            pushHistory(video.currentTime);
+            showFeedback('💾 セーブ');
+        });
+
+        prevBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            navigateHistory('prev');
+        });
+
+        nextBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            navigateHistory('next');
+        });
+    </script>
+</body>
+</html>
