@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Malody .mcz 変換器</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <style>
+        :root { --bg: #121212; --card: #1e1e1e; --primary: #2196f3; --text: #eee; }
+        body { font-family: sans-serif; background: var(--bg); color: var(--text); padding: 15px; margin: 0; padding-bottom: 100px; }
+        .header { text-align: center; margin-bottom: 20px; border-bottom: 1px solid #333; padding-bottom: 10px; }
+        h1 { font-size: 1.1rem; color: var(--primary); }
+        
+        .slot { background: var(--card); border: 1px solid #333; border-radius: 12px; padding: 15px; margin-bottom: 15px; }
+        .slot-title { font-size: 0.8rem; color: #888; margin-bottom: 8px; font-weight: bold; }
+        
+        .file-list { font-size: 0.75rem; background: #111; padding: 10px; border-radius: 6px; min-height: 30px; margin-bottom: 10px; color: #bbb; border: 1px dashed #444; }
+        
+        .controls { display: flex; gap: 8px; }
+        button { border: none; border-radius: 6px; padding: 10px; font-size: 0.85rem; font-weight: bold; cursor: pointer; transition: 0.2s; }
+        .btn-select { background: var(--primary); color: white; flex: 2; }
+        .btn-clear { background: #444; color: white; flex: 1; }
+        
+        input[type="text"] { width: 100%; background: #2a2a2a; border: 1px solid #444; color: white; padding: 10px; border-radius: 6px; margin-top: 10px; box-sizing: border-box; }
+        
+        .footer { position: fixed; bottom: 0; left: 0; right: 0; background: #1a1a1a; padding: 15px; border-top: 2px solid var(--primary); text-align: center; }
+        .btn-all { background: #4caf50; color: white; width: 100%; max-width: 400px; padding: 15px; font-size: 1rem; border-radius: 30px; }
+        .btn-all:disabled { background: #333; color: #666; }
+        
+        input[type="file"] { display: none; }
+        #log { font-size: 0.7rem; color: #ffa726; margin-top: 5px; }
+    </style>
+</head>
+<body>
+
+<div class="header">
+    <h1>.mcz 変換器 (10セット)</h1>
+    <p style="font-size:0.7rem; color:#888;">フォルダの中身を選択してください</p>
+</div>
+
+<div id="slotsContainer"></div>
+
+<div class="footer">
+    <button id="downloadAll" class="btn-all" disabled>すべて .mcz で保存</button>
+    <div id="log"></div>
+</div>
+
+<script>
+    const slotsData = Array(10).fill(null).map(() => ({ files: [], name: "" }));
+    const container = document.getElementById('slotsContainer');
+    const downloadAllBtn = document.getElementById('downloadAll');
+    const log = document.getElementById('log');
+
+    // 10個の入力欄を作成
+    for (let i = 0; i < 10; i++) {
+        const div = document.createElement('div');
+        div.className = 'slot';
+        div.innerHTML = `
+            <div class="slot-title">セット ${i + 1}</div>
+            <div id="list-${i}" class="file-list">未選択</div>
+            <div class="controls">
+                <button class="btn-select" onclick="document.getElementById('file-${i}').click()">中身を選択</button>
+                <button class="btn-clear" onclick="clearSlot(${i})">リセット</button>
+            </div>
+            <input type="file" id="file-${i}" multiple onchange="updateFiles(${i}, this)">
+            <input type="text" id="name-${i}" placeholder="保存名を入力" oninput="slotsData[${i}].name=this.value">
+        `;
+        container.appendChild(div);
+    }
+
+    function updateFiles(index, input) {
+        const files = Array.from(input.files);
+        if (files.length > 0) {
+            slotsData[index].files = files;
+            document.getElementById(`list-${index}`).innerText = files.length + " 個のファイルを選択中";
+            document.getElementById(`list-${index}`).style.color = "#4caf50";
+            document.getElementById(`list-${index}`).style.borderStyle = "solid";
+            checkAnyReady();
+        }
+    }
+
+    function clearSlot(index) {
+        slotsData[index].files = [];
+        document.getElementById(`file-${index}`).value = "";
+        document.getElementById(`list-${index}`).innerText = "未選択";
+        document.getElementById(`list-${index}`).style.color = "#bbb";
+        document.getElementById(`list-${index}`).style.borderStyle = "dashed";
+        checkAnyReady();
+    }
+
+    function checkAnyReady() {
+        downloadAllBtn.disabled = !slotsData.some(s => s.files.length > 0);
+    }
+
+    downloadAllBtn.addEventListener('click', async () => {
+        downloadAllBtn.disabled = true;
+        
+        for (let i = 0; i < 10; i++) {
+            const slot = slotsData[i];
+            if (slot.files.length === 0) continue;
+
+            log.innerText = `セット ${i+1} を作成中...`;
+            const zip = new JSZip();
+            slot.files.forEach(f => zip.file(f.name, f));
+
+            // MIMEタイプを強制的に application/octet-stream にすることで
+            // ブラウザが勝手に .zip を付けるのを防ぐ
+            const content = await zip.generateAsync({
+                type: "blob",
+                compression: "DEFLATE",
+                compressionOptions: { level: 6 }
+            });
+
+            // Blobの型を書き換え
+            const mczBlob = new Blob([content], { type: "application/octet-stream" });
+            
+            let finalName = document.getElementById(`name-${i}`).value.trim() || `beatmap_set_${i+1}`;
+            if (!finalName.toLowerCase().endsWith(".mcz")) {
+                finalName += ".mcz";
+            }
+
+            const url = URL.createObjectURL(mczBlob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = finalName;
+            document.body.appendChild(a);
+            a.click();
+            
+            // スマホでの連続保存を安定させるための待機時間
+            await new Promise(r => setTimeout(r, 1000));
+            
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+        
+        log.innerText = "すべて完了しました！";
+        downloadAllBtn.disabled = false;
+    });
+</script>
+
+</body>
+</html>
