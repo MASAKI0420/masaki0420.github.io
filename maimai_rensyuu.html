@@ -63,6 +63,7 @@
             margin-bottom: 20px;
             z-index: 1;
             transition: all 0.3s ease;
+            overflow: hidden;
         }
         .video-wrapper iframe {
             position: absolute;
@@ -86,8 +87,7 @@
             z-index: 9999;
         }
 
-        /* 強制横向きモード (iPhone縦持ち用) 
-           画面の中央を軸に90度回転させ、幅と高さを入れ替えます */
+        /* 強制横向きモード (iPhone縦持ち用) */
         .video-wrapper.force-landscape {
             position: fixed;
             top: 50%;
@@ -100,62 +100,140 @@
             transform: translate(-50%, -50%) rotate(90deg);
         }
 
-        /* 全画面時のみ表示するUI群 */
+        /* 全画面時のみ表示するUI群 (初期値:非表示) */
         .fs-ui {
             display: none; 
             position: absolute;
             z-index: 2147483647; /* 最前面 */
         }
 
-        /* 
-           左上の固定/解除ボタン 
-           通常時と、強制回転時で配置を調整
-        */
+        /* 全画面モード時のみ表示をON */
+        .video-wrapper.is-fullscreen .fs-ui,
+        .video-wrapper.force-landscape .fs-ui {
+            display: block;
+        }
+
+        /* UI共通スタイル（左上のボタン類） */
+        .ui-btn {
+            background: rgba(255, 255, 255, 0.8);
+            color: #333;
+            border: 1px solid #ccc;
+            border-radius: 30px;
+            padding: 8px 10px;
+            font-size: 16px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.5);
+            width: 120px;
+        }
+
+        /* 左上の固定/解除ボタン */
         #lockControlBtn {
             top: 20px;
             left: 20px;
-            background: rgba(255, 255, 255, 0.8);
-            color: #333;
-            border: 1px solid #ccc;
-            border-radius: 30px;
-            padding: 8px 20px;
-            font-size: 16px;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.5);
         }
 
-        /* ▼▼▼ 追加：ホームボタンのスタイル ▼▼▼ */
+        /* ホームボタン */
         #homeBtn {
-            top: 80px; /* 固定ボタンの下に配置 */
+            top: 80px; 
             left: 20px;
-            background: rgba(255, 255, 255, 0.8);
-            color: #333;
-            border: 1px solid #ccc;
-            border-radius: 30px;
-            padding: 8px 20px;
-            font-size: 16px;
+        }
+
+        /* スライダーのコンテナ */
+        #sliderWrapper {
+            position: absolute; /* 親を絶対配置に */
+            top: 150px; 
+            left: 40px; 
+            width: 80px;
+            height: 150px;
+            display: none; 
+            justify-content: center;
+            align-items: center;
+            /* pointer-events: none; を外す（スライダー操作のため） */
+        }
+        
+        /* 全画面時のみflex表示 */
+        .video-wrapper.is-fullscreen #sliderWrapper,
+        .video-wrapper.force-landscape #sliderWrapper {
+            display: flex;
+        }
+
+        /* スライダー本体（縦向き） */
+        input[type=range].vertical-slider {
+            -webkit-appearance: none;
+            width: 140px; 
+            height: 8px;
+            background: rgba(255, 255, 255, 0.6);
+            border-radius: 5px;
+            outline: none;
+            transform: rotate(-90deg);
             box-shadow: 0 2px 5px rgba(0,0,0,0.5);
+            cursor: pointer;
+        }
+        /* スライダーのつまみ（青色） */
+        input[type=range].vertical-slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            background: #007bff; /* 青色 */
+            cursor: pointer;
+            border: 2px solid white;
+            box-shadow: 0 0 2px rgba(0,0,0,0.3);
+        }
+        input[type=range].vertical-slider::-moz-range-thumb {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            background: #007bff;
+            cursor: pointer;
+            border: 2px solid white;
+            box-shadow: 0 0 2px rgba(0,0,0,0.3);
+        }
+
+        /* ▼▼▼ 追加：スライダー横の数値表示 ▼▼▼ */
+        #sliderValueDisplay {
+            position: absolute;
+            left: 55px; /* スライダーの右側に配置 */
+            bottom: 50%; /* JSで動的に変更されます */
+            transform: translateY(50%);
+            color: white; /* 文字色：白 */
+            font-weight: bold;
+            font-size: 18px;
+            text-shadow: 0 0 4px rgba(0,0,0,0.8); /* 見やすくするための影 */
+            opacity: 0; /* 最初は非表示 */
+            transition: opacity 0.2s ease;
+            pointer-events: none; /* タッチの邪魔にならないように */
+            white-space: nowrap;
         }
         /* ▲▲▲ 追加ここまで ▲▲▲ */
 
-        /* iPhone強制回転時はボタンの向きも戻す必要あり */
+
+        /* --- iPhone強制回転時の配置調整 --- */
+
         .video-wrapper.force-landscape #lockControlBtn {
-            /* 見た目上の「左上」に配置するために座標変換 */
             top: auto; 
             bottom: 30px; 
             left: 30px;
-            transform: rotate(-90deg); /* 文字の向きを戻す */
-            transform-origin: center;
-        }
-
-        /* ▼▼▼ 追加：強制回転時のホームボタン配置 ▼▼▼ */
-        .video-wrapper.force-landscape #homeBtn {
-            top: auto;
-            bottom: 30px;
-            left: 110px; /* 固定ボタンより画面下方向にずらす */
             transform: rotate(-90deg);
             transform-origin: center;
         }
-        /* ▲▲▲ 追加ここまで ▲▲▲ */
+
+        .video-wrapper.force-landscape #homeBtn {
+            top: auto;
+            bottom: 30px;
+            left: 160px; 
+            transform: rotate(-90deg);
+            transform-origin: center;
+        }
+
+        .video-wrapper.force-landscape #sliderWrapper {
+            top: auto;
+            bottom: 30px;
+            left: 280px; 
+            transform: rotate(-90deg); 
+            transform-origin: center;
+        }
+
 
         /* ロック用透明レイヤー */
         #touchBlocker {
@@ -168,13 +246,6 @@
             z-index: 2147483646; 
             background: rgba(0,0,0,0);
         }
-
-        /* UI表示スイッチ */
-        .video-wrapper.is-fullscreen .fs-ui,
-        .video-wrapper.force-landscape .fs-ui {
-            display: block;
-        }
-
 
         /* コントロールエリア */
         .controls {
@@ -190,7 +261,7 @@
             margin-bottom: 10px;
             display: block;
         }
-        input[type=range] {
+        input[type=range].speed-range {
             width: 100%;
             height: 30px;
             cursor: pointer;
@@ -226,10 +297,17 @@
     <div class="video-wrapper" id="videoWrapper">
         <div id="player"></div>
         
-        <!-- 全画面時ボタン -->
-        <button id="lockControlBtn" class="fs-ui" onclick="toggleLockState()">🔒 固定</button>
-        <!-- ▼▼▼ 追加：ホームボタン ▼▼▼ -->
-        <button id="homeBtn" class="fs-ui" onclick="exitFullscreenLandscape()">🏠 ホーム</button>
+        <!-- 全画面UI -->
+        <button id="lockControlBtn" class="fs-ui ui-btn" onclick="toggleLockState()">🔒 固定</button>
+        <button id="homeBtn" class="fs-ui ui-btn" onclick="exitFullscreenLandscape()">🏠 ホーム</button>
+        
+        <!-- スライダーエリア -->
+        <div id="sliderWrapper" class="fs-ui">
+            <!-- 速度: 0.25x 〜 2.0x -->
+            <input type="range" id="overlaySpeedRange" class="vertical-slider" min="0.25" max="2.0" step="0.05" value="1.0">
+            <!-- ▼▼▼ 追加：数値表示用の要素 ▼▼▼ -->
+            <div id="sliderValueDisplay">1.0x</div>
+        </div>
         
         <!-- ロック用レイヤー -->
         <div id="touchBlocker"></div>
@@ -237,16 +315,18 @@
 
     <div class="controls">
         <span class="speed-display">速度: <span id="speedValue">1.0</span>x</span>
-        <input type="range" id="speedRange" min="0.1" max="2.0" step="0.1" value="1.0">
+        
+        <input type="range" id="mainSpeedRange" class="speed-range" min="0.25" max="2.0" step="0.05" value="1.0">
+        
         <div class="labels">
-            <span>0.1x</span>
+            <span>0.25x</span>
             <span>1.0x</span>
             <span>2.0x</span>
         </div>
         
         <button class="fs-btn" onclick="enterFullscreenLandscape()">全画面モードで見る（横向き）</button>
         <p style="font-size:0.8em; color:#666; margin-top:5px;">
-            ※押すと横向き全画面になります。<br>左上の「固定」を押すとタッチ無効になります。
+            ※押すと横向き全画面になります。<br>全画面時、左側のバーで再生速度を変更できます。
         </p>
     </div>
 </div>
@@ -254,8 +334,16 @@
 <script src="https://www.youtube.com/iframe_api"></script>
 <script>
     let player;
-    const speedRange = document.getElementById('speedRange');
-    const speedValue = document.getElementById('speedValue');
+    
+    // UI要素の取得
+    const mainSpeedRange = document.getElementById('mainSpeedRange'); 
+    const overlaySpeedRange = document.getElementById('overlaySpeedRange');
+    const speedValue = document.getElementById('speedValue'); 
+    
+    // 追加：数値表示用の要素
+    const sliderValueDisplay = document.getElementById('sliderValueDisplay');
+    let tooltipTimer = null;
+    
     const videoWrapper = document.getElementById('videoWrapper');
     const lockControlBtn = document.getElementById('lockControlBtn');
     const touchBlocker = document.getElementById('touchBlocker');
@@ -288,7 +376,6 @@
                 height: '100%',
                 width: '100%',
                 videoId: videoId,
-                // ▼▼▼ 修正：fs:0 を追加してフルスクリーンボタンを非表示に ▼▼▼
                 playerVars: { 'playsinline': 1, 'rel': 0, 'vq': 'hd1080', 'fs': 0 },
                 events: { 'onReady': onPlayerReady }
             });
@@ -297,42 +384,85 @@
 
     function onPlayerReady(event) {
         event.target.setPlaybackQuality('hd1080');
-        setSpeed(speedRange.value);
+        setSpeed(mainSpeedRange.value, false); // 初期化時はTooltipを出さない
     }
 
-    function setSpeed(val) {
+    // --- 速度変更の共通処理 ---
+    // showTooltip: 全画面スライダー操作時のみ true にする
+    function setSpeed(val, showTooltip = false) {
         const rate = parseFloat(val);
-        speedValue.innerText = rate.toFixed(1);
+        
+        // 1. 数値表示の更新
+        speedValue.innerText = rate.toFixed(2);
+        
+        // 2. プレイヤーへの適用
         if (player && typeof player.setPlaybackRate === 'function') {
             player.setPlaybackRate(rate);
         }
+
+        // 3. スライダー同期
+        if (mainSpeedRange.value != val) mainSpeedRange.value = val;
+        if (overlaySpeedRange.value != val) overlaySpeedRange.value = val;
+
+        // 4. 全画面スライダー横の数値表示処理
+        if (showTooltip) {
+            updateSliderTooltip(rate);
+        }
     }
 
-    speedRange.addEventListener('input', function() {
-        setSpeed(this.value);
+    // ▼▼▼ 追加：数値表示の位置と内容を更新する関数 ▼▼▼
+    function updateSliderTooltip(val) {
+        // テキスト更新
+        sliderValueDisplay.innerText = val.toFixed(2) + 'x';
+        
+        // 位置計算 (min=0.25, max=2.0)
+        const min = 0.25;
+        const max = 2.0;
+        const percent = (val - min) / (max - min);
+        
+        // コンテナ(150px)の中での位置を下からのpxで指定
+        // 余白などを考慮して調整 (10px 〜 135pxくらいの間で動かす)
+        const bottomPos = 10 + (percent * 125); 
+        sliderValueDisplay.style.bottom = `${bottomPos}px`;
+        
+        // 表示する
+        sliderValueDisplay.style.opacity = '1';
+        
+        // タイマーリセット（操作終了後、1.5秒で消える）
+        if (tooltipTimer) clearTimeout(tooltipTimer);
+        tooltipTimer = setTimeout(() => {
+            sliderValueDisplay.style.opacity = '0';
+        }, 1500);
+    }
+    // ▲▲▲ 追加ここまで ▲▲▲
+
+    // 通常画面下のスライダー操作時
+    mainSpeedRange.addEventListener('input', function() {
+        setSpeed(this.value, false);
     });
+
+    // 全画面用の縦スライダー操作時（Tooltipを表示する）
+    overlaySpeedRange.addEventListener('input', function() {
+        setSpeed(this.value, true);
+    });
+
 
     // --- 全画面＆横向き制御 ---
 
     async function enterFullscreenLandscape() {
-        // 1. まず全画面化を試みる
         if (document.documentElement.requestFullscreen) {
             try {
                 await document.documentElement.requestFullscreen();
             } catch (e) { console.log("FS allowed but failed or iOS"); }
         }
 
-        // 2. 画面の向きを判定して処理を分ける
         if (screen.orientation && screen.orientation.lock) {
-            // Android等: ネイティブAPIで横固定
             screen.orientation.lock('landscape').then(() => {
                 videoWrapper.classList.add('is-fullscreen');
             }).catch((err) => {
-                // ロック失敗したらCSS強制モードへ
                 enableForceLandscape();
             });
         } else {
-            // iPhone (iOS Safari) 等: APIがないのでCSSで回転
             enableForceLandscape();
         }
     }
@@ -345,9 +475,7 @@
         }
     }
 
-    // ▼▼▼ 追加：ホームボタン用の全画面解除関数 ▼▼▼
     function exitFullscreenLandscape() {
-        // ブラウザの全画面APIを使用している場合の解除
         if (document.fullscreenElement || document.webkitIsFullScreen) {
             if (document.exitFullscreen) {
                 document.exitFullscreen().catch(err => console.log(err));
@@ -356,27 +484,21 @@
             }
         }
         
-        // CSSクラスやロック状態を強制的に解除
-        // (API解除のイベントが発火しない場合や、CSS強制モードの場合のため)
         videoWrapper.classList.remove('is-fullscreen');
         videoWrapper.classList.remove('force-landscape');
-        unlock(); // タッチロックも解除
+        unlock(); 
         
         if (screen.orientation && screen.orientation.unlock) {
             screen.orientation.unlock();
         }
     }
-    // ▲▲▲ 追加ここまで ▲▲▲
 
-    // 全画面解除時のリセット処理
     function exitHandler() {
         if (!document.fullscreenElement && !document.webkitIsFullScreen) {
-            // 全画面から戻ったらスタイルを解除
             videoWrapper.classList.remove('is-fullscreen');
             videoWrapper.classList.remove('force-landscape');
-            unlock(); // ロックも解除
+            unlock();
             
-            // 向きロック解除 (Android用)
             if (screen.orientation && screen.orientation.unlock) {
                 screen.orientation.unlock();
             }
