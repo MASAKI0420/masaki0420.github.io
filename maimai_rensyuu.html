@@ -123,6 +123,20 @@
             box-shadow: 0 2px 5px rgba(0,0,0,0.5);
         }
 
+        /* ▼▼▼ 追加：ホームボタンのスタイル ▼▼▼ */
+        #homeBtn {
+            top: 80px; /* 固定ボタンの下に配置 */
+            left: 20px;
+            background: rgba(255, 255, 255, 0.8);
+            color: #333;
+            border: 1px solid #ccc;
+            border-radius: 30px;
+            padding: 8px 20px;
+            font-size: 16px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.5);
+        }
+        /* ▲▲▲ 追加ここまで ▲▲▲ */
+
         /* iPhone強制回転時はボタンの向きも戻す必要あり */
         .video-wrapper.force-landscape #lockControlBtn {
             /* 見た目上の「左上」に配置するために座標変換 */
@@ -132,6 +146,16 @@
             transform: rotate(-90deg); /* 文字の向きを戻す */
             transform-origin: center;
         }
+
+        /* ▼▼▼ 追加：強制回転時のホームボタン配置 ▼▼▼ */
+        .video-wrapper.force-landscape #homeBtn {
+            top: auto;
+            bottom: 30px;
+            left: 110px; /* 固定ボタンより画面下方向にずらす */
+            transform: rotate(-90deg);
+            transform-origin: center;
+        }
+        /* ▲▲▲ 追加ここまで ▲▲▲ */
 
         /* ロック用透明レイヤー */
         #touchBlocker {
@@ -190,8 +214,9 @@
 <body>
 
 <div class="container">
-    <h2>YouTube 横向き再生プレイヤー</h2>
-    
+    <h3>YouTube 横向き再生プレイヤー</h3>
+    <a href="https://m.youtube.com/" target="_blank" style="display: inline-block; transform: translateY(-10px);">YouTube</a>
+
     <div class="input-group">
         <input type="text" id="urlInput" placeholder="URLをここに貼り付け" />
         <button onclick="loadVideoFromInput()">読込</button>
@@ -203,6 +228,8 @@
         
         <!-- 全画面時ボタン -->
         <button id="lockControlBtn" class="fs-ui" onclick="toggleLockState()">🔒 固定</button>
+        <!-- ▼▼▼ 追加：ホームボタン ▼▼▼ -->
+        <button id="homeBtn" class="fs-ui" onclick="exitFullscreenLandscape()">🏠 ホーム</button>
         
         <!-- ロック用レイヤー -->
         <div id="touchBlocker"></div>
@@ -238,15 +265,21 @@
     function onYouTubeIframeAPIReady() { console.log("API Ready"); }
 
     function extractVideoID(url) {
-        const regExp = /^.*((youtu.be\/)|(v\/)|(\/u\/\w\/)|(embed\/)|(watch\?))\??v?=?([^#&?]*).*/;
+        if (!url) return false;
+        url = url.trim();
+        const regExp = /^.*(youtu\.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=|shorts\/|live\/)([^#\&\?]*).*/;
         const match = url.match(regExp);
-        return (match && match[7].length == 11) ? match[7] : false;
+        return (match && match[2].length === 11) ? match[2] : false;
     }
 
     function loadVideoFromInput() {
         const url = document.getElementById('urlInput').value;
         const videoId = extractVideoID(url);
-        if (!videoId) { alert("URLを確認してください"); return; }
+        
+        if (!videoId) { 
+            alert("URLを確認してください\n(YouTubeのURL形式が認識できませんでした)"); 
+            return; 
+        }
 
         if (player) {
             player.loadVideoById({ 'videoId': videoId, 'suggestedQuality': 'hd1080' });
@@ -255,7 +288,8 @@
                 height: '100%',
                 width: '100%',
                 videoId: videoId,
-                playerVars: { 'playsinline': 1, 'rel': 0, 'vq': 'hd1080' },
+                // ▼▼▼ 修正：fs:0 を追加してフルスクリーンボタンを非表示に ▼▼▼
+                playerVars: { 'playsinline': 1, 'rel': 0, 'vq': 'hd1080', 'fs': 0 },
                 events: { 'onReady': onPlayerReady }
             });
         }
@@ -304,14 +338,35 @@
     }
 
     function enableForceLandscape() {
-        // 画面が既に横長(PCや横持ちiPad)なら、単なる全画面拡大
         if (window.innerWidth > window.innerHeight) {
             videoWrapper.classList.add('is-fullscreen');
         } else {
-            // 画面が縦長(スマホ縦持ち)なら、90度回転させる
             videoWrapper.classList.add('force-landscape');
         }
     }
+
+    // ▼▼▼ 追加：ホームボタン用の全画面解除関数 ▼▼▼
+    function exitFullscreenLandscape() {
+        // ブラウザの全画面APIを使用している場合の解除
+        if (document.fullscreenElement || document.webkitIsFullScreen) {
+            if (document.exitFullscreen) {
+                document.exitFullscreen().catch(err => console.log(err));
+            } else if (document.webkitExitFullscreen) {
+                document.webkitExitFullscreen();
+            }
+        }
+        
+        // CSSクラスやロック状態を強制的に解除
+        // (API解除のイベントが発火しない場合や、CSS強制モードの場合のため)
+        videoWrapper.classList.remove('is-fullscreen');
+        videoWrapper.classList.remove('force-landscape');
+        unlock(); // タッチロックも解除
+        
+        if (screen.orientation && screen.orientation.unlock) {
+            screen.orientation.unlock();
+        }
+    }
+    // ▲▲▲ 追加ここまで ▲▲▲
 
     // 全画面解除時のリセット処理
     function exitHandler() {
