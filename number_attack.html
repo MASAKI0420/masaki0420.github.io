@@ -1,0 +1,687 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, maximum-scale=1.0">
+    <meta name="theme-color" content="#f5f5f5">
+    <title>1 to 25 早押しゲーム + Online Ranking</title>
+    <style>
+        /* ======================================= */
+        /* ▼▼▼ カーソル設定 (変更なし) ▼▼▼ */
+        /* ======================================= */
+        html, body {
+            -webkit-tap-highlight-color: transparent;
+            cursor: url('data:image/png;base64,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'), auto;
+        }
+        .cell { cursor: url('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAAIGNIUk0AAHomAACAhAAA+gAAAIDoAAB1MAAA6mAAADqYAAAXcJy6UTwAAAAGYktHRAD/AP8A/6C9p5MAAAAldEVYdGRhdGU6Y3JlYXRlADIwMjYtMDEtMDZUMDY6NTI6MDIrMDA6MDC4xmdFAAAAJXRFWHRkYXRlOm1vZGlmeQAyMDI2LTAxLTA2VDA2OjUyOjAyKzAwOjAwyZvf+QAAACh0RVh0ZGF0ZTp0aW1lc3RhbXAAMjAyNi0wMS0wNlQwNjo1MjowMiswMDowMJ6O/iYAAASwSURBVFjDxddrjFXVFQfw3+GOPAYGxhlEECnDMEMceQy+NYrU2BokGBWUUHsjxvKJtI0JSW1r4qtN9ItRE/1gfIS0V0matNFoqkEaPlAfUYFRkFCmDjPDkFEq4MC877n39MO5zJnHFS5NwZXsnL3X3mut//6vvffZmx9YgjGadNSAJzEX32AbnpcJzs5ziVI2KviNeAvVlRfwXRaswmz85lwAGDeqvR7Vr99Hy7PseYwVl4BN0tEV5wPA3bXlrFzGhdNYVMeGlUPj1pwPAD1HBhkcSBRLa0nF6V91PgB83h3S9FWiqJnNlVWgVjqad64B/A32/StRpMbx86tBBS471wA+Qf9LH5MNE2XDgqHqhv83gLJR7f3oOHBSXeth6ufGyqXzmVJGd2iZdPQ2qvAROnE7FmEftqMRk7ATr8gE7acDUOwgehEbt6xn3U9iVZjj/ifYcnCsg0kp1s7lTy1EBd28cg72ghbcJBN0lpoC+Afs3ktU8FiWYnljXN98L53P8v7GGP32TWx+gs9+VzD+Jbue4fV1oPZMaSsG4J848dIeunsT5ZJ6ZqZIr2LmdG69nptnMe/SuL9+HnfMZnEdlVO45foh03XS0YSzAfAfHOgaZN8wyi+vJV/GN8cLuQtYdxWHCuRWTGLzI1xUHbcvrGBtLWgoMFEigEwQ4W1oOpCoKybzwCKOHUt0D6xmcX3SrqpI6hPHs3BOjNVpDrFx36Ovhu27yeYKAwMe/gV1hZ2RjxgI+a63uIMIdy4baq4oHUA62ohfw1/bOXZ85AwnjufdPTz9Dre8xlNbk4D5iDDPQI7ekMmVTIsjLJWOZpwZQDoah03wyhrmTODTA2ON+gf4S1sc8IvjdHbRF9IT0p2NS0+W8incszjGjvmlMPBT1G68kgfv4sc1NP876Tw1wwWzuHEGSys5OkjL0STw8NITUl8zZH5fKQAmwoLp8cq57Spe+CCmtC+Mae0JmTWdx+9geV1s9GFzMuvusFAKIJYsjHcMFpYCoB3e2E1flpuu5c3fJoFHzDDksviyYkfnSOp7ho3Lj+fyqaDohWb0v+ArHNn5rRlftjFnNtUzYke5iFw+/oZRnI7UeGom09bNwW+pnloYV+jPR+QCBvO+V0YykAlO4MNcxN62InkNh1GdJRsxvzreAYeOx0z158gWgEbo6KD5JOKf1xlTAH+HHTuHBQ3Hgji1yH40PTba2Zr8jIbLoY6h6nulpOAUgJNvNatYfZSpFQn9+YjRbF5Sza01LJkz1lE+z6vbQBdeLo2BTHAYbxzt57k/07Sf/rCQ9yIOppZzWyMzq8b29Q7QHZ+kfQiLmBdlAB7CxG2t1m97jetmseIaGhqonKZkmXAB5Sn68qpQL760jJDTP3fS0QYsx8+QSgX8cS1XNJ4+cJjjyBFaD/PUm/GixGKZYO/ZAUiAzMSv8PuygFcf4uKLku5syIkumtvpaOWdfXzdM8LDFpmg6ElYphTJBF/jEemoL4z8YVcTN1xLSxutbXy6ny+64oVakB60id+VWwulqJzdizMdNWI3giBIrmzoR4f4OrcVu9AuE+TP5LI0BhL5HI9iQxQJxbfoLWjCl//LC/q/d+7Z+X3gnGQAAAAASUVORK5CYII='), pointer; }
+        .cell.pressed { cursor: url('data:image/png;base64,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'), auto; }
+        #start-btn, .footer-btn { cursor: url('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAAIGNIUk0AAHomAACAhAAA+gAAAIDoAAB1MAAA6mAAADqYAAAXcJy6UTwAAAAGYktHRAD/AP8A/6C9p5MAAAAldEVYdGRhdGU6Y3JlYXRlADIwMjYtMDEtMDZUMDY6NTI6MDIrMDA6MDC4xmdFAAAAJXRFWHRkYXRlOm1vZGlmeQAyMDI2LTAxLTA2VDA2OjUyOjAyKzAwOjAwyZvf+QAAACh0RVh0ZGF0ZTp0aW1lc3RhbXAAMjAyNi0wMS0wNlQwNjo1MjowMiswMDowMJ6O/iYAAASwSURBVFjDxddrjFXVFQfw3+GOPAYGxhlEECnDMEMceQy+NYrU2BokGBWUUHsjxvKJtI0JSW1r4qtN9ItRE/1gfIS0V0matNFoqkEaPlAfUYFRkFCmDjPDkFEq4MC877n39MO5zJnHFS5NwZXsnL3X3mut//6vvffZmx9YgjGadNSAJzEX32AbnpcJzs5ziVI2KviNeAvVlRfwXRaswmz85lwAGDeqvR7Vr99Hy7PseYwVl4BN0tEV5wPA3bXlrFzGhdNYVMeGlUPj1pwPAD1HBhkcSBRLa0nF6V91PgB83h3S9FWiqJnNlVWgVjqad64B/A32/StRpMbx86tBBS471wA+Qf9LH5MNE2XDgqHqhv83gLJR7f3oOHBSXeth6ufGyqXzmVJGd2iZdPQ2qvAROnE7FmEftqMRk7ATr8gE7acDUOwgehEbt6xn3U9iVZjj/ifYcnCsg0kp1s7lTy1EBd28cg72ghbcJBN0lpoC+Afs3ktU8FiWYnljXN98L53P8v7GGP32TWx+gs9+VzD+Jbue4fV1oPZMaSsG4J848dIeunsT5ZJ6ZqZIr2LmdG69nptnMe/SuL9+HnfMZnEdlVO45foh03XS0YSzAfAfHOgaZN8wyi+vJV/GN8cLuQtYdxWHCuRWTGLzI1xUHbcvrGBtLWgoMFEigEwQ4W1oOpCoKybzwCKOHUt0D6xmcX3SrqpI6hPHs3BOjNVpDrFx36Ovhu27yeYKAwMe/gV1hZ2RjxgI+a63uIMIdy4baq4oHUA62ohfw1/bOXZ85AwnjufdPTz9Dre8xlNbk4D5iDDPQI7ekMmVTIsjLJWOZpwZQDoah03wyhrmTODTA2ON+gf4S1sc8IvjdHbRF9IT0p2NS0+W8incszjGjvmlMPBT1G68kgfv4sc1NP876Tw1wwWzuHEGSys5OkjL0STw8NITUl8zZH5fKQAmwoLp8cq57Spe+CCmtC+Mae0JmTWdx+9geV1s9GFzMuvusFAKIJYsjHcMFpYCoB3e2E1flpuu5c3fJoFHzDDksviyYkfnSOp7ho3Lj+fyqaDohWb0v+ArHNn5rRlftjFnNtUzYke5iFw+/oZRnI7UeGom09bNwW+pnloYV+jPR+QCBvO+V0YykAlO4MNcxN62InkNh1GdJRsxvzreAYeOx0z158gWgEbo6KD5JOKf1xlTAH+HHTuHBQ3Hgji1yH40PTba2Zr8jIbLoY6h6nulpOAUgJNvNatYfZSpFQn9+YjRbF5Sza01LJkz1lE+z6vbQBdeLo2BTHAYbxzt57k/07Sf/rCQ9yIOppZzWyMzq8b29Q7QHZ+kfQiLmBdlAB7CxG2t1m97jetmseIaGhqonKZkmXAB5Sn68qpQL760jJDTP3fS0QYsx8+QSgX8cS1XNJ4+cJjjyBFaD/PUm/GixGKZYO/ZAUiAzMSv8PuygFcf4uKLku5syIkumtvpaOWdfXzdM8LDFpmg6ElYphTJBF/jEemoL4z8YVcTN1xLSxutbXy6ny+64oVakB60id+VWwulqJzdizMdNWI3giBIrmzoR4f4OrcVu9AuE+TP5LI0BhL5HI9iQxQJxbfoLWjCl//LC/q/d+7Z+X3gnGQAAAAASUVORK5CYII='), pointer; }
+
+        html, body {
+            width: 100%;
+            height: 100%;
+            margin: 0;
+            padding: 0;
+            overflow: hidden; 
+            position: fixed;
+        }
+
+        body {
+            font-family: 'Helvetica Neue', Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-start; 
+            padding-top: 60px;
+            background-color: #f5f5f5;
+            touch-action: none; 
+            -webkit-user-select: none;
+            user-select: none;
+        }
+
+        button, .cell {
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        #info-panel {
+            text-align: center;
+            margin-bottom: 20px;
+            width: 100%;
+            pointer-events: none;
+        }
+
+        #mode-display {
+            font-size: 14px;
+            color: #888;
+            margin-bottom: 2px;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+
+        #next-display {
+            font-size: 18px;
+            font-weight: bold;
+            color: #555;
+            margin-bottom: 5px;
+        }
+
+        #timer {
+            color: #d9534f;
+            font-family: monospace;
+            font-size: 48px;
+            font-weight: bold;
+            line-height: 1;
+            margin: 5px 0;
+        }
+
+        #best-time {
+            color: #2196F3;
+            font-size: 16px;
+            font-weight: bold;
+        }
+
+        #board-container {
+            position: relative;
+            width: 90vw;
+            height: 90vw;
+            max-width: 400px;
+            max-height: 400px;
+            margin-bottom: 20px;
+        }
+
+        #game-board {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 2%;
+            width: 100%;
+            height: 100%;
+            background-color: #fff;
+            padding: 10px;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            box-sizing: border-box;
+            transition: background-color 0.2s;
+        }
+
+        #game-board.survival-bg {
+            background-color: #fff0f0;
+            border: 2px solid #ff5252;
+        }
+
+        .cell {
+            background-color: #4CAF50;
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: clamp(20px, 6vw, 40px);
+            font-weight: bold;
+            border-radius: 5px;
+            transition: transform 0.05s, background-color 0.2s;
+        }
+
+        .cell:active {
+            transform: scale(0.95);
+        }
+        
+        .cell.wrong {
+            background-color: #d32f2f !important;
+            animation: shake 0.3s;
+        }
+        
+        .cell.pressed {
+            background-color: #e0e0e0;
+            color: #bbb;
+            transform: none;
+        }
+
+        #cover {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(255, 255, 255, 0.95);
+            border-radius: 10px;
+            z-index: 10;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: opacity 0.2s;
+        }
+
+        #cover.hidden {
+            display: none;
+        }
+
+        #start-btn {
+            padding: 20px 0;
+            width: 60%;
+            font-size: 24px;
+            font-weight: bold;
+            background-color: #ff9800;
+            color: white;
+            border: none;
+            border-radius: 50px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+            animation: popIn 0.3s ease-out;
+            pointer-events: auto; 
+        }
+
+        #footer-controls {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+            z-index: 20;
+        }
+
+        .footer-btn {
+            padding: 10px 40px;
+            font-size: 14px;
+            border-radius: 20px;
+            width: 200px;
+            font-weight: bold;
+        }
+
+        #reset-btn {
+            color: #555;
+            background: #fff;
+            border: 1px solid #ccc;
+        }
+        #reset-btn:active { background-color: #eee; }
+
+        #survival-btn {
+            color: white;
+            background: #ff5252;
+            border: none;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+        #survival-btn:active { background-color: #d32f2f; }
+
+        /* ランキング用ボタン */
+        #ranking-btn {
+            color: white;
+            background: #2196F3;
+            border: none;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+        #ranking-btn:active { background-color: #1976D2; }
+
+        @keyframes popIn {
+            0% { transform: scale(0.5); opacity: 0; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+        
+        @keyframes shake {
+            0% { transform: translateX(0); }
+            25% { transform: translateX(-5px); }
+            50% { transform: translateX(5px); }
+            75% { transform: translateX(-5px); }
+            100% { transform: translateX(0); }
+        }
+
+        /* モーダル */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.6);
+            z-index: 100;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s;
+        }
+        .modal-overlay.active {
+            opacity: 1;
+            pointer-events: auto;
+        }
+        .modal-content {
+            background: white;
+            width: 85%;
+            max-width: 350px;
+            border-radius: 10px;
+            padding: 20px;
+            text-align: center;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+            position: relative;
+        }
+        .modal-title {
+            margin: 0 0 15px 0;
+            font-size: 20px;
+            color: #333;
+            border-bottom: 2px solid #eee;
+            padding-bottom: 10px;
+        }
+        .ranking-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+            max-height: 250px;
+            overflow-y: auto;
+            text-align: left;
+        }
+        .ranking-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid #f0f0f0;
+            font-size: 14px;
+        }
+        .ranking-item:nth-child(1) { color: #d4af37; font-weight: bold; }
+        .ranking-item:nth-child(2) { color: #c0c0c0; font-weight: bold; }
+        .ranking-item:nth-child(3) { color: #cd7f32; font-weight: bold; }
+        .rank-name {
+            flex: 1;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            margin-right: 10px;
+        }
+        .rank-time {
+            font-family: monospace;
+        }
+        .modal-close-btn, .submit-btn {
+            margin-top: 15px;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            background: #555;
+            color: white;
+            font-size: 16px;
+            cursor: pointer;
+        }
+        .submit-btn {
+            background: #4CAF50;
+            width: 100%;
+        }
+        
+        /* ボタンが無効時のスタイル */
+        .submit-btn:disabled {
+            background-color: #cccccc;
+            cursor: not-allowed;
+        }
+
+        #name-input {
+            width: 100%;
+            padding: 10px;
+            box-sizing: border-box;
+            font-size: 16px;
+            margin-bottom: 10px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+        }
+        .input-label {
+            display: block;
+            margin-bottom: 5px;
+            color: #666;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="info-panel">
+        <div id="mode-display">NORMAL MODE</div>
+        <div id="next-display">Next: <span id="next-num">1</span></div>
+        <div id="timer">0.000</div>
+        <div id="best-time">Best: --.---</div>
+    </div>
+
+    <div id="board-container">
+        <div id="game-board"></div>
+        <div id="cover">
+            <button id="start-btn" onclick="startGame()">START</button>
+        </div>
+    </div>
+
+    <div id="footer-controls">
+        <button id="reset-btn" class="footer-btn" onclick="initPage('normal')">ノーマル リセット</button>
+        <button id="survival-btn" class="footer-btn" onclick="initPage('survival')">サバイバルモード</button>
+        <button id="ranking-btn" class="footer-btn" onclick="openRankingModal()">ランキングを見る</button>
+    </div>
+
+    <div id="name-modal" class="modal-overlay">
+        <div class="modal-content">
+            <h3 class="modal-title">Clear!</h3>
+            <p style="font-size: 24px; font-weight: bold; margin: 10px 0;" id="clear-time-display">0.000</p>
+            <label class="input-label">名前を入力して登録</label>
+            <input type="text" id="name-input" placeholder="ゲスト" maxlength="10">
+            <button class="submit-btn" onclick="submitScoreToGAS()">スコアを送信</button>
+            <button class="modal-close-btn" style="background:transparent; color:#888; margin-top:5px; font-size:12px;" onclick="closeNameModal()">登録しない</button>
+        </div>
+    </div>
+
+    <div id="ranking-modal" class="modal-overlay">
+        <div class="modal-content">
+            <h3 class="modal-title">Top 10 Ranking</h3>
+            <p id="ranking-mode-title" style="font-size:12px; color:#888; margin-top:-10px;">NORMAL MODE</p>
+            <ul id="ranking-list" class="ranking-list">
+                <li class="ranking-item">Loading...</li>
+            </ul>
+            <button class="modal-close-btn" onclick="closeRankingModal()">閉じる</button>
+        </div>
+    </div>
+
+    <script>
+        // ★★★重要: ここにGASのデプロイURLを貼り付けてください★★★
+        const GAS_API_URL = "https://script.google.com/macros/s/AKfycbxqsXW7c2-dy-a7Tfgg7GssQr9Dh7VAzK7bMekC_2lrqYIyVlcF2yYsI-7mGsEueeGi/exec"; 
+        // 例: const GAS_API_URL = "https://script.google.com/macros/s/xxxxxxxxx/exec";
+
+        
+        // --- 以下はゲームのロジック（変更なし） ---
+        const AudioContext = window.AudioContext || window.webkitAudioContext;
+        const ctx = new AudioContext();
+        const bufferSize = ctx.sampleRate;
+        const noiseBuffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+        const data = noiseBuffer.getChannelData(0);
+        for (let i = 0; i < bufferSize; i++) { data[i] = Math.random() * 2 - 1; }
+        function playTaikoTone(startFreq, endFreq, duration, noiseFilterFreq) {
+            const t = ctx.currentTime;
+            const oscillator = ctx.createOscillator();
+            const toneGain = ctx.createGain();
+            oscillator.connect(toneGain);
+            toneGain.connect(ctx.destination);
+            oscillator.type = 'triangle';
+            oscillator.frequency.setValueAtTime(startFreq, t);
+            oscillator.frequency.exponentialRampToValueAtTime(endFreq, t + duration * 0.9);
+            toneGain.gain.setValueAtTime(0.5, t);
+            toneGain.gain.exponentialRampToValueAtTime(0.01, t + duration);
+            const noiseSource = ctx.createBufferSource();
+            noiseSource.buffer = noiseBuffer;
+            const noiseFilter = ctx.createBiquadFilter();
+            const noiseGain = ctx.createGain();
+            noiseSource.connect(noiseFilter);
+            noiseFilter.connect(noiseGain);
+            noiseGain.connect(ctx.destination);
+            noiseFilter.type = 'lowpass';
+            noiseFilter.frequency.value = noiseFilterFreq;
+            noiseGain.gain.setValueAtTime(5.0, t);
+            noiseGain.gain.exponentialRampToValueAtTime(0.01, t + 0.1);
+            oscillator.start(t);
+            noiseSource.start(t);
+            oscillator.stop(t + duration);
+            noiseSource.stop(t + duration);
+        }
+        function playKa() { playTaikoTone(100, 100, 0.1, 4500); }
+
+        document.addEventListener('touchmove', function(event) {
+            if (event.scale !== 1) { event.preventDefault(); }
+            event.preventDefault();
+        }, { passive: false });
+        let lastTouchEnd = 0;
+        document.addEventListener('touchend', function (event) {
+            const now = (new Date()).getTime();
+            if (now - lastTouchEnd <= 300) { event.preventDefault(); }
+            lastTouchEnd = now;
+        }, false);
+
+        const board = document.getElementById('game-board');
+        const nextNumDisplay = document.getElementById('next-num');
+        const timerDisplay = document.getElementById('timer');
+        const bestTimeDisplay = document.getElementById('best-time');
+        const modeDisplay = document.getElementById('mode-display');
+        const cover = document.getElementById('cover');
+        const startBtn = document.getElementById('start-btn');
+        let numbers = [], currentNumber = 1, startTime = null, timerInterval = null, isPlaying = false, isSurvival = false;
+        const STORAGE_KEY_NORMAL = 'touchNumberGameBestTime', STORAGE_KEY_SURVIVAL = 'touchNumberGameBestTime_Survival';
+
+        function initPage(mode = 'normal') {
+            stopTimer();
+            isPlaying = false;
+            currentNumber = 1;
+            timerDisplay.textContent = '0.000';
+            nextNumDisplay.textContent = '1';
+            isSurvival = (mode === 'survival');
+            if (isSurvival) {
+                modeDisplay.textContent = "🔥 SURVIVAL MODE 🔥";
+                modeDisplay.style.color = "#ff5252";
+                board.classList.add('survival-bg');
+            } else {
+                modeDisplay.textContent = "NORMAL MODE";
+                modeDisplay.style.color = "#888";
+                board.classList.remove('survival-bg');
+            }
+            loadBestTime();
+            board.innerHTML = '';
+            cover.classList.remove('hidden');
+            startBtn.style.display = 'block';
+            startBtn.textContent = "START";
+        }
+        function startGame() {
+            if (ctx.state === 'suspended') ctx.resume();
+            isPlaying = true;
+            currentNumber = 1;
+            nextNumDisplay.textContent = '1';
+            cover.classList.add('hidden');
+            numbers = [];
+            for (let i = 1; i <= 25; i++) { numbers.push(i); }
+            shuffle(numbers);
+            renderBoard();
+            startTimer();
+        }
+        function shuffle(array) {
+            for (let i = array.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [array[i], array[j]] = [array[j], array[i]];
+            }
+        }
+        function renderBoard() {
+            board.innerHTML = '';
+            numbers.forEach(num => {
+                const div = document.createElement('div');
+                div.classList.add('cell');
+                div.textContent = num;
+                const handleTap = () => { checkNumber(div, num); };
+                div.addEventListener('touchstart', handleTap);
+                div.addEventListener('mousedown', handleTap);
+                board.appendChild(div);
+            });
+        }
+        function checkNumber(element, num) {
+            if (!isPlaying || element.classList.contains('pressed')) return;
+            if (num === currentNumber) {
+                playKa();
+                element.classList.add('pressed');
+                currentNumber++;
+                if (currentNumber <= 25) nextNumDisplay.textContent = currentNumber;
+                else gameClear();
+            } else if (isSurvival) {
+                gameOver(element);
+            }
+        }
+        function gameOver(element) {
+            stopTimer();
+            isPlaying = false;
+            element.classList.add('wrong');
+            nextNumDisplay.textContent = "GAME OVER";
+            setTimeout(() => {
+                cover.classList.remove('hidden');
+                startBtn.textContent = "RETRY";
+            }, 800);
+        }
+        function startTimer() {
+            stopTimer();
+            startTime = Date.now();
+            timerInterval = setInterval(() => {
+                const diff = (Date.now() - startTime) / 1000;
+                timerDisplay.textContent = diff.toFixed(3);
+            }, 10);
+        }
+        function stopTimer() { if (timerInterval) { clearInterval(timerInterval); timerInterval = null; } }
+        
+        function gameClear() {
+            stopTimer();
+            isPlaying = false;
+            const finalTime = timerDisplay.textContent;
+            nextNumDisplay.textContent = "FINISH!";
+            checkBestTime(finalTime);
+            setTimeout(() => { openNameModal(finalTime); }, 500);
+        }
+        
+        function checkBestTime(currentTimeStr) {
+            const key = isSurvival ? STORAGE_KEY_SURVIVAL : STORAGE_KEY_NORMAL;
+            const current = parseFloat(currentTimeStr);
+            const stored = localStorage.getItem(key);
+            if (!stored || current < parseFloat(stored)) {
+                localStorage.setItem(key, currentTimeStr);
+                loadBestTime();
+                bestTimeDisplay.style.color = '#ff9800';
+            }
+        }
+        function loadBestTime() {
+            const key = isSurvival ? STORAGE_KEY_SURVIVAL : STORAGE_KEY_NORMAL;
+            const stored = localStorage.getItem(key);
+            bestTimeDisplay.textContent = stored ? `Best: ${stored}` : `Best: --.---`;
+            bestTimeDisplay.style.color = '#2196F3';
+        }
+        initPage('normal');
+
+        // --- ここからGAS連携ロジック ---
+        const nameModal = document.getElementById('name-modal');
+        const rankingModal = document.getElementById('ranking-modal');
+        const clearTimeDisplay = document.getElementById('clear-time-display');
+        const rankingModeTitle = document.getElementById('ranking-mode-title');
+        let currentScoreForSubmission = 0;
+
+        function openNameModal(timeStr) {
+            currentScoreForSubmission = parseFloat(timeStr);
+            clearTimeDisplay.textContent = timeStr + "s";
+            nameModal.classList.add('active');
+            document.getElementById('name-input').value = localStorage.getItem('lastPlayerName') || '';
+            
+            // ボタンの状態をリセット（有効化）
+            const submitBtn = document.querySelector('.submit-btn');
+            submitBtn.disabled = false;
+            submitBtn.textContent = "スコアを送信";
+        }
+
+        function closeNameModal() {
+            nameModal.classList.remove('active');
+            cover.classList.remove('hidden');
+            startBtn.textContent = "REPLAY";
+        }
+
+        function openRankingModal() {
+            rankingModal.classList.add('active');
+            const mode = isSurvival ? "survival" : "normal";
+            rankingModeTitle.textContent = isSurvival ? "SURVIVAL MODE" : "NORMAL MODE";
+            fetchRanking(mode);
+        }
+
+        function closeRankingModal() {
+            rankingModal.classList.remove('active');
+        }
+
+        // ▼▼▼ 追加: ユーザーIDを管理する関数 ▼▼▼
+        function getUserId() {
+            let id = localStorage.getItem('uniqueGameUserId');
+            if (!id) {
+                // IDがない場合、ランダムな文字列を作って保存（これがこの端末のIDになる）
+                id = 'user_' + Date.now().toString(36) + Math.random().toString(36).substr(2);
+                localStorage.setItem('uniqueGameUserId', id);
+            }
+            return id;
+        }
+
+        // ボタン連打防止処理付き
+        function submitScoreToGAS() {
+            const submitBtn = document.querySelector('.submit-btn');
+            
+            // 既に無効化されていれば何もしない
+            if (submitBtn.disabled) return;
+
+            const nameInput = document.getElementById('name-input');
+            const name = nameInput.value.trim() || "Guest";
+            localStorage.setItem('lastPlayerName', name);
+
+            if (!GAS_API_URL) {
+                alert("API URLが設定されていません");
+                closeNameModal();
+                return;
+            }
+
+            // ボタンを無効化してテキストを変更
+            submitBtn.disabled = true;
+            submitBtn.textContent = "送信中...";
+
+            // POST送信 (IDも含める)
+            const payload = {
+                name: name,
+                time: currentScoreForSubmission,
+                mode: isSurvival ? "survival" : "normal",
+                userId: getUserId()  // ★ここでIDを送信
+            };
+
+            fetch(GAS_API_URL, {
+                method: 'POST',
+                mode: 'no-cors', 
+                headers: { 'Content-Type': 'text/plain' },
+                body: JSON.stringify(payload)
+            }).then(() => {
+                console.log("Submitted");
+                closeNameModal();
+                setTimeout(openRankingModal, 500); 
+                
+                // 次回のために一応戻しておく
+                submitBtn.disabled = false;
+                submitBtn.textContent = "スコアを送信";
+            }).catch(err => {
+                console.error(err);
+                alert("送信に失敗しました");
+                
+                // エラー時は押せるように戻す
+                submitBtn.disabled = false;
+                submitBtn.textContent = "スコアを送信";
+            });
+        }
+
+        function fetchRanking(mode) {
+            const listElement = document.getElementById('ranking-list');
+            listElement.innerHTML = '<li class="ranking-item" style="justify-content:center;">Loading...</li>';
+
+            if (!GAS_API_URL) {
+                listElement.innerHTML = '<li class="ranking-item" style="justify-content:center; color:red;">URL Not Set</li>';
+                return;
+            }
+
+            // GET送信
+            fetch(`${GAS_API_URL}?mode=${mode}`)
+                .then(response => response.json())
+                .then(data => {
+                    listElement.innerHTML = '';
+                    if (!data || data.length === 0) {
+                        listElement.innerHTML = '<li class="ranking-item" style="justify-content:center;">No records yet</li>';
+                        return;
+                    }
+                    data.forEach((item, index) => {
+                        const li = document.createElement('li');
+                        li.className = 'ranking-item';
+                        li.innerHTML = `
+                            <span style="width:30px; font-weight:bold;">${index + 1}.</span>
+                            <span class="rank-name">${escapeHtml(item.name)}</span>
+                            <span class="rank-time">${Number(item.time).toFixed(3)}s</span>
+                        `;
+                        listElement.appendChild(li);
+                    });
+                })
+                .catch(err => {
+                    console.error(err);
+                    listElement.innerHTML = '<li class="ranking-item" style="justify-content:center; color:red;">Load Error</li>';
+                });
+        }
+
+        function escapeHtml(str) {
+            if (!str) return "";
+            return str.replace(/[&<>"']/g, function(m) {
+                return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' }[m];
+            });
+        }
+    </script>
+</body>
+</html>
