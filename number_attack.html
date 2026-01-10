@@ -351,7 +351,8 @@
             <h3 class="modal-title">Clear!</h3>
             <p style="font-size: 24px; font-weight: bold; margin: 10px 0;" id="clear-time-display">0.000</p>
             <label class="input-label">名前を入力して登録</label>
-            <input type="text" id="name-input" placeholder="ゲスト" maxlength="10">
+            <!-- ▼▼▼ 修正: placeholderを変更し、必須入力を意識させる ▼▼▼ -->
+            <input type="text" id="name-input" placeholder="名前を入力（必須）" maxlength="10">
             <button class="submit-btn" onclick="submitScoreToGAS()">スコアを送信</button>
             <button class="modal-close-btn" style="background:transparent; color:#888; margin-top:5px; font-size:12px;" onclick="closeNameModal()">登録しない</button>
         </div>
@@ -625,7 +626,14 @@
             if (submitBtn.disabled) return;
 
             const nameInput = document.getElementById('name-input');
-            const name = nameInput.value.trim() || "Guest";
+            const name = nameInput.value.trim(); // 空白を削除
+
+            // ▼▼▼ 修正: 名前が空の場合はアラートを出して中断 ▼▼▼
+            if (!name) {
+                alert("名前を入力してください！");
+                return;
+            }
+            
             localStorage.setItem('lastPlayerName', name);
 
             if (!GAS_API_URL) {
