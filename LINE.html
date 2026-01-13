@@ -2,220 +2,134 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<!-- スマホ向けに画面サイズを固定し、ノッチ（iPhoneの上部）にも対応 -->
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>P2Pトークアプリ</title>
-<!-- 通信ライブラリ PeerJS -->
+<title>P2Pチャット(ID指定版)</title>
 <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
 <style>
-    /* --- リセット & 基本設定 --- */
+    /* --- リセット & 基本スタイル --- */
     * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
-    
     body {
         font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", sans-serif;
-        background-color: #fff;
-        color: #333;
-        width: 100%;
-        height: 100dvh; /* スマホのアドレスバー考慮の高さ */
-        overflow: hidden; /* スクロール禁止（中身だけスクロールさせる） */
+        background-color: #fff; color: #333;
+        width: 100%; height: 100dvh; overflow: hidden;
     }
 
-    /* アプリ全体を包むコンテナ（全画面） */
-    #app-root {
-        width: 100%;
-        height: 100%;
-        position: relative;
-        overflow: hidden;
-    }
+    /* アプリ全体 */
+    #app-root { width: 100%; height: 100%; position: relative; overflow: hidden; }
 
-    /* --- 共通: 画面の基本スタイル --- */
+    /* 画面共通 */
     .screen {
-        position: absolute;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        display: flex;
-        flex-direction: column;
-        background-color: #fff;
-        transition: transform 0.3s cubic-bezier(0.25, 0.1, 0.25, 1); /* なめらかなスライド */
-    }
-
-    /* ヘッダー */
-    .header {
-        height: 50px;
-        min-height: 50px;
-        background-color: #2c363f; /* LINE風ダークヘッダー */
-        color: white;
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        padding: 0 15px;
-        padding-top: env(safe-area-inset-top); /* iPhoneノッチ対応 */
-        box-sizing: content-box; /* paddingを含めない高さ計算 */
+        position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+        background-color: #fff; display: flex; flex-direction: column;
+        transition: transform 0.3s cubic-bezier(0.25, 0.1, 0.25, 1);
         z-index: 10;
-        font-weight: bold;
-        font-size: 16px;
-    }
-    .header-btn { font-size: 24px; cursor: pointer; padding: 5px; }
-    .header-title { flex: 1; text-align: center; }
-    .header-right { width: 30px; } /* バランス取り用 */
-
-    /* スクロールエリア */
-    .scroll-content {
-        flex: 1;
-        overflow-y: auto;
-        -webkit-overflow-scrolling: touch; /* 滑らかなスクロール */
-        background-color: #fff;
     }
 
     /* =========================================
-       1. 友だちリスト画面 (Home)
+       0. ログイン（ID設定）画面
        ========================================= */
-    #screen-home {
-        z-index: 1; /* 背面 */
+    #screen-login {
+        z-index: 50; /* 最前面 */
+        background-color: #2c363f; /* ダークテーマ */
+        color: white;
+        align-items: center; justify-content: center;
+        padding: 30px;
     }
+    .login-logo { font-size: 60px; margin-bottom: 20px; }
+    .login-title { font-size: 24px; font-weight: bold; margin-bottom: 40px; }
+    
+    .login-form { width: 100%; max-width: 320px; }
+    .input-label { font-size: 13px; color: #ccc; margin-bottom: 5px; display: block; }
+    .login-input {
+        width: 100%; padding: 15px; font-size: 18px; border-radius: 8px; border: none;
+        margin-bottom: 20px; text-align: center; font-weight: bold; color: #333;
+    }
+    .start-btn {
+        width: 100%; padding: 15px; font-size: 18px; font-weight: bold;
+        background-color: #2ecc71; color: white; border: none; border-radius: 8px;
+        cursor: pointer; box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+    }
+    .start-btn:disabled { background-color: #555; color: #999; cursor: not-allowed; }
+    .error-msg { color: #ff6b6b; font-size: 14px; margin-bottom: 15px; text-align: center; min-height: 20px;}
 
-    /* 自分のプロフィールカード */
+    /* =========================================
+       1. メイン（友だちリスト）
+       ========================================= */
+    .header {
+        height: 50px; background-color: #2c363f; color: white;
+        display: flex; align-items: center; justify-content: space-between;
+        padding: 0 15px; padding-top: env(safe-area-inset-top);
+        box-sizing: content-box; font-weight: bold;
+    }
+    .scroll-content { flex: 1; overflow-y: auto; background-color: #fff; }
+
+    /* プロフィール */
     .my-profile {
-        padding: 20px 15px;
-        display: flex;
-        align-items: center;
-        border-bottom: 10px solid #f2f2f2;
-        cursor: pointer;
+        padding: 20px 15px; display: flex; align-items: center; border-bottom: 10px solid #f2f2f2;
     }
     .avatar {
-        width: 56px; height: 56px;
-        border-radius: 50%;
-        background-color: #ddd;
-        display: flex; justify-content: center; align-items: center;
-        font-size: 28px; margin-right: 15px;
-        flex-shrink: 0;
+        width: 56px; height: 56px; border-radius: 50%; background-color: #ddd;
+        display: flex; justify-content: center; align-items: center; font-size: 28px; margin-right: 15px;
     }
-    .profile-text h2 { font-size: 16px; margin-bottom: 4px; }
-    .profile-text p { font-size: 12px; color: #888; }
-
-    /* リストアイテム */
-    .list-header {
-        padding: 10px 15px; font-size: 12px; color: #666; background: #fff;
-        border-bottom: 1px solid #f0f0f0;
-    }
+    
+    /* リスト */
     .friend-item {
-        display: flex; align-items: center;
-        padding: 12px 15px;
-        border-bottom: 1px solid #f9f9f9;
-        cursor: pointer;
+        display: flex; align-items: center; padding: 12px 15px; border-bottom: 1px solid #f9f9f9; cursor: pointer;
     }
     .friend-item:active { background-color: #f0f0f0; }
     .f-avatar {
-        width: 44px; height: 44px; border-radius: 50%;
-        background-color: #a0c4ff; color: #fff;
-        display: flex; justify-content: center; align-items: center;
-        font-size: 20px; margin-right: 12px;
+        width: 44px; height: 44px; border-radius: 50%; background-color: #a0c4ff;
+        display: flex; justify-content: center; align-items: center; color: white; font-size: 20px; margin-right: 12px;
     }
     .f-info { flex: 1; }
-    .f-name { font-size: 15px; color: #333; margin-bottom: 2px; }
-    .f-msg { font-size: 12px; color: #999; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 200px; }
+    .f-name { font-size: 15px; font-weight: 500; }
+    .f-msg { font-size: 12px; color: #999; }
     
-    /* 追加ボタン */
+    /* FAB */
     .fab-btn {
-        position: absolute; bottom: 20px; right: 20px;
-        width: 56px; height: 56px;
-        background-color: #2c363f; color: white;
-        border-radius: 50%;
-        display: flex; justify-content: center; align-items: center;
-        font-size: 30px;
-        box-shadow: 0 4px 10px rgba(0,0,0,0.3);
-        cursor: pointer;
-        z-index: 20;
+        position: absolute; bottom: 30px; right: 20px; width: 56px; height: 56px;
+        background-color: #2c363f; color: white; border-radius: 50%;
+        display: flex; justify-content: center; align-items: center; font-size: 30px;
+        box-shadow: 0 4px 10px rgba(0,0,0,0.3); cursor: pointer; z-index: 20;
     }
 
     /* =========================================
-       2. トーク画面 (Chat)
+       2. トーク画面
        ========================================= */
-    #screen-chat {
-        background-color: #7297c8; /* LINE風背景色 */
-        z-index: 2; /* 前面 */
-        transform: translateX(100%); /* 初期は右に隠す */
-    }
-    /* アクティブになったらスライドイン */
+    #screen-chat { transform: translateX(100%); background-color: #7297c8; z-index: 20; }
     #screen-chat.active { transform: translateX(0); }
 
-    .chat-header { background-color: #2c363f; justify-content: flex-start; }
-    .chat-bg { flex: 1; overflow-y: auto; padding: 15px; padding-bottom: 20px; display: flex; flex-direction: column; }
-
-    /* メッセージ */
+    .chat-header { background-color: #2c363f; }
+    .back-btn { font-size: 24px; padding: 5px; cursor: pointer; }
+    .chat-bg { flex: 1; overflow-y: auto; padding: 15px; display: flex; flex-direction: column; }
+    
     .msg { display: flex; margin-bottom: 15px; max-width: 85%; }
     .msg.me { align-self: flex-end; flex-direction: row-reverse; }
     .msg.you { align-self: flex-start; }
-
     .msg-bubble {
-        padding: 9px 12px;
-        border-radius: 15px;
-        font-size: 15px;
-        line-height: 1.4;
-        position: relative;
-        word-break: break-all;
+        padding: 9px 12px; border-radius: 15px; font-size: 15px; line-height: 1.4; word-break: break-all;
     }
     .msg.me .msg-bubble { background-color: #8de055; color: black; border-top-right-radius: 2px; }
     .msg.you .msg-bubble { background-color: white; color: black; border-top-left-radius: 2px; }
-    
-    .msg-time {
-        font-size: 10px; color: white; margin: 0 5px; align-self: flex-end;
-    }
+    .msg-time { font-size: 10px; color: white; margin: 0 5px; align-self: flex-end; }
 
-    /* 入力エリア */
     .chat-input-area {
-        background-color: #fff;
-        padding: 10px;
-        padding-bottom: max(10px, env(safe-area-inset-bottom)); /* iPhone下部バー対応 */
-        display: flex;
-        align-items: center;
-        border-top: 1px solid #ddd;
+        background: white; padding: 10px; padding-bottom: max(10px, env(safe-area-inset-bottom));
+        display: flex; border-top: 1px solid #ddd;
     }
     #msg-input {
-        flex: 1;
-        padding: 10px 15px;
-        border-radius: 20px;
-        border: 1px solid #ddd;
-        background-color: #f5f5f5;
-        font-size: 16px; /* 16px以上にしないとiOSで拡大される */
-        outline: none;
-    }
-    #send-btn {
-        margin-left: 10px;
-        color: #007bff;
-        font-weight: bold;
-        background: none; border: none; font-size: 18px;
+        flex: 1; padding: 10px 15px; border-radius: 20px; border: 1px solid #ddd; background: #f5f5f5; font-size: 16px; outline: none;
     }
 
-    /* =========================================
-       モーダル (QR, 追加)
-       ========================================= */
+    /* モーダル */
     .modal-overlay {
-        position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-        background: rgba(0,0,0,0.6); z-index: 100;
-        display: none; justify-content: center; align-items: center;
-        opacity: 0; transition: opacity 0.3s;
+        position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6);
+        display: none; justify-content: center; align-items: center; z-index: 100; opacity: 0; transition: opacity 0.3s;
     }
     .modal-overlay.show { display: flex; opacity: 1; }
-    
-    .modal-card {
-        background: #fff; width: 85%; max-width: 320px;
-        border-radius: 12px; padding: 25px; text-align: center;
-        box-shadow: 0 10px 25px rgba(0,0,0,0.2);
-    }
-    .modal-title { font-weight: bold; font-size: 18px; margin-bottom: 15px; }
-    .input-field {
-        width: 100%; padding: 12px; font-size: 16px; margin-bottom: 12px;
-        border: 1px solid #ddd; border-radius: 8px; text-align: center;
-    }
-    .btn {
-        width: 100%; padding: 12px; border: none; border-radius: 8px;
-        font-weight: bold; font-size: 15px; cursor: pointer; margin-top: 5px;
-    }
-    .btn-primary { background-color: #2c363f; color: white; }
-    .btn-close { background-color: transparent; color: #666; margin-top: 10px; }
+    .modal-card { background: white; width: 85%; max-width: 320px; padding: 25px; border-radius: 12px; text-align: center; }
+    .modal-input { width: 100%; padding: 10px; font-size: 16px; margin: 10px 0; border: 1px solid #ddd; text-align: center; }
+    .btn-close { border: none; background: none; color: #666; margin-top: 10px; cursor: pointer; }
 
 </style>
 </head>
@@ -223,361 +137,354 @@
 
 <div id="app-root">
 
-    <!-- ■ 画面1: 友だちリスト (Home) -->
+    <!-- ■ 画面0: ログイン（ID設定） -->
+    <div id="screen-login" class="screen">
+        <div class="login-logo">💬</div>
+        <div class="login-title">P2P Chat</div>
+        
+        <div class="login-form">
+            <div class="error-msg" id="login-error"></div>
+
+            <label class="input-label">あなたのID (半角英数)</label>
+            <input type="text" id="login-id" class="login-input" placeholder="例: taro1234">
+
+            <label class="input-label">表示名</label>
+            <input type="text" id="login-name" class="login-input" placeholder="あなたの名前">
+
+            <button class="start-btn" id="start-btn" onclick="startApp()">利用開始</button>
+        </div>
+        <p style="margin-top:20px; font-size:12px; color:#aaa;">※世界で唯一のIDにする必要があります</p>
+    </div>
+
+    <!-- ■ 画面1: ホーム -->
     <div id="screen-home" class="screen">
         <header class="header">
             <div>友だち</div>
-            <div onclick="openSettings()">⚙</div>
         </header>
 
         <div class="scroll-content">
-            <!-- マイプロフィール -->
+            <!-- プロフィール -->
             <div class="my-profile" onclick="openMyQR()">
                 <div class="avatar">👤</div>
-                <div class="profile-text">
-                    <h2 id="my-name-display">自分</h2>
-                    <p id="my-id-display">ID接続中...</p>
+                <div>
+                    <h2 style="font-size:16px;" id="disp-my-name">自分</h2>
+                    <p style="font-size:12px; color:#888;" id="disp-my-id">ID: ---</p>
                 </div>
                 <div style="margin-left:auto; font-size:24px; color:#ccc;">▒</div>
             </div>
 
-            <!-- 友だちリスト -->
-            <div class="list-header">友だち (<span id="friend-count">0</span>)</div>
-            <div id="friend-list">
-                <!-- ここに友だちが追加されます -->
-            </div>
-            
-            <!-- 空の時の案内 -->
-            <div id="empty-msg" style="padding:40px; text-align:center; color:#999; font-size:13px;">
-                右下の「＋」ボタンから<br>友だちを追加してください
-            </div>
+            <!-- リスト -->
+            <div style="padding:10px 15px; font-size:12px; color:#666; background:#f9f9f9;">友だちリスト</div>
+            <div id="friend-list"></div>
         </div>
-
-        <!-- 友だち追加ボタン (FAB) -->
+        
         <div class="fab-btn" onclick="openAddModal()">＋</div>
     </div>
 
-    <!-- ■ 画面2: トーク画面 (Chat) -->
+    <!-- ■ 画面2: トーク -->
     <div id="screen-chat" class="screen">
         <header class="header chat-header">
-            <div class="header-btn" onclick="backToHome()">＜</div>
-            <div class="header-title" id="chat-title-display">相手の名前</div>
-            <div class="header-right"></div>
+            <div class="back-btn" onclick="closeChat()">＜</div>
+            <div style="flex:1; text-align:center;" id="chat-title">相手</div>
+            <div style="width:30px;"></div>
         </header>
-
-        <div class="chat-bg" id="chat-messages">
-            <!-- メッセージはここに追加 -->
-        </div>
-
+        <div class="chat-bg" id="msg-area"></div>
         <div class="chat-input-area">
             <input type="text" id="msg-input" placeholder="メッセージ">
-            <button id="send-btn" onclick="sendMessage()">送信</button>
+            <button onclick="sendMessage()" style="margin-left:10px; border:none; background:none; color:#007bff; font-weight:bold;">送信</button>
         </div>
     </div>
 
 </div>
 
-<!-- モーダル: QRコード・マイID -->
+<!-- モーダル: QR -->
 <div id="modal-qr" class="modal-overlay">
     <div class="modal-card">
-        <div class="modal-title">マイQRコード</div>
-        <img id="qr-img" src="" style="width:160px; height:160px; margin-bottom:15px; display:block; margin:0 auto;">
-        <div style="font-size:12px; color:#888;">あなたのID</div>
-        <div id="qr-id-text" style="font-size:20px; font-weight:bold; letter-spacing:1px; margin-bottom:15px; user-select:text;">---</div>
-        <button class="btn btn-close" onclick="closeModal('modal-qr')">閉じる</button>
+        <h3>マイID情報</h3>
+        <img id="qr-img" src="" style="width:150px; margin:15px auto; display:block;">
+        <div id="qr-id-text" style="font-size:20px; font-weight:bold; margin-bottom:10px; user-select:text;"></div>
+        <button class="btn-close" onclick="closeModal('modal-qr')">閉じる</button>
     </div>
 </div>
 
-<!-- モーダル: 友だち追加 -->
+<!-- モーダル: 追加 -->
 <div id="modal-add" class="modal-overlay">
     <div class="modal-card">
-        <div class="modal-title">友だち追加</div>
-        <p style="font-size:13px; color:#666; margin-bottom:15px;">
-            相手のIDを入力してください。<br>(QR画面に表示されています)
-        </p>
-        <input type="text" id="add-id-input" class="input-field" placeholder="相手のID (例: abc12345)">
-        <input type="text" id="add-name-input" class="input-field" placeholder="相手の名前">
-        <button class="btn btn-primary" onclick="addFriend()">追加する</button>
-        <button class="btn btn-close" onclick="closeModal('modal-add')">キャンセル</button>
+        <h3>友だち追加</h3>
+        <p style="font-size:12px; color:#666;">相手が決めたIDを入力してください</p>
+        <input type="text" id="add-id" class="modal-input" placeholder="相手のID">
+        <input type="text" id="add-name" class="modal-input" placeholder="相手の名前">
+        <button onclick="addFriend()" style="width:100%; padding:10px; background:#2c363f; color:white; border:none; border-radius:5px; font-weight:bold;">追加</button>
+        <button class="btn-close" onclick="closeModal('modal-add')">閉じる</button>
     </div>
 </div>
 
 <script>
     /* =========================================
-       1. 基本設定・通信初期化 (PeerJS)
+       1. 初期設定・ログイン処理
        ========================================= */
-    function generateId() { return Math.random().toString(36).substring(2, 8); }
+    // 過去の設定を読み込み
+    const savedId = localStorage.getItem('p2p_fixed_id');
+    const savedName = localStorage.getItem('p2p_fixed_name');
 
-    // 自分のIDと名前をロード（なければ生成）
-    let myId = localStorage.getItem('p2p_chat_id');
-    if (!myId) { myId = generateId(); localStorage.setItem('p2p_chat_id', myId); }
+    // デフォルトID生成 (ランダムだが固定用の初期値)
+    const defaultId = 'user_' + Math.floor(Math.random() * 100000);
     
-    let myName = localStorage.getItem('p2p_chat_name') || '自分';
-    
-    // データ変数
-    let friends = JSON.parse(localStorage.getItem('p2p_chat_friends')) || [];
+    // 入力欄にセット
+    document.getElementById('login-id').value = savedId || defaultId;
+    document.getElementById('login-name').value = savedName || 'ゲスト';
+
     let peer = null;
-    let connections = {}; // { peerId: DataConnection }
-    let currentChatId = null; // 今開いているチャット相手のID
+    let myId = "";
+    let myName = "";
+    let friends = JSON.parse(localStorage.getItem('p2p_friends')) || [];
+    let connections = {};
+    let currentChatId = null;
 
-    // UI初期化
-    document.getElementById('my-name-display').textContent = myName;
+    // 「利用開始」ボタン
+    function startApp() {
+        const idInput = document.getElementById('login-id').value.trim();
+        const nameInput = document.getElementById('login-name').value.trim();
+        const errorMsg = document.getElementById('login-error');
+        const btn = document.getElementById('start-btn');
 
-    // PeerJS接続開始
-    try {
-        peer = new Peer(myId, { debug: 1 });
-        
+        if (!idInput.match(/^[a-zA-Z0-9_-]+$/)) {
+            errorMsg.textContent = "IDは半角英数字、ハイフン、アンダーバーのみです";
+            return;
+        }
+        if (!nameInput) {
+            errorMsg.textContent = "名前を入力してください";
+            return;
+        }
+
+        // ボタン無効化（連打防止）
+        btn.disabled = true;
+        btn.textContent = "接続中...";
+        errorMsg.textContent = "";
+
+        // PeerJS初期化
+        peer = new Peer(idInput, { debug: 1 });
+
+        // 成功時
         peer.on('open', (id) => {
-            document.getElementById('my-id-display').textContent = 'ID: ' + id;
-            document.getElementById('qr-id-text').textContent = id;
-            document.getElementById('qr-img').src = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${id}`;
-            // 既存の友だちに再接続を試みる
+            myId = id;
+            myName = nameInput;
+            
+            // 保存
+            localStorage.setItem('p2p_fixed_id', myId);
+            localStorage.setItem('p2p_fixed_name', myName);
+
+            // 画面反映
+            document.getElementById('disp-my-name').textContent = myName;
+            document.getElementById('disp-my-id').textContent = "ID: " + myId;
+            document.getElementById('qr-id-text').textContent = myId;
+            document.getElementById('qr-img').src = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${myId}`;
+
+            // ログイン画面を消す
+            document.getElementById('screen-login').style.display = 'none';
+            
+            // 友だち再接続
             reconnectFriends();
         });
 
-        // 相手から接続された時
-        peer.on('connection', (conn) => {
-            setupConnection(conn);
+        // エラー時（ID重複など）
+        peer.on('error', (err) => {
+            console.error(err);
+            btn.disabled = false;
+            btn.textContent = "利用開始";
+            
+            if (err.type === 'unavailable-id') {
+                errorMsg.textContent = "そのIDは既に使用されています。別のIDにしてください。";
+            } else if (err.type === 'invalid-id') {
+                errorMsg.textContent = "IDの形式が正しくありません。";
+            } else {
+                errorMsg.textContent = "通信エラーが発生しました: " + err.type;
+            }
         });
 
-        peer.on('error', (err) => console.log(err));
-
-    } catch(e) { alert("通信エラー: このブラウザは対応していない可能性があります"); }
+        // 受信設定
+        peer.on('connection', (conn) => setupConnection(conn));
+    }
 
     /* =========================================
        2. 通信ロジック
        ========================================= */
     function setupConnection(conn) {
         connections[conn.peer] = conn;
-        
-        conn.on('open', () => {
-            console.log("Connected to " + conn.peer);
-        });
-        
-        conn.on('data', (data) => {
-            // 受信処理 { text, time }
-            handleReceive(conn.peer, data);
-        });
-
-        conn.on('close', () => {
-            delete connections[conn.peer];
-        });
+        conn.on('data', (data) => handleReceive(conn.peer, data));
+        conn.on('close', () => delete connections[conn.peer]);
     }
 
     function reconnectFriends() {
         friends.forEach(f => {
-            if(!connections[f.id]) {
+            if (!connections[f.id]) {
                 const conn = peer.connect(f.id);
                 setupConnection(conn);
             }
         });
+        renderFriendList();
     }
 
     function handleReceive(senderId, data) {
-        // 友だちリストにいなければ自動追加（簡易）
+        // 未登録なら仮登録
         let friend = friends.find(f => f.id === senderId);
-        if(!friend) {
+        if (!friend) {
             friend = { id: senderId, name: "未登録ユーザー", history: [] };
             friends.push(friend);
         }
         
-        // 履歴保存
+        // 履歴追加
         friend.history.push({ type: 'receive', text: data.text, time: data.time });
         saveData();
 
         // 画面更新
         if (currentChatId === senderId) {
-            appendMessage(data.text, data.time, 'you');
+            appendMsg(data.text, data.time, 'you');
             scrollToBottom();
         } else {
-            // リスト画面の更新（最新メッセージ表示など）
             renderFriendList();
-            // ここで通知音などを鳴らすとよりリアル
+            // ここで通知などを出せる
         }
     }
 
     function sendMessage() {
         const input = document.getElementById('msg-input');
         const text = input.value.trim();
-        if(!text || !currentChatId) return;
+        if (!text || !currentChatId) return;
 
         const time = getCurrentTime();
 
-        // 送信
+        // 送信処理
         const conn = connections[currentChatId];
-        if(conn && conn.open) {
+        if (conn && conn.open) {
             conn.send({ text: text, time: time });
         } else {
-            // 接続がない場合、再接続を試みて送る（相手がオフラインなら失敗する）
+            // 切れてたら再接続して送信トライ
             const newConn = peer.connect(currentChatId);
             setupConnection(newConn);
             newConn.on('open', () => newConn.send({ text: text, time: time }));
         }
 
-        // 保存 & 表示
+        // 保存
         const friend = friends.find(f => f.id === currentChatId);
         friend.history.push({ type: 'send', text: text, time: time });
         saveData();
 
-        appendMessage(text, time, 'me');
-        input.value = '';
+        appendMsg(text, time, 'me');
         scrollToBottom();
+        input.value = '';
         renderFriendList();
     }
 
     /* =========================================
-       3. UI・画面操作
+       3. UI処理
        ========================================= */
-    
-    // データ保存
     function saveData() {
-        localStorage.setItem('p2p_chat_friends', JSON.stringify(friends));
+        localStorage.setItem('p2p_friends', JSON.stringify(friends));
         renderFriendList();
     }
 
-    // 友だちリスト描画
     function renderFriendList() {
         const list = document.getElementById('friend-list');
         list.innerHTML = '';
-        
-        if(friends.length > 0) document.getElementById('empty-msg').style.display = 'none';
-        document.getElementById('friend-count').textContent = friends.length;
-
         friends.forEach(f => {
             const div = document.createElement('div');
             div.className = 'friend-item';
             div.onclick = () => openChat(f.id);
-
-            // 最新のメッセージ
-            let lastMsg = "まだ会話がありません";
-            if(f.history.length > 0) {
-                lastMsg = f.history[f.history.length - 1].text;
-            }
-
+            
+            const last = f.history.length > 0 ? f.history[f.history.length-1].text : "メッセージなし";
+            
             div.innerHTML = `
                 <div class="f-avatar">${f.name[0]}</div>
                 <div class="f-info">
                     <div class="f-name">${f.name}</div>
-                    <div class="f-msg">${escapeHtml(lastMsg)}</div>
+                    <div class="f-msg">${escapeHtml(last)}</div>
                 </div>
-                <div style="font-size:20px; color:#ccc;">›</div>
             `;
             list.appendChild(div);
         });
     }
 
-    // チャット画面を開く（スライドイン）
     function openChat(id) {
         currentChatId = id;
         const friend = friends.find(f => f.id === id);
+        document.getElementById('chat-title').textContent = friend.name;
         
-        document.getElementById('chat-title-display').textContent = friend.name;
-        const msgArea = document.getElementById('chat-messages');
-        msgArea.innerHTML = '';
-
-        // 履歴展開
+        const area = document.getElementById('msg-area');
+        area.innerHTML = '';
         friend.history.forEach(h => {
-            appendMessage(h.text, h.time, h.type === 'send' ? 'me' : 'you');
+            appendMsg(h.text, h.time, h.type === 'send' ? 'me' : 'you');
         });
 
-        // 画面遷移
         document.getElementById('screen-chat').classList.add('active');
         scrollToBottom();
         
         // 接続確認
-        if(!connections[id]) {
+        if (!connections[id]) {
             const conn = peer.connect(id);
             setupConnection(conn);
         }
     }
 
-    // リストに戻る
-    function backToHome() {
+    function closeChat() {
         document.getElementById('screen-chat').classList.remove('active');
         currentChatId = null;
-        // キーボードを閉じるためにフォーカスを外す
         document.getElementById('msg-input').blur();
     }
 
-    // 友だち追加処理
     function addFriend() {
-        const id = document.getElementById('add-id-input').value.trim();
-        const name = document.getElementById('add-name-input').value.trim() || "名無し";
-        
-        if(!id) return alert("IDを入力してください");
-        if(id === myId) return alert("自分のIDは追加できません");
-        if(friends.find(f => f.id === id)) return alert("すでに追加済みです");
+        const id = document.getElementById('add-id').value.trim();
+        const name = document.getElementById('add-name').value.trim();
+        if (!id) return alert("IDを入れてください");
+        if (id === myId) return alert("自分は追加できません");
+        if (friends.find(f => f.id === id)) return alert("既に追加済みです");
 
-        friends.push({ id: id, name: name, history: [] });
+        friends.push({ id: id, name: name || "名無し", history: [] });
         saveData();
         
-        // 接続試行
+        // 接続
         const conn = peer.connect(id);
         setupConnection(conn);
 
         closeModal('modal-add');
-        alert(`${name}さんを追加しました！`);
+        alert("追加しました");
     }
 
-    /* =========================================
-       4. ユーティリティ・モーダル制御
-       ========================================= */
-    function appendMessage(text, time, type) {
-        const area = document.getElementById('chat-messages');
+    // ツール関数
+    function appendMsg(text, time, type) {
+        const area = document.getElementById('msg-area');
         const div = document.createElement('div');
         div.className = `msg ${type}`;
-        div.innerHTML = `
-            <div class="msg-bubble">${escapeHtml(text)}</div>
-            <div class="msg-time">${time}</div>
-        `;
+        div.innerHTML = `<div class="msg-bubble">${escapeHtml(text)}</div><div class="msg-time">${time}</div>`;
         area.appendChild(div);
     }
-
     function scrollToBottom() {
-        const area = document.getElementById('chat-messages');
-        // 少し遅延させてレンダリング待ち
-        setTimeout(() => { area.scrollTop = area.scrollHeight; }, 10);
+        const area = document.getElementById('msg-area');
+        setTimeout(() => area.scrollTop = area.scrollHeight, 10);
     }
-
     function getCurrentTime() {
         const d = new Date();
         return `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
     }
-
-    function escapeHtml(str) {
-        return str.replace(/[&<>"']/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' }[m]));
+    function escapeHtml(s) {
+        return s.replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]));
     }
 
-    // モーダル操作
+    // モーダル
     function openMyQR() {
-        const m = document.getElementById('modal-qr');
-        m.style.display = 'flex';
-        setTimeout(() => m.classList.add('show'), 10);
+        document.getElementById('modal-qr').style.display = 'flex';
+        setTimeout(()=>document.getElementById('modal-qr').classList.add('show'), 10);
     }
     function openAddModal() {
-        const m = document.getElementById('modal-add');
-        m.style.display = 'flex';
-        setTimeout(() => m.classList.add('show'), 10);
-        document.getElementById('add-id-input').value = '';
-        document.getElementById('add-name-input').value = '';
+        document.getElementById('modal-add').style.display = 'flex';
+        setTimeout(()=>document.getElementById('modal-add').classList.add('show'), 10);
+        document.getElementById('add-id').value = '';
     }
     function closeModal(id) {
         const m = document.getElementById(id);
         m.classList.remove('show');
-        setTimeout(() => m.style.display = 'none', 300);
+        setTimeout(()=>m.style.display='none', 300);
     }
-    function openSettings() {
-        const n = prompt("新しい名前を入力してください", myName);
-        if(n) {
-            myName = n;
-            localStorage.setItem('p2p_chat_name', n);
-            document.getElementById('my-name-display').textContent = n;
-        }
-    }
-
-    // 初期実行
-    renderFriendList();
-
 </script>
 </body>
 </html>
