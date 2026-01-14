@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>P2P Chat</title>
+<title>P2P Chat (エラー抑制版)</title>
 <!-- アイコン自動生成 -->
 <script>
 (function() {
@@ -45,7 +45,6 @@
     .screen.active { display: flex; transform: translateX(0); }
     .screen.next { display: flex; transform: translateX(100%); z-index: 20; }
     
-    /* ログイン画面（初期は非表示、JSで制御） */
     #screen-login { z-index: 100; background-color: #2c363f; color: white; align-items: center; justify-content: center; }
 
     /* --- パーツ --- */
@@ -125,7 +124,7 @@
 <div id="toast">通知</div>
 
 <div id="app-root">
-    <!-- 0. ログイン (ID未登録時のみ表示) -->
+    <!-- 0. ログイン -->
     <div id="screen-login" class="screen">
         <div class="login-box">
             <h1 style="margin-bottom:20px;">P2P Chat</h1>
@@ -138,7 +137,7 @@
         </div>
     </div>
 
-    <!-- 1. ホーム (初期画面) -->
+    <!-- 1. ホーム -->
     <div id="screen-home" class="screen">
         <header class="header">
             <div>友だち</div>
@@ -266,17 +265,25 @@
         updatePreview(document.getElementById('preview-avatar'), { type:'text', color: getCurrentColor(), char: e.target.value });
     });
 
-    // ★ 初期起動チェック：IDがあればホーム画面を即表示して接続
+    // ★終了・非表示時にIDを解放する重要処理
+    const cleanup = () => { if(peer && !peer.destroyed) peer.destroy(); };
+    window.addEventListener('beforeunload', cleanup);
+    window.addEventListener('pagehide', cleanup);
+    document.addEventListener('visibilitychange', () => {
+        if(document.visibilityState === 'hidden') cleanup();
+        else if(document.visibilityState === 'visible' && myId) initPeer(myId);
+    });
+
+    // ★起動時チェック
     if (myId && myName) {
-        document.getElementById('screen-home').classList.add('active'); // すぐにホーム表示
+        document.getElementById('screen-home').classList.add('active'); 
         updateHomeProfile();
         renderFriendList();
-        initPeer(myId); // 裏で接続開始
+        initPeer(myId);
     } else {
-        document.getElementById('screen-login').classList.add('active'); // IDなければログイン表示
+        document.getElementById('screen-login').classList.add('active'); 
     }
 
-    // 手動ログインボタン押下時
     function manualLogin() {
         const idVal = document.getElementById('login-id').value.trim();
         const nameVal = document.getElementById('login-name').value.trim();
@@ -284,19 +291,14 @@
         
         const btn = document.querySelector('#screen-login .btn');
         btn.disabled = true; btn.innerText = "接続中...";
-
-        // 保存
-        myId = idVal; myName = nameVal;
-        localStorage.setItem(KEY_ID, myId);
-        localStorage.setItem(KEY_NAME, myName);
-
-        // 画面切り替え
-        updateHomeProfile();
-        renderFriendList();
         
-        // 接続開始
-        initPeer(myId, (success) => {
+        initPeer(idVal, (success) => {
             if(success) {
+                myId = idVal; myName = nameVal;
+                localStorage.setItem(KEY_ID, myId);
+                localStorage.setItem(KEY_NAME, myName);
+                updateHomeProfile();
+                renderFriendList();
                 document.getElementById('screen-login').classList.remove('active');
                 document.getElementById('screen-home').classList.add('active');
             }
@@ -304,33 +306,40 @@
         });
     }
 
-    // PeerJS初期化・接続処理
+    // ★ID重複エラーを無視してループ接続する強力な関数
     function initPeer(id, callback) {
-        if(peer) return; // 既に接続中なら何もしない
-        
+        if(peer && !peer.destroyed) return;
+
         peer = new Peer(id, { debug: 1 });
+        
         peer.on('open', (newId) => {
+            console.log("Peer Connected:", newId);
             myId = newId; 
             updateHomeProfile();
             reconnectFriends();
             startHeartbeat();
             if(callback) callback(true);
         });
+
         peer.on('error', (err) => {
+            console.log("Peer Error:", err.type);
             if(err.type === 'unavailable-id') {
-                alert("そのIDは既に使用されています。別のIDにしてください。");
-                // 失敗したのでストレージクリア
-                localStorage.removeItem(KEY_ID); 
-                // 画面をログインに戻す
-                document.getElementById('screen-home').classList.remove('active');
-                document.getElementById('screen-login').classList.add('active');
+                // ★エラーを出さずに、1.5秒待って勝手にリトライする
+                showToast("接続待機中... (前の接続を整理しています)");
+                if(peer) peer.destroy();
+                peer = null;
+                setTimeout(() => initPeer(id, callback), 1500);
             } else if(err.type !== 'peer-unavailable') {
                 showToast("通信エラー: " + err.type);
+                if(callback) callback(false);
             }
-            if(callback) callback(false);
         });
+        
         peer.on('connection', conn => setupConnection(conn));
-        peer.on('disconnected', () => { showToast("再接続を試みます"); peer.reconnect(); });
+        peer.on('disconnected', () => { 
+            showToast("再接続中..."); 
+            if(peer && !peer.destroyed) peer.reconnect(); 
+        });
     }
 
     function openSettings() {
