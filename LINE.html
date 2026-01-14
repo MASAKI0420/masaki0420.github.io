@@ -3,13 +3,19 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>P2P Chat (名前変更機能付)</title>
-<!-- アイコン自動生成 -->
+<title>P2P Chat (検索UI強化版)</title>
+
+<!-- アプリ化設定 -->
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#2c363f">
+<link rel="manifest" href="data:application/manifest+json;charset=utf-8,%7B%22name%22%3A%22P2P%20Chat%22%2C%22short_name%22%3A%22Chat%22%2C%22display%22%3A%22standalone%22%2C%22start_url%22%3A%22.%22%2C%22theme_color%22%3A%22%232c363f%22%2C%22background_color%22%3A%22%23ffffff%22%7D">
+
+<!-- アイコン生成 -->
 <script>
 (function() {
     window.addEventListener('DOMContentLoaded', function() {
-        var canvas = document.createElement('canvas');
-        canvas.width = 192; canvas.height = 192;
+        var canvas = document.createElement('canvas'); canvas.width = 192; canvas.height = 192;
         var ctx = canvas.getContext('2d');
         ctx.fillStyle = '#2ecc71'; ctx.beginPath(); ctx.roundRect(0,0,192,192,40); ctx.fill();
         ctx.fillStyle = '#fff'; ctx.beginPath();
@@ -26,34 +32,17 @@
 <style>
     /* --- 全体設定 --- */
     * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
-    body, html {
-        width: 100%; height: 100%;
-        font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", sans-serif;
-        background-color: #000; color: #333; overflow: hidden;
-    }
-    #app-root {
-        width: 100%; height: 100%; position: relative; background: #fff;
-        max-width: 600px; margin: 0 auto;
-    }
+    body, html { width: 100%; height: 100%; font-family: -apple-system, BlinkMacSystemFont, sans-serif; background-color: #000; color: #333; overflow: hidden; }
+    #app-root { width: 100%; height: 100%; position: relative; background: #fff; max-width: 600px; margin: 0 auto; }
 
-    /* --- 画面制御 --- */
-    .screen {
-        position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-        background-color: #f2f2f7; display: none; flex-direction: column;
-        z-index: 10; transition: transform 0.3s ease-in-out;
-    }
+    /* 画面制御 */
+    .screen { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background-color: #f2f2f7; display: none; flex-direction: column; z-index: 10; transition: transform 0.3s ease-in-out; }
     .screen.active { display: flex; transform: translateX(0); }
     .screen.next { display: flex; transform: translateX(100%); z-index: 20; }
-    
     #screen-login { z-index: 100; background-color: #2c363f; color: white; align-items: center; justify-content: center; }
 
-    /* --- パーツ --- */
-    .header {
-        height: 50px; background-color: #2c363f; color: white;
-        display: flex; align-items: center; justify-content: space-between;
-        padding: 0 15px; padding-top: env(safe-area-inset-top);
-        font-weight: bold; font-size: 16px; flex-shrink: 0;
-    }
+    /* パーツ */
+    .header { height: 50px; background-color: #2c363f; color: white; display: flex; align-items: center; justify-content: space-between; padding: 0 15px; padding-top: env(safe-area-inset-top); font-weight: bold; font-size: 16px; flex-shrink: 0; }
     .header-btn { font-size: 24px; cursor: pointer; min-width: 40px; text-align: center; }
     .scroll-content { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; }
 
@@ -65,33 +54,27 @@
     .btn-dark { background: #2c363f; color: white; }
     .btn-blue { background: #007bff; color: white; }
 
-    /* 0. ログイン */
+    /* ログイン */
     .login-box { width: 80%; text-align: center; }
     .login-input { width: 100%; padding: 15px; margin: 10px 0; border-radius: 8px; border: none; font-size: 16px; text-align: center; font-weight:bold; }
 
-    /* 1. ホーム */
+    /* ホーム */
     #screen-home { background-color: white; }
     .my-profile { padding: 20px 15px; display: flex; align-items: center; border-bottom: 10px solid #f2f2f7; cursor: pointer; }
-    .avatar {
-        width: 54px; height: 54px; border-radius: 50%; display: flex; justify-content: center; align-items: center;
-        font-size: 26px; color: #fff; margin-right: 15px; flex-shrink: 0; background-color: #ccc;
-        background-size: cover; background-position: center; border: 1px solid rgba(0,0,0,0.1);
-    }
+    .avatar { width: 54px; height: 54px; border-radius: 50%; display: flex; justify-content: center; align-items: center; font-size: 26px; color: #fff; margin-right: 15px; flex-shrink: 0; background-color: #ccc; background-size: cover; background-position: center; border: 1px solid rgba(0,0,0,0.1); }
     .friend-item { display: flex; align-items: center; padding: 12px 15px; border-bottom: 1px solid #f0f0f0; cursor: pointer; background: white; }
     .friend-item:active { background: #f9f9f9; }
 
-    /* 2. 設定 */
+    /* 設定 */
     #screen-settings { background-color: #f2f2f7; }
     .settings-card { background: white; margin: 20px; padding: 20px; border-radius: 10px; text-align: center; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
     .color-picker { display: flex; justify-content: center; gap: 10px; margin: 15px 0; flex-wrap: wrap; }
     .color-dot { width: 32px; height: 32px; border-radius: 50%; cursor: pointer; border: 2px solid #fff; box-shadow: 0 0 2px rgba(0,0,0,0.3); }
     .color-dot.selected { border-color: #333; transform: scale(1.1); }
     .emoji-input { width: 60px; font-size: 30px; text-align: center; border: 1px solid #ddd; border-radius: 5px; margin-left: 10px; }
-    
-    /* 設定画面の入力フィールド用 */
     .settings-input { width: 100%; padding: 10px; font-size: 16px; border: 1px solid #ddd; border-radius: 5px; text-align: center; margin-bottom: 15px; background: #f9f9f9; }
 
-    /* 3. トーク */
+    /* トーク */
     #screen-chat { background-color: #7297c8; }
     .chat-bg { flex: 1; overflow-y: auto; padding: 15px; display: flex; flex-direction: column; }
     .msg { display: flex; margin-bottom: 15px; max-width: 85%; align-items: flex-end; }
@@ -100,22 +83,52 @@
     .msg-bubble { padding: 9px 12px; border-radius: 14px; font-size: 15px; line-height: 1.4; word-break: break-all; position: relative; max-width: 100%; }
     .msg.me .msg-bubble { background: #8de055; color: black; border-top-right-radius: 2px; }
     .msg.you .msg-bubble { background: white; color: black; border-top-left-radius: 2px; }
-    
     .msg-image { max-width: 200px; border-radius: 10px; display: block; margin: 5px 0; cursor: pointer; }
     .msg-file-link { display: inline-block; padding: 10px; background: #eee; border-radius: 5px; text-decoration: none; color: #333; font-size: 12px; }
     .msg-meta { display: flex; flex-direction: column; align-items: flex-end; margin: 0 5px; }
     .msg-time { font-size: 10px; color: white; }
     .read-mark { font-size: 10px; color: yellow; display: none; margin-bottom: 2px; }
     .msg.me .read-mark.is-read { display: block; }
-
     .chat-input-area { background: white; padding: 10px; display: flex; align-items: center; border-top: 1px solid #ddd; padding-bottom: max(10px, env(safe-area-inset-bottom)); }
     #msg-input { flex: 1; padding: 10px; border-radius: 20px; border: 1px solid #ddd; background: #f5f5f5; font-size: 16px; outline: none; }
     .attach-btn { font-size: 24px; color: #666; margin-right: 10px; cursor: pointer; padding: 0 5px; }
     .chat-status { font-size: 10px; font-weight: normal; margin-left: 5px; opacity: 0.8; }
 
-    /* モーダル */
-    .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); display: none; justify-content: center; align-items: center; z-index: 200; }
+    /* --- 検索モーダル (LINE風) --- */
+    .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #111; display: none; flex-direction: column; z-index: 200; }
+    .modal-header { display: flex; align-items: center; padding: 15px; color: white; }
+    .modal-back { font-size: 24px; cursor: pointer; margin-right: 15px; }
+    .modal-title { font-weight: bold; font-size: 18px; }
+    
+    .search-container { padding: 20px; }
+    .search-input-wrap {
+        background: #333; border-radius: 8px; display: flex; align-items: center; padding: 0 10px;
+    }
+    .search-icon { color: #888; font-size: 18px; margin-right: 10px; }
+    .search-input {
+        background: transparent; border: none; color: white; padding: 12px 0; width: 100%; font-size: 16px; outline: none;
+    }
+    
+    /* 検索結果（真ん中表示） */
+    #search-result-area {
+        flex: 1; display: none; flex-direction: column; align-items: center; justify-content: center; padding-bottom: 100px;
+    }
+    .result-avatar {
+        width: 100px; height: 100px; border-radius: 50%; background-color: #555;
+        background-size: cover; background-position: center; margin-bottom: 20px;
+        display: flex; justify-content: center; align-items: center; font-size: 40px; color: #aaa;
+    }
+    .result-name { color: white; font-size: 20px; font-weight: bold; margin-bottom: 30px; }
+    .btn-add-friend {
+        background: transparent; border: 1px solid #444; color: white; padding: 8px 30px;
+        border-radius: 20px; font-size: 14px; cursor: pointer; display: flex; align-items: center; gap: 5px;
+    }
+    .btn-add-friend:active { background: #333; }
+
+    /* その他モーダル */
+    .modal-normal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); display: none; justify-content: center; align-items: center; z-index: 250; }
     .modal-card { background: white; width: 85%; max-width: 320px; padding: 25px; border-radius: 12px; text-align: center; }
+    
     .fab-btn { position: absolute; bottom: 30px; right: 20px; width: 56px; height: 56px; background: #2c363f; color: white; border-radius: 50%; display: flex; justify-content: center; align-items: center; font-size: 30px; box-shadow: 0 4px 10px rgba(0,0,0,0.3); cursor: pointer; z-index: 50; }
     .blocked-bar { background: #555; color: white; text-align: center; padding: 10px; font-size: 12px; display: none; }
     #icon-file-input, #chat-file-input { display: none; }
@@ -158,7 +171,7 @@
             <div style="padding:10px 15px; font-size:12px; color:#666; background:#f9f9f9;">友だちリスト</div>
             <div id="friend-list"></div>
         </div>
-        <div class="fab-btn" onclick="openAddModal()">＋</div>
+        <div class="fab-btn" onclick="openSearchModal()">＋</div>
     </div>
 
     <!-- 2. 設定 -->
@@ -171,20 +184,14 @@
         <div class="scroll-content">
             <div class="settings-card">
                 <h3>プロフィール編集</h3>
-                
                 <div style="margin:15px 0;">
                     <div class="avatar" id="preview-avatar" style="width:80px; height:80px; font-size:40px; margin:0 auto;">👤</div>
                 </div>
-
-                <!-- 名前変更エリア -->
                 <p style="font-size:12px; color:#888; margin-bottom:5px;">表示名</p>
                 <input type="text" id="edit-name" class="settings-input" placeholder="名前">
-
-                <!-- アイコン変更エリア -->
                 <button class="btn btn-blue" onclick="document.getElementById('icon-file-input').click()">画像を選択する</button>
                 <input type="file" id="icon-file-input" accept="image/*" onchange="handleIconUpload(event)">
                 <button class="btn btn-gray" onclick="resetToEmoji()" style="font-size:12px; padding:8px;">画像をやめて文字にする</button>
-                
                 <hr style="margin:15px 0; border:none; border-top:1px solid #eee;">
                 <p style="font-size:12px; color:#888;">または色と文字を選択</p>
                 <div class="color-picker" id="color-picker"></div>
@@ -192,10 +199,8 @@
                     <span>文字: </span>
                     <input type="text" id="edit-char" class="emoji-input" maxlength="1" value="👤">
                 </div>
-                
                 <button class="btn btn-dark" onclick="saveSettings()">設定を保存する</button>
             </div>
-            
             <div style="margin-top:20px; padding:20px; text-align:center;">
                 <p style="font-size:12px; color:#666;">現在のID: <span id="settings-id-disp" style="font-weight:bold;">---</span></p>
                 <button class="btn btn-red" onclick="changeID()">IDを変更 (初期化)</button>
@@ -224,8 +229,32 @@
     </div>
 </div>
 
-<!-- モーダル類 -->
-<div id="modal-qr" class="modal-overlay" onclick="closeModal('modal-qr')">
+<!-- ★検索モーダル (LINE風・全画面黒背景) -->
+<div id="modal-search" class="modal-overlay">
+    <div class="modal-header">
+        <div class="modal-back" onclick="closeSearchModal()">＜</div>
+        <div class="modal-title">友だち検索</div>
+    </div>
+    
+    <div class="search-container">
+        <div class="search-input-wrap">
+            <div class="search-icon">🔍</div>
+            <input type="text" id="search-id-input" class="search-input" placeholder="ID検索">
+        </div>
+    </div>
+
+    <!-- 検索結果 (真ん中にドンと表示) -->
+    <div id="search-result-area">
+        <div class="result-avatar" id="result-avatar"></div>
+        <div class="result-name" id="result-name">User Name</div>
+        <button class="btn-add-friend" onclick="confirmAdd()">
+            <span>＋</span> 追加
+        </button>
+    </div>
+</div>
+
+<!-- その他モーダル -->
+<div id="modal-qr" class="modal-normal" onclick="closeModal('modal-qr')">
     <div class="modal-card" onclick="event.stopPropagation()">
         <h3>マイID</h3>
         <img id="qr-img" src="" style="width:150px; margin:15px auto; display:block;">
@@ -233,16 +262,7 @@
         <button class="btn btn-gray" onclick="closeModal('modal-qr')">閉じる</button>
     </div>
 </div>
-<div id="modal-add" class="modal-overlay">
-    <div class="modal-card">
-        <h3>友だち追加</h3>
-        <input type="text" id="add-id" class="login-input" style="border:1px solid #ddd; text-align:left;" placeholder="相手のID">
-        <input type="text" id="add-name" class="login-input" style="border:1px solid #ddd; text-align:left;" placeholder="相手の名前">
-        <button class="btn btn-dark" onclick="addFriend()">追加する</button>
-        <button class="btn btn-gray" onclick="closeModal('modal-add')">キャンセル</button>
-    </div>
-</div>
-<div id="modal-menu" class="modal-overlay" onclick="closeModal('modal-menu')">
+<div id="modal-menu" class="modal-normal" onclick="closeModal('modal-menu')">
     <div class="modal-card" onclick="event.stopPropagation()">
         <h3 id="menu-target-name" style="margin-bottom:15px;">設定</h3>
         <button class="btn" id="btn-block-toggle" onclick="toggleBlock()" style="background:#eee; margin-bottom:10px;">ブロックする</button>
@@ -264,6 +284,7 @@
     let tempIconData = null; 
     let tempIconType = 'text';
     let heartBeatInterval = null;
+    let searchTargetId = null;
 
     const picker = document.getElementById('color-picker');
     colors.forEach(c => {
@@ -278,7 +299,6 @@
         updatePreview(document.getElementById('preview-avatar'), { type:'text', color: getCurrentColor(), char: e.target.value });
     });
 
-    // 終了処理
     const cleanup = () => { if(peer && !peer.destroyed) peer.destroy(); };
     window.addEventListener('beforeunload', cleanup);
     window.addEventListener('pagehide', cleanup);
@@ -287,7 +307,6 @@
         else if(document.visibilityState === 'visible' && myId) initPeer(myId);
     });
 
-    // 起動時
     if (myId && myName) {
         document.getElementById('screen-home').classList.add('active'); 
         updateHomeProfile();
@@ -301,10 +320,8 @@
         const idVal = document.getElementById('login-id').value.trim();
         const nameVal = document.getElementById('login-name').value.trim();
         if(!idVal || !nameVal) return alert("IDと名前を入力してください");
-        
         const btn = document.querySelector('#screen-login .btn');
         btn.disabled = true; btn.innerText = "接続中...";
-        
         initPeer(idVal, (success) => {
             if(success) {
                 myId = idVal; myName = nameVal;
@@ -321,50 +338,89 @@
 
     function initPeer(id, callback) {
         if(peer && !peer.destroyed) return;
-
         peer = new Peer(id, { debug: 1 });
-        
         peer.on('open', (newId) => {
-            console.log("Peer Connected:", newId);
             myId = newId; 
             updateHomeProfile();
             reconnectFriends();
             startHeartbeat();
             if(callback) callback(true);
         });
-
         peer.on('error', (err) => {
-            console.log("Peer Error:", err.type);
             if(err.type === 'unavailable-id') {
-                showToast("接続待機中... (前の接続を整理しています)");
-                if(peer) peer.destroy();
-                peer = null;
+                showToast("接続待機中... (リトライします)");
+                if(peer) peer.destroy(); peer = null;
                 setTimeout(() => initPeer(id, callback), 1500);
             } else if(err.type !== 'peer-unavailable') {
                 showToast("通信エラー: " + err.type);
                 if(callback) callback(false);
             }
         });
-        
         peer.on('connection', conn => setupConnection(conn));
-        peer.on('disconnected', () => { 
-            showToast("再接続中..."); 
-            if(peer && !peer.destroyed) peer.reconnect(); 
-        });
+        peer.on('disconnected', () => { showToast("再接続中..."); if(peer && !peer.destroyed) peer.reconnect(); });
     }
 
+    /* === 検索機能 (UI変更版) === */
+    function openSearchModal() {
+        document.getElementById('modal-search').style.display = 'flex';
+        document.getElementById('search-result-area').style.display = 'none';
+        document.getElementById('search-id-input').value = '';
+        document.getElementById('search-id-input').focus();
+    }
+    
+    function closeSearchModal() {
+        document.getElementById('modal-search').style.display = 'none';
+    }
+
+    // Enterキーで検索実行
+    document.getElementById('search-id-input').addEventListener('keypress', (e) => {
+        if(e.key === 'Enter') searchFriend();
+    });
+
+    function searchFriend() {
+        const targetId = document.getElementById('search-id-input').value.trim();
+        if(!targetId) return;
+        if(targetId === myId) return alert("自分のIDです");
+        if(friends.find(f => f.id === targetId)) return alert("既に友だちです");
+
+        searchTargetId = targetId;
+        
+        // とりあえず結果を表示する (オフラインでも表示するため)
+        // デフォルト表示 (IDを名前とする)
+        document.getElementById('result-name').innerText = targetId; 
+        document.getElementById('result-avatar').innerText = '?';
+        document.getElementById('result-avatar').style.backgroundImage = 'none';
+        document.getElementById('result-avatar').style.backgroundColor = '#555';
+        
+        document.getElementById('search-result-area').style.display = 'flex';
+
+        // 存在確認のために接続を試みる (オンラインなら名前取得を試みる)
+        // ※PeerJSの仕様上、接続前に情報は取れないので、接続確立後に名前更新を行う仕組み
+        // ここでは「検索UIを表示すること」を優先する
+    }
+
+    function confirmAdd() {
+        if(!searchTargetId) return;
+        // 追加 (名前はとりあえずID、後で通信時に更新)
+        friends.push({ id: searchTargetId, name: searchTargetId, history: [], isBlocked: false, icon: {type:'text', char:'?'} });
+        saveFriends();
+        connectToPeer(searchTargetId); // 接続試行
+        
+        closeSearchModal();
+        renderFriendList();
+        showToast("友だちを追加しました");
+    }
+
+    /* 設定・アイコン */
     function openSettings() {
         document.getElementById('settings-id-disp').innerText = myId;
-        // 名前欄に現在の名前をセット
         document.getElementById('edit-name').value = myName;
-        
         tempIconType = myIcon.type; tempIconData = myIcon.imageData;
         document.getElementById('edit-char').value = myIcon.char;
         updatePreview(document.getElementById('preview-avatar'), myIcon);
         slideScreen('screen-settings', 'open');
     }
     function closeSettings() { slideScreen('screen-settings', 'close'); }
-
     function handleIconUpload(event) {
         const file = event.target.files[0];
         if (!file) return;
@@ -410,23 +466,14 @@
             el.innerText = icon.char || '👤'; if(icon.color) el.dataset.color = icon.color;
         }
     }
-    
-    // 設定保存（名前とアイコン）
     function saveSettings() {
         const newName = document.getElementById('edit-name').value.trim();
         if(!newName) return alert("名前を入力してください");
-        
-        myName = newName;
-        localStorage.setItem(KEY_NAME, myName);
-
+        myName = newName; localStorage.setItem(KEY_NAME, myName);
         myIcon = { type: tempIconType, imageData: tempIconData, color: getCurrentColor(), char: document.getElementById('edit-char').value || '👤' };
         localStorage.setItem(KEY_ICON, JSON.stringify(myIcon));
-        
-        updateHomeProfile(); 
-        closeSettings(); 
-        showToast("設定を保存しました");
+        updateHomeProfile(); closeSettings(); showToast("設定を保存しました");
     }
-
     function updateHomeProfile() {
         updatePreview(document.getElementById('home-avatar'), myIcon);
         document.getElementById('home-name').innerText = myName;
@@ -473,8 +520,10 @@
             friend = { id: senderId, name: "未登録", history: [], isBlocked: false, icon: {type:'text'} };
             friends.push(friend);
         }
+        // 情報更新
         if (data.senderIcon) friend.icon = data.senderIcon;
         if (data.senderName) friend.name = data.senderName;
+        
         const msgObj = { type: data.contentType || 'text', content: data.content, fileName: data.fileName, time: data.time, isMe: false, isRead: false };
         friend.history.push(msgObj);
         saveFriends();
@@ -579,9 +628,7 @@
     function toggleBlock() { const f=friends.find(x=>x.id===currentChatId); f.isBlocked=!f.isBlocked; saveFriends(); updateBlockUI(f.isBlocked); closeModal('modal-menu'); renderFriendList(); }
     function updateBlockUI(blocked) { document.getElementById('block-bar').style.display=blocked?'block':'none'; document.getElementById('input-area').style.display=blocked?'none':'flex'; }
     function deleteFriend() { if(!confirm("削除しますか？")) return; friends=friends.filter(x=>x.id!==currentChatId); saveFriends(); closeModal('modal-menu'); closeChat(); renderFriendList(); }
-    function addFriend() { const id=document.getElementById('add-id').value.trim(), name=document.getElementById('add-name').value.trim(); if(!id||id===myId||friends.find(x=>x.id===id)) return alert("追加不可"); friends.push({id, name:name||"名無し", history:[], isBlocked:false}); saveFriends(); connectToPeer(id); closeModal('modal-add'); renderFriendList(); alert("追加しました"); }
     function openMyQR(){ document.getElementById('modal-qr').style.display='flex'; }
-    function openAddModal(){ document.getElementById('modal-add').style.display='flex'; document.getElementById('add-id').value=''; }
     function closeModal(id){ document.getElementById(id).style.display='none'; }
 </script>
 </body>
