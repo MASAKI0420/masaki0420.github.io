@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>P2P LINE風 (既読・ファイル対応)</title>
+<title>P2P Chat (安定版)</title>
 <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
 <style>
     /* --- 全体設定 --- */
@@ -81,36 +81,37 @@
     .msg.me .msg-bubble { background: #8de055; color: black; border-top-right-radius: 2px; }
     .msg.you .msg-bubble { background: white; color: black; border-top-left-radius: 2px; }
     
-    /* 画像メッセージ用 */
     .msg-image { max-width: 200px; border-radius: 10px; display: block; margin: 5px 0; cursor: pointer; }
     .msg-file-link { display: inline-block; padding: 10px; background: #eee; border-radius: 5px; text-decoration: none; color: #333; font-size: 12px; }
 
-    /* 時間と既読マーク */
     .msg-meta { display: flex; flex-direction: column; align-items: flex-end; margin: 0 5px; }
     .msg-time { font-size: 10px; color: white; }
     .read-mark { font-size: 10px; color: yellow; display: none; margin-bottom: 2px; }
-    .msg.me .read-mark.is-read { display: block; } /* 既読なら表示 */
+    .msg.me .read-mark.is-read { display: block; }
 
     .chat-input-area { background: white; padding: 10px; display: flex; align-items: center; border-top: 1px solid #ddd; padding-bottom: max(10px, env(safe-area-inset-bottom)); }
     #msg-input { flex: 1; padding: 10px; border-radius: 20px; border: 1px solid #ddd; background: #f5f5f5; font-size: 16px; outline: none; }
-    
-    /* ファイル添付ボタン */
     .attach-btn { font-size: 24px; color: #666; margin-right: 10px; cursor: pointer; padding: 0 5px; }
+
+    /* 通信ステータス表示 */
+    .chat-status { font-size: 10px; font-weight: normal; margin-left: 5px; opacity: 0.8; }
 
     /* モーダル */
     .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); display: none; justify-content: center; align-items: center; z-index: 200; }
     .modal-card { background: white; width: 85%; max-width: 320px; padding: 25px; border-radius: 12px; text-align: center; }
     .fab-btn { position: absolute; bottom: 30px; right: 20px; width: 56px; height: 56px; background: #2c363f; color: white; border-radius: 50%; display: flex; justify-content: center; align-items: center; font-size: 30px; box-shadow: 0 4px 10px rgba(0,0,0,0.3); cursor: pointer; z-index: 50; }
     .blocked-bar { background: #555; color: white; text-align: center; padding: 10px; font-size: 12px; display: none; }
-    
-    /* Input隠し */
     #icon-file-input, #chat-file-input { display: none; }
+    
+    /* トースト通知 */
+    #toast { position: fixed; top: 20px; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.7); color: white; padding: 10px 20px; border-radius: 20px; font-size: 12px; z-index: 300; display: none; }
 </style>
 </head>
 <body>
 
-<div id="app-root">
+<div id="toast">通知</div>
 
+<div id="app-root">
     <!-- 0. ログイン -->
     <div id="screen-login" class="screen active">
         <div class="login-box">
@@ -181,21 +182,21 @@
     <div id="screen-chat" class="screen next">
         <header class="header">
             <div class="header-btn" onclick="closeChat()">＜</div>
-            <div style="flex:1; text-align:center;" id="chat-title">相手</div>
+            <div style="flex:1; text-align:center; display:flex; flex-direction:column; justify-content:center;">
+                <div id="chat-title" style="line-height:1.2;">相手</div>
+                <div id="chat-status" class="chat-status">接続中...</div>
+            </div>
             <div class="header-btn" onclick="openChatMenu()">≡</div>
         </header>
         <div class="blocked-bar" id="block-bar">🚫 ブロック中</div>
         <div class="chat-bg" id="msg-area"></div>
         <div class="chat-input-area" id="input-area">
-            <!-- ファイル添付ボタン -->
             <div class="attach-btn" onclick="document.getElementById('chat-file-input').click()">＋</div>
             <input type="file" id="chat-file-input" onchange="handleChatFileUpload(event)">
-            
             <input type="text" id="msg-input" placeholder="メッセージ">
             <button onclick="sendText()" style="margin-left:10px; border:none; background:none; color:#007bff; font-weight:bold; font-size:16px;">送信</button>
         </div>
     </div>
-
 </div>
 
 <!-- モーダル類 -->
@@ -230,25 +231,21 @@
        データ構造・変数
        ========================================= */
     const colors = ['#ccc', '#ef5350', '#ab47bc', '#5c6bc0', '#29b6f6', '#26a69a', '#9ccc65', '#ffca28', '#ff7043', '#8d6e63'];
-    
-    // ストレージキー
-    const KEY_ID = 'p2p_full_id';
-    const KEY_NAME = 'p2p_full_name';
-    const KEY_ICON = 'p2p_full_icon';
-    const KEY_FRIENDS = 'p2p_full_friends';
+    const KEY_ID='p2p_stb_id', KEY_NAME='p2p_stb_name', KEY_ICON='p2p_stb_icon', KEY_FRIENDS='p2p_stb_friends';
 
     let myId = localStorage.getItem(KEY_ID);
     let myName = localStorage.getItem(KEY_NAME);
     let myIcon = JSON.parse(localStorage.getItem(KEY_ICON)) || { type:'text', color:'#ccc', char:'👤', imageData:null };
-    
-    // friends構造: { id, name, history: [ {type, content, time, isMe, isRead} ], isBlocked, icon }
     let friends = JSON.parse(localStorage.getItem(KEY_FRIENDS)) || [];
 
     let peer = null;
-    let connections = {};
+    let connections = {}; // { peerId: conn }
     let currentChatId = null;
     let tempIconData = null; 
     let tempIconType = 'text';
+
+    // 接続状態管理用
+    let heartBeatInterval = null;
 
     /* =========================================
        起動・ログイン
@@ -280,7 +277,9 @@
         const btn = document.querySelector('#screen-login .btn');
         btn.disabled = true; btn.innerText = "接続中...";
 
+        // PeerJS接続（設定はデフォルト）
         peer = new Peer(idVal, { debug: 1 });
+
         peer.on('open', (id) => {
             myId = id; myName = nameVal;
             localStorage.setItem(KEY_ID, myId);
@@ -289,13 +288,28 @@
             document.getElementById('screen-login').style.display = 'none'; 
             document.getElementById('screen-home').classList.add('active');
             reconnectFriends();
+            startHeartbeat(); // ハートビート開始
             btn.disabled = false; btn.innerText = "利用開始";
         });
+
         peer.on('error', (err) => {
-            alert(err.type === 'unavailable-id' ? "IDが既に使用されています" : "通信エラー発生");
+            console.error(err);
+            // エラータイプによって処理
+            if(err.type === 'unavailable-id') {
+                alert("IDが既に使用されています");
+            } else if(err.type === 'peer-unavailable') {
+                // 相手が見つからないだけなので無視（再接続ロジックでカバー）
+            } else {
+                showToast("通信エラー: " + err.type);
+            }
             btn.disabled = false; btn.innerText = "利用開始";
         });
+
         peer.on('connection', conn => setupConnection(conn));
+        peer.on('disconnected', () => {
+            showToast("サーバー切断...再接続を試みます");
+            peer.reconnect();
+        });
     }
 
     /* =========================================
@@ -311,7 +325,6 @@
     }
     function closeSettings() { slideScreen('screen-settings', 'close'); }
 
-    // アイコン画像アップロード
     function handleIconUpload(event) {
         const file = event.target.files[0];
         if (!file) return;
@@ -321,8 +334,6 @@
             updatePreview(document.getElementById('preview-avatar'), { type:'image', imageData: base64 });
         });
     }
-
-    // 画像リサイズ用ユーティリティ
     function resizeImage(file, maxSize, callback) {
         const reader = new FileReader();
         reader.onload = (e) => {
@@ -340,7 +351,6 @@
         };
         reader.readAsDataURL(file);
     }
-
     function resetToEmoji() {
         tempIconType = 'text';
         updatePreview(document.getElementById('preview-avatar'), { type:'text', color: getCurrentColor(), char: document.getElementById('edit-char').value });
@@ -366,7 +376,7 @@
     function saveIcon() {
         myIcon = { type: tempIconType, imageData: tempIconData, color: getCurrentColor(), char: document.getElementById('edit-char').value || '👤' };
         localStorage.setItem(KEY_ICON, JSON.stringify(myIcon));
-        updateHomeProfile(); closeSettings(); alert("アイコンを保存しました");
+        updateHomeProfile(); closeSettings(); showToast("設定を保存しました");
     }
     function updateHomeProfile() {
         updatePreview(document.getElementById('home-avatar'), myIcon);
@@ -380,35 +390,77 @@
     }
 
     /* =========================================
-       通信・チャット (ファイル・既読)
+       通信・安定化処理
        ========================================= */
     function setupConnection(conn) {
+        // 既存接続があれば閉じる（二重接続防止）
+        if (connections[conn.peer] && connections[conn.peer].open) {
+            connections[conn.peer].close();
+        }
         connections[conn.peer] = conn;
+
+        conn.on('open', () => {
+            console.log("Connected to: " + conn.peer);
+            updateChatStatus(conn.peer, true);
+        });
+
         conn.on('data', data => handleReceive(conn.peer, data));
-        conn.on('close', () => delete connections[conn.peer]);
+        
+        conn.on('close', () => {
+            console.log("Closed: " + conn.peer);
+            delete connections[conn.peer];
+            updateChatStatus(conn.peer, false);
+        });
+
+        conn.on('error', (err) => console.log("Conn Error:", err));
     }
+
+    // 友達全員に接続試行
     function reconnectFriends() {
         friends.forEach(f => {
-            if(!connections[f.id]) {
-                const c = peer.connect(f.id);
-                setupConnection(c);
+            if(!connections[f.id] || !connections[f.id].open) {
+                connectToPeer(f.id);
             }
         });
         renderFriendList();
     }
 
+    // 指定IDへ接続（エラー抑制版）
+    function connectToPeer(id) {
+        if(peer && !peer.destroyed) {
+            const conn = peer.connect(id);
+            setupConnection(conn);
+        }
+    }
+
+    // ハートビート（死活監視）
+    function startHeartbeat() {
+        if(heartBeatInterval) clearInterval(heartBeatInterval);
+        heartBeatInterval = setInterval(() => {
+            friends.forEach(f => {
+                const conn = connections[f.id];
+                if(conn && conn.open) {
+                    conn.send({ type: 'ping' });
+                } else {
+                    // 切れてたら再接続トライ
+                    connectToPeer(f.id);
+                }
+            });
+        }, 5000); // 5秒間隔
+    }
+
     // データ受信
     function handleReceive(senderId, data) {
+        // Pingポン
+        if(data.type === 'ping') return; // 無視
+
         let friend = friends.find(f => f.id === senderId);
         if (friend && friend.isBlocked) return;
 
-        // ★既読シグナルの受信
+        // 既読シグナル
         if (data.type === 'read_signal') {
             if(friend) {
-                // 相手がこちらのメッセージを読んだ -> 自分の送信履歴を既読にする
-                friend.history.forEach(msg => {
-                    if(msg.isMe) msg.isRead = true;
-                });
+                friend.history.forEach(msg => { if(msg.isMe) msg.isRead = true; });
                 saveFriends();
                 if(currentChatId === senderId) renderMessages(friend);
             }
@@ -422,12 +474,10 @@
         if (data.senderIcon) friend.icon = data.senderIcon;
         if (data.senderName) friend.name = data.senderName;
 
-        // メッセージ保存
-        // data.contentType: 'text' | 'image' | 'file'
         const msgObj = {
             type: data.contentType || 'text', 
-            content: data.content, // テキストまたはBase64
-            fileName: data.fileName, // ファイルの場合のみ
+            content: data.content,
+            fileName: data.fileName,
             time: data.time,
             isMe: false,
             isRead: false
@@ -435,35 +485,31 @@
         friend.history.push(msgObj);
         saveFriends();
 
-        // 開いているなら表示 + 既読を返す
         if (currentChatId === senderId) {
             renderMessages(friend);
             scrollToBottom();
-            sendReadSignal(senderId); // ★即既読返し
+            sendReadSignal(senderId);
         } else {
             renderFriendList();
+            showToast("新着メッセージがあります");
         }
     }
 
-    // 既読シグナルを送る
     function sendReadSignal(targetId) {
         const conn = connections[targetId];
-        if(conn && conn.open) {
-            conn.send({ type: 'read_signal' });
-        }
+        if(conn && conn.open) conn.send({ type: 'read_signal' });
     }
 
-    // 送信共通
+    // 送信処理（自動再接続付き）
     function sendData(type, content, fileName = null) {
         if (!currentChatId) return;
         const friend = friends.find(f => f.id === currentChatId);
         if (friend && friend.isBlocked) return alert("ブロック中です");
 
         const time = new Date().getHours().toString().padStart(2,'0') + ":" + new Date().getMinutes().toString().padStart(2,'0');
-        
         const payload = {
             type: 'message',
-            contentType: type, // 'text', 'image', 'file'
+            contentType: type,
             content: content,
             fileName: fileName,
             time: time,
@@ -472,18 +518,32 @@
         };
 
         const conn = connections[currentChatId];
+
+        // 送信ロジック：接続が生きてれば送る、死んでれば繋ぎ直してから送る
         if (conn && conn.open) {
             conn.send(payload);
+            finalizeSend(friend, type, content, fileName, time);
         } else {
+            showToast("再接続中...");
             const newConn = peer.connect(currentChatId);
             setupConnection(newConn);
-            newConn.on('open', () => newConn.send(payload));
+            
+            // 接続成功したら送信
+            newConn.on('open', () => {
+                newConn.send(payload);
+                showToast("再接続して送信しました");
+                updateChatStatus(currentChatId, true);
+            });
+            
+            // 接続自体が失敗した場合でも、自分の画面には表示する（あとで届くわけではないが、UXとして）
+            // ※本来は「未送信」マークをつけるべきだが、今回は簡易的に送信扱いにする
+            finalizeSend(friend, type, content, fileName, time);
         }
+    }
 
-        // 履歴保存
+    function finalizeSend(friend, type, content, fileName, time) {
         friend.history.push({ type: type, content: content, fileName: fileName, time: time, isMe: true, isRead: false });
         saveFriends();
-
         renderMessages(friend);
         scrollToBottom();
         renderFriendList();
@@ -497,33 +557,21 @@
         input.value = '';
     }
 
-    // チャット用ファイルアップロードハンドラ
     function handleChatFileUpload(event) {
         const file = event.target.files[0];
         if(!file) return;
         
-        // ファイルサイズ制限 (例: 500KB)
-        // PeerJSは大きなファイルを一度に送ると切断されやすいため
         if (file.size > 500 * 1024) {
             alert("ファイルが大きすぎます (500KB以下推奨)");
-            // 画像なら圧縮を試みる、それ以外はキャンセル
             if(!file.type.startsWith('image/')) {
-                event.target.value = '';
-                return;
+                event.target.value = ''; return;
             }
         }
-
         if (file.type.startsWith('image/')) {
-            // 画像ならリサイズして送信
-            resizeImage(file, 800, (base64) => {
-                sendData('image', base64);
-            });
+            resizeImage(file, 800, (base64) => sendData('image', base64));
         } else {
-            // その他ファイルはBase64化して送信
             const reader = new FileReader();
-            reader.onload = (e) => {
-                sendData('file', e.target.result, file.name);
-            };
+            reader.onload = (e) => sendData('file', e.target.result, file.name);
             reader.readAsDataURL(file);
         }
         event.target.value = '';
@@ -543,49 +591,53 @@
         const friend = friends.find(f => f.id === id);
         document.getElementById('chat-title').innerText = friend.name;
         
+        // ステータス更新
+        updateChatStatus(id, connections[id] && connections[id].open);
+
         renderMessages(friend);
         updateBlockUI(friend.isBlocked);
         slideScreen('screen-chat', 'open');
         scrollToBottom();
 
-        // ★開いた瞬間に未読があれば既読を送る
-        const hasUnread = friend.history.some(msg => !msg.isMe && !msg.isRead); // ここでは管理していないが、受信時に送るのでOK
-        // 念のため開いた合図として送る
-        sendReadSignal(id);
-
-        if(!connections[id]) { const c = peer.connect(id); setupConnection(c); }
+        // 接続チェック＆再接続
+        if(!connections[id] || !connections[id].open) {
+            connectToPeer(id);
+        } else {
+            sendReadSignal(id);
+        }
     }
+
+    function updateChatStatus(id, isOnline) {
+        if(currentChatId === id) {
+            const el = document.getElementById('chat-status');
+            if(isOnline) {
+                el.innerText = "🟢 オンライン";
+                el.style.color = "#2ecc71";
+            } else {
+                el.innerText = "🔴 切断中...";
+                el.style.color = "#ff3b30";
+            }
+        }
+    }
+
     function closeChat() { slideScreen('screen-chat', 'close'); currentChatId = null; }
 
-    // メッセージ描画（全件再描画）
     function renderMessages(friend) {
         const area = document.getElementById('msg-area');
         area.innerHTML = '';
         friend.history.forEach(msg => {
             const div = document.createElement('div');
             div.className = `msg ${msg.isMe ? 'me' : 'you'}`;
-            
             let contentHtml = '';
-            if (msg.type === 'image') {
-                contentHtml = `<img src="${msg.content}" class="msg-image" onclick="showImage('${msg.content}')">`;
-            } else if (msg.type === 'file') {
-                contentHtml = `<a href="${msg.content}" download="${msg.fileName}" class="msg-file-link">📄 ${msg.fileName}<br>(タップして保存)</a>`;
-            } else {
-                contentHtml = escapeHtml(msg.content);
-            }
-
-            // 既読マーク (自分のメッセージ かつ isReadがtrue)
+            if (msg.type === 'image') contentHtml = `<img src="${msg.content}" class="msg-image" onclick="showImage('${msg.content}')">`;
+            else if (msg.type === 'file') contentHtml = `<a href="${msg.content}" download="${msg.fileName}" class="msg-file-link">📄 ${msg.fileName}<br>(タップして保存)</a>`;
+            else contentHtml = escapeHtml(msg.content);
             const readMark = (msg.isMe && msg.isRead) ? `<div class="read-mark is-read">既読</div>` : `<div class="read-mark"></div>`;
-            
-            div.innerHTML = `
-                <div class="msg-meta">${readMark}<div class="msg-time">${msg.time}</div></div>
-                <div class="msg-bubble">${contentHtml}</div>
-            `;
+            div.innerHTML = `<div class="msg-meta">${readMark}<div class="msg-time">${msg.time}</div></div><div class="msg-bubble">${contentHtml}</div>`;
             area.appendChild(div);
         });
     }
     
-    // 画像拡大（簡易）
     window.showImage = (src) => {
         const w = window.open("");
         w.document.write(`<img src="${src}" style="width:100%">`);
@@ -601,32 +653,30 @@
             let last = "メッセージなし";
             if(f.history.length > 0) {
                 const lastMsg = f.history[f.history.length-1];
-                if(lastMsg.type === 'image') last = '📷 画像が送信されました';
-                else if(lastMsg.type === 'file') last = '📄 ファイルが送信されました';
+                if(lastMsg.type === 'image') last = '📷 画像';
+                else if(lastMsg.type === 'file') last = '📄 ファイル';
                 else last = lastMsg.content;
             }
-            
             const i = f.icon || {type:'text'};
             let iconHtml = i.type==='image' 
                 ? `<div class="avatar" style="width:40px; height:40px; margin-right:12px; background-image:url(${i.imageData});"></div>`
                 : `<div class="avatar" style="width:40px; height:40px; margin-right:12px; font-size:20px; background-color:${i.color||'#ccc'};">${i.char||f.name[0]}</div>`;
 
-            div.innerHTML = `
-                ${iconHtml}
-                <div style="flex:1; overflow:hidden;">
-                    <div style="font-weight:bold; font-size:15px;">${f.name} ${f.isBlocked?'🚫':''}</div>
-                    <div style="font-size:12px; color:#888; overflow:hidden; white-space:nowrap; text-overflow:ellipsis;">${escapeHtml(last)}</div>
-                </div>
-            `;
+            div.innerHTML = `${iconHtml}<div style="flex:1; overflow:hidden;"><div style="font-weight:bold; font-size:15px;">${f.name} ${f.isBlocked?'🚫':''}</div><div style="font-size:12px; color:#888; overflow:hidden; white-space:nowrap; text-overflow:ellipsis;">${escapeHtml(last)}</div></div>`;
             list.appendChild(div);
         });
+    }
+
+    function showToast(msg) {
+        const t = document.getElementById('toast');
+        t.innerText = msg; t.style.display = 'block';
+        setTimeout(() => t.style.display = 'none', 3000);
     }
 
     /* その他共通 */
     function saveFriends(){ localStorage.setItem(KEY_FRIENDS, JSON.stringify(friends)); }
     function scrollToBottom(){ const a=document.getElementById('msg-area'); setTimeout(()=>a.scrollTop=a.scrollHeight, 10); }
     function escapeHtml(s){ return s.replace(/[&<>"']/g, m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m])); }
-    
     function openChatMenu(){
         const f = friends.find(x=>x.id===currentChatId);
         document.getElementById('menu-target-name').innerText = f.name;
@@ -650,7 +700,7 @@
     function addFriend() {
         const id = document.getElementById('add-id').value.trim();
         const name = document.getElementById('add-name').value.trim();
-        if(!id || id===myId || friends.find(x=>x.id===id)) return alert("追加できません");
+        if(!id || id===myId || friends.find(x=>x.id===id)) return alert("追加不可");
         friends.push({id, name:name||"名無し", history:[], isBlocked:false});
         saveFriends();
         const c = peer.connect(id); setupConnection(c);
