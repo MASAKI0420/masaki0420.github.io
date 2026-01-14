@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>P2P Chat (エラー抑制版)</title>
+<title>P2P Chat (名前変更機能付)</title>
 <!-- アイコン自動生成 -->
 <script>
 (function() {
@@ -87,6 +87,9 @@
     .color-dot { width: 32px; height: 32px; border-radius: 50%; cursor: pointer; border: 2px solid #fff; box-shadow: 0 0 2px rgba(0,0,0,0.3); }
     .color-dot.selected { border-color: #333; transform: scale(1.1); }
     .emoji-input { width: 60px; font-size: 30px; text-align: center; border: 1px solid #ddd; border-radius: 5px; margin-left: 10px; }
+    
+    /* 設定画面の入力フィールド用 */
+    .settings-input { width: 100%; padding: 10px; font-size: 16px; border: 1px solid #ddd; border-radius: 5px; text-align: center; margin-bottom: 15px; background: #f9f9f9; }
 
     /* 3. トーク */
     #screen-chat { background-color: #7297c8; }
@@ -167,13 +170,21 @@
         </header>
         <div class="scroll-content">
             <div class="settings-card">
-                <h3>アイコン編集</h3>
+                <h3>プロフィール編集</h3>
+                
                 <div style="margin:15px 0;">
                     <div class="avatar" id="preview-avatar" style="width:80px; height:80px; font-size:40px; margin:0 auto;">👤</div>
                 </div>
+
+                <!-- 名前変更エリア -->
+                <p style="font-size:12px; color:#888; margin-bottom:5px;">表示名</p>
+                <input type="text" id="edit-name" class="settings-input" placeholder="名前">
+
+                <!-- アイコン変更エリア -->
                 <button class="btn btn-blue" onclick="document.getElementById('icon-file-input').click()">画像を選択する</button>
                 <input type="file" id="icon-file-input" accept="image/*" onchange="handleIconUpload(event)">
                 <button class="btn btn-gray" onclick="resetToEmoji()" style="font-size:12px; padding:8px;">画像をやめて文字にする</button>
+                
                 <hr style="margin:15px 0; border:none; border-top:1px solid #eee;">
                 <p style="font-size:12px; color:#888;">または色と文字を選択</p>
                 <div class="color-picker" id="color-picker"></div>
@@ -181,8 +192,10 @@
                     <span>文字: </span>
                     <input type="text" id="edit-char" class="emoji-input" maxlength="1" value="👤">
                 </div>
-                <button class="btn btn-dark" onclick="saveIcon()">設定を保存する</button>
+                
+                <button class="btn btn-dark" onclick="saveSettings()">設定を保存する</button>
             </div>
+            
             <div style="margin-top:20px; padding:20px; text-align:center;">
                 <p style="font-size:12px; color:#666;">現在のID: <span id="settings-id-disp" style="font-weight:bold;">---</span></p>
                 <button class="btn btn-red" onclick="changeID()">IDを変更 (初期化)</button>
@@ -265,7 +278,7 @@
         updatePreview(document.getElementById('preview-avatar'), { type:'text', color: getCurrentColor(), char: e.target.value });
     });
 
-    // ★終了・非表示時にIDを解放する重要処理
+    // 終了処理
     const cleanup = () => { if(peer && !peer.destroyed) peer.destroy(); };
     window.addEventListener('beforeunload', cleanup);
     window.addEventListener('pagehide', cleanup);
@@ -274,7 +287,7 @@
         else if(document.visibilityState === 'visible' && myId) initPeer(myId);
     });
 
-    // ★起動時チェック
+    // 起動時
     if (myId && myName) {
         document.getElementById('screen-home').classList.add('active'); 
         updateHomeProfile();
@@ -306,7 +319,6 @@
         });
     }
 
-    // ★ID重複エラーを無視してループ接続する強力な関数
     function initPeer(id, callback) {
         if(peer && !peer.destroyed) return;
 
@@ -324,7 +336,6 @@
         peer.on('error', (err) => {
             console.log("Peer Error:", err.type);
             if(err.type === 'unavailable-id') {
-                // ★エラーを出さずに、1.5秒待って勝手にリトライする
                 showToast("接続待機中... (前の接続を整理しています)");
                 if(peer) peer.destroy();
                 peer = null;
@@ -344,6 +355,9 @@
 
     function openSettings() {
         document.getElementById('settings-id-disp').innerText = myId;
+        // 名前欄に現在の名前をセット
+        document.getElementById('edit-name').value = myName;
+        
         tempIconType = myIcon.type; tempIconData = myIcon.imageData;
         document.getElementById('edit-char').value = myIcon.char;
         updatePreview(document.getElementById('preview-avatar'), myIcon);
@@ -396,11 +410,23 @@
             el.innerText = icon.char || '👤'; if(icon.color) el.dataset.color = icon.color;
         }
     }
-    function saveIcon() {
+    
+    // 設定保存（名前とアイコン）
+    function saveSettings() {
+        const newName = document.getElementById('edit-name').value.trim();
+        if(!newName) return alert("名前を入力してください");
+        
+        myName = newName;
+        localStorage.setItem(KEY_NAME, myName);
+
         myIcon = { type: tempIconType, imageData: tempIconData, color: getCurrentColor(), char: document.getElementById('edit-char').value || '👤' };
         localStorage.setItem(KEY_ICON, JSON.stringify(myIcon));
-        updateHomeProfile(); closeSettings(); showToast("設定を保存しました");
+        
+        updateHomeProfile(); 
+        closeSettings(); 
+        showToast("設定を保存しました");
     }
+
     function updateHomeProfile() {
         updatePreview(document.getElementById('home-avatar'), myIcon);
         document.getElementById('home-name').innerText = myName;
