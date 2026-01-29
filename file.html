@@ -3,126 +3,219 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>DropShare - URL入力で受信</title>
+    <title>GigaShare - P2P File Transfer</title>
+    <!-- Vue.js -->
     <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
+    <!-- PeerJS (通信) -->
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+    <!-- QRCode.js (QRコード生成) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <!-- Tailwind CSS (デザイン) -->
     <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700;900&display=swap" rel="stylesheet">
     <style>
+        body { font-family: 'Noto Sans JP', sans-serif; background-color: #f3f4f6; }
         [v-cloak] { display: none; }
-        .fade-enter-active, .fade-leave-active { transition: opacity 0.5s ease; }
-        .fade-enter-from, .fade-leave-to { opacity: 0; }
-        /* ローディング */
-        .spinner { border: 3px solid rgba(255,255,255,0.3); border-radius: 50%; border-top: 3px solid #fff; width: 20px; height: 20px; animation: spin 1s linear infinite; }
-        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        .giga-header { background: #b91c1c; color: white; } /* ギガファイル風の赤 */
+        .pattern-bg { background-image: radial-gradient(#cbd5e1 1px, transparent 1px); background-size: 20px 20px; }
+        .tab-active { background-color: #b91c1c; color: white; border-color: #b91c1c; }
+        .tab-inactive { background-color: white; color: #4b5563; border-color: #e5e7eb; }
+        /* アニメーション */
+        @keyframes progress-stripes { from { background-position: 40px 0; } to { background-position: 0 0; } }
+        .progress-bar { background-image: linear-gradient(45deg,rgba(255,255,255,.15) 25%,transparent 25%,transparent 50%,rgba(255,255,255,.15) 50%,rgba(255,255,255,.15) 75%,transparent 75%,transparent); background-size: 40px 40px; animation: progress-stripes 1s linear infinite; }
     </style>
 </head>
-<body class="bg-gray-900 text-gray-100 min-h-screen flex items-center justify-center p-4 font-sans">
+<body class="text-gray-800 pattern-bg min-h-screen">
 
-    <div id="app" v-cloak class="w-full max-w-lg bg-gray-800 rounded-2xl shadow-2xl overflow-hidden border border-gray-700">
+    <div id="app" v-cloak class="max-w-4xl mx-auto pb-20">
         
         <!-- ヘッダー -->
-        <div class="bg-gradient-to-r from-violet-600 to-fuchsia-600 p-6 text-center">
-            <h1 class="text-2xl font-bold tracking-wider text-white">DropShare</h1>
-            <p class="text-violet-100 text-xs mt-1">URLを貼り付けてファイル受信</p>
-        </div>
-
-        <div class="p-6 space-y-6">
-
-            <!-- タブ切り替え -->
-            <div class="flex bg-gray-700 rounded-lg p-1">
-                <button @click="switchMode('send')" :class="{'bg-violet-500 text-white shadow': mode === 'send', 'text-gray-400 hover:text-white': mode !== 'send'}" class="flex-1 py-2 rounded-md text-sm font-medium transition-all">送る</button>
-                <button @click="switchMode('receive')" :class="{'bg-fuchsia-500 text-white shadow': mode === 'receive', 'text-gray-400 hover:text-white': mode !== 'receive'}" class="flex-1 py-2 rounded-md text-sm font-medium transition-all">受け取る</button>
-            </div>
-
-            <!-- ▼ 送信モード ▼ -->
-            <div v-if="mode === 'send'" class="space-y-5">
-                <div class="border-2 border-dashed border-gray-600 rounded-xl p-8 text-center hover:bg-gray-700/30 transition relative group bg-gray-800/50">
-                    <input type="file" @change="handleFileSelect" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10">
-                    <div v-if="!selectedFile">
-                        <div class="mx-auto w-12 h-12 text-gray-500 mb-3 group-hover:text-violet-400 transition transform group-hover:scale-110">
-                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" /></svg>
-                        </div>
-                        <p class="text-gray-300 font-medium">ファイルを選択</p>
-                    </div>
-                    <div v-else>
-                        <p class="text-white font-bold break-all text-sm">{{ selectedFile.name }}</p>
-                        <p class="text-gray-400 text-xs mt-1">{{ formatSize(selectedFile.size) }}</p>
-                    </div>
+        <header class="giga-header p-4 shadow-md mb-8">
+            <div class="container mx-auto flex items-center justify-between">
+                <div class="flex items-center gap-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="bg-white text-red-700 rounded p-1"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                    <h1 class="text-2xl font-black tracking-tighter">GIGA<span class="font-light">SHARE</span> <span class="text-xs bg-red-800 px-2 py-0.5 rounded ml-2 align-middle font-normal">P2P Edition</span></h1>
                 </div>
-
-                <!-- URL生成表示 -->
-                <div v-if="myId && selectedFile" class="bg-gray-900/50 p-4 rounded-lg border border-gray-700 animate-fade-in">
-                    <label class="text-gray-400 text-[10px] font-bold uppercase mb-2 block">相手に送る共有URL</label>
-                    <div class="flex gap-2">
-                        <input type="text" readonly :value="shareUrl" class="flex-1 bg-gray-800 text-gray-300 text-xs px-3 py-2 rounded border border-gray-600 focus:outline-none select-all">
-                        <button @click="copyLink" class="bg-violet-600 hover:bg-violet-500 text-white px-3 py-2 rounded text-xs font-bold transition whitespace-nowrap">コピー</button>
-                    </div>
-                </div>
-                
-                <div v-if="statusMsg" :class="statusColor" class="p-3 rounded text-center text-sm font-bold flex items-center justify-center gap-2">
-                    <span v-if="statusType === 'loading'" class="spinner w-4 h-4 border-2"></span>
-                    {{ statusMsg }}
+                <div class="text-xs text-red-100 hidden sm:block">
+                    登録不要・容量無制限(ブラウザ依存)・即時転送
                 </div>
             </div>
+        </header>
 
-            <!-- ▼ 受信モード ▼ -->
-            <div v-if="mode === 'receive'" class="space-y-4">
-                
-                <!-- URL入力エリア -->
-                <div v-if="!receivedFileUrl && !isAutoConnecting">
-                    <label class="block text-xs text-gray-400 mb-1 font-bold">共有URL または ID を貼り付け</label>
-                    <div class="flex gap-2">
-                        <input type="text" v-model="manualInput" placeholder="https://.../?id=XXXX" class="flex-1 bg-gray-900 border border-gray-600 rounded px-3 py-3 text-sm text-white focus:border-fuchsia-500 focus:outline-none transition">
-                        <button @click="connectFromInput" :disabled="!manualInput" class="bg-fuchsia-600 hover:bg-fuchsia-500 disabled:opacity-50 disabled:cursor-not-allowed text-white px-5 py-2 rounded font-bold transition">
-                            受信
-                        </button>
-                    </div>
-                    <p class="text-[10px] text-gray-500 mt-2">
-                        相手から送られたURLをそのまま貼り付けて「受信」を押してください。
-                    </p>
-                </div>
-
-                <!-- ステータス表示 -->
-                <div v-if="statusMsg" :class="statusColor" class="p-4 rounded-lg text-center text-sm font-bold flex flex-col items-center gap-2">
-                    <div v-if="statusType === 'loading'" class="spinner border-fuchsia-200 border-t-fuchsia-600"></div>
-                    {{ statusMsg }}
-                </div>
-
-                <!-- ダウンロードボタン -->
-                <div v-if="receivedFileUrl" class="text-center pt-2">
-                    <a :href="receivedFileUrl" :download="receivedFileName" class="inline-flex items-center gap-2 bg-fuchsia-500 hover:bg-fuchsia-400 text-white font-bold py-3 px-8 rounded-full shadow-lg shadow-fuchsia-500/30 transition transform hover:scale-105">
+        <!-- メインコンテンツ -->
+        <div class="container mx-auto px-4">
+            
+            <div class="bg-white rounded shadow-lg overflow-hidden border border-gray-200">
+                <!-- タブ -->
+                <div class="flex text-center font-bold text-lg border-b border-gray-200">
+                    <button @click="switchMode('send')" :class="mode === 'send' ? 'tab-active' : 'tab-inactive'" class="flex-1 py-4 transition-colors duration-200 flex items-center justify-center gap-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+                        アップロード（送信）
+                    </button>
+                    <button @click="switchMode('receive')" :class="mode === 'receive' ? 'tab-active' : 'tab-inactive'" class="flex-1 py-4 transition-colors duration-200 flex items-center justify-center gap-2">
                         <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
-                        保存する
-                    </a>
-                    <button @click="resetReceive" class="block mx-auto mt-4 text-xs text-gray-400 hover:text-white underline">別のファイルを受け取る</button>
+                        ダウンロード（受信）
+                    </button>
+                </div>
+
+                <!-- ▼ 送信画面 ▼ -->
+                <div v-if="mode === 'send'" class="p-6 sm:p-10">
+                    
+                    <!-- 1. ファイル選択 -->
+                    <div class="mb-8">
+                        <h2 class="text-xl font-bold text-gray-700 mb-2 border-l-4 border-red-600 pl-3">1. ファイルを選択</h2>
+                        <div class="border-2 border-dashed border-gray-300 rounded-xl p-12 text-center hover:bg-red-50 hover:border-red-300 transition relative group bg-gray-50">
+                            <input type="file" @change="handleFileSelect" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10">
+                            <div v-if="!selectedFile">
+                                <div class="mx-auto w-16 h-16 text-gray-400 mb-4 group-hover:text-red-500 transition">
+                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" /></svg>
+                                </div>
+                                <p class="text-gray-500 font-bold text-lg">ここにファイルをドロップ</p>
+                                <p class="text-gray-400 text-sm mt-1">またはクリックしてファイルを選択</p>
+                            </div>
+                            <div v-else>
+                                <div class="inline-block bg-red-100 text-red-600 p-3 rounded-full mb-3">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"></path><polyline points="13 2 13 9 20 9"></polyline></svg>
+                                </div>
+                                <p class="text-gray-800 font-bold text-xl break-all">{{ selectedFile.name }}</p>
+                                <p class="text-gray-500 font-mono mt-1">{{ formatSize(selectedFile.size) }}</p>
+                                <p class="text-green-600 font-bold text-sm mt-2">準備完了</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- メモ欄 -->
+                    <div class="mb-8" v-if="selectedFile">
+                         <h2 class="text-lg font-bold text-gray-700 mb-2 border-l-4 border-gray-400 pl-3">メモ (任意)</h2>
+                         <textarea v-model="memo" placeholder="相手へのメッセージを入力できます" class="w-full border border-gray-300 rounded p-3 text-sm focus:border-red-500 focus:ring-1 focus:ring-red-500 outline-none"></textarea>
+                    </div>
+
+                    <!-- 2. 共有URL発行 -->
+                    <div v-if="selectedFile" class="animate-fade-in">
+                        <h2 class="text-xl font-bold text-gray-700 mb-4 border-l-4 border-red-600 pl-3">2. 共有用URL</h2>
+                        
+                        <div class="bg-red-50 border border-red-200 rounded-lg p-6">
+                            <div class="flex flex-col md:flex-row gap-6 items-center">
+                                <!-- URL表示部 -->
+                                <div class="flex-1 w-full">
+                                    <label class="text-xs font-bold text-red-500 uppercase mb-1 block">ダウンロードURL</label>
+                                    <div class="flex gap-2 mb-4">
+                                        <input type="text" readonly :value="shareUrl" class="flex-1 bg-white text-gray-700 text-sm px-4 py-3 rounded border border-gray-300 focus:outline-none select-all font-mono shadow-sm">
+                                        <button @click="copyLink" class="bg-gray-800 hover:bg-black text-white px-6 py-2 rounded font-bold transition shadow-md whitespace-nowrap">コピー</button>
+                                    </div>
+                                    <div class="text-sm text-red-600 font-bold bg-white p-3 rounded border border-red-100 shadow-sm">
+                                        ⚠️ 重要: 転送が完了するまでこのページを閉じないでください。<br>
+                                        <span class="text-xs font-normal text-gray-600">あなたがサーバーの役割をしています。閉じると相手はダウンロードできません。</span>
+                                    </div>
+                                </div>
+
+                                <!-- QRコード -->
+                                <div class="flex flex-col items-center justify-center bg-white p-3 rounded shadow-sm border border-gray-200">
+                                    <div id="qrcode" ref="qrCodeRef"></div>
+                                    <p class="text-xs text-gray-400 mt-2 font-mono">Mobile</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 転送ステータス -->
+                    <div v-if="statusMsg" class="mt-8">
+                        <div :class="statusClass" class="p-4 rounded text-center font-bold text-white shadow relative overflow-hidden">
+                            <div v-if="statusType === 'loading'" class="absolute inset-0 bg-white/20 progress-bar"></div>
+                            <span class="relative z-10 flex items-center justify-center gap-2">
+                                <span v-if="statusType === 'loading'" class="spinner inline-block w-5 h-5 border-2 border-white/50 border-t-white rounded-full animate-spin"></span>
+                                {{ statusMsg }}
+                            </span>
+                        </div>
+                    </div>
+
+                </div>
+
+                <!-- ▼ 受信画面 ▼ -->
+                <div v-if="mode === 'receive'" class="p-6 sm:p-10 bg-gray-50 min-h-[400px]">
+                    <h2 class="text-xl font-bold text-gray-700 mb-6 border-l-4 border-red-600 pl-3">ファイルのダウンロード</h2>
+
+                    <!-- URL入力 -->
+                    <div v-if="!receivedFileUrl && !isAutoConnecting" class="max-w-xl mx-auto">
+                        <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
+                            <label class="block text-sm font-bold text-gray-600 mb-2">共有URLを入力してください</label>
+                            <div class="flex gap-2">
+                                <input type="text" v-model="manualInput" placeholder="https://..." class="flex-1 border border-gray-300 rounded px-4 py-3 focus:border-red-500 focus:ring-1 focus:ring-red-500 outline-none transition">
+                                <button @click="connectFromInput" :disabled="!manualInput" class="bg-red-600 hover:bg-red-700 disabled:bg-gray-400 text-white px-6 rounded font-bold shadow-md transition">
+                                    開く
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- ステータス & ダウンロード -->
+                    <div v-if="statusMsg" class="mt-6 max-w-xl mx-auto">
+                         <div :class="statusClass" class="p-6 rounded-xl text-center text-white shadow-lg relative overflow-hidden">
+                            <div v-if="statusType === 'loading'" class="absolute inset-0 bg-white/20 progress-bar"></div>
+                            
+                            <h3 class="font-bold text-lg relative z-10 mb-1">{{ statusMsg }}</h3>
+                            
+                            <!-- 受信メタデータ表示 -->
+                            <div v-if="incomingMeta" class="relative z-10 bg-black/20 rounded p-3 mt-3 text-left">
+                                <div class="flex items-center gap-3">
+                                    <div class="bg-white/20 p-2 rounded">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"></path><polyline points="13 2 13 9 20 9"></polyline></svg>
+                                    </div>
+                                    <div>
+                                        <div class="font-bold text-sm truncate w-48 sm:w-64">{{ incomingMeta.name }}</div>
+                                        <div class="text-xs opacity-80">{{ formatSize(incomingMeta.size) }}</div>
+                                    </div>
+                                </div>
+                                <div v-if="incomingMeta.memo" class="mt-2 text-xs border-t border-white/20 pt-2 opacity-90">
+                                    <span class="font-bold">Memo:</span> {{ incomingMeta.memo }}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- ダウンロードボタン -->
+                    <div v-if="receivedFileUrl" class="text-center mt-8 animate-bounce">
+                        <a :href="receivedFileUrl" :download="receivedFileName" class="inline-flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white text-lg font-bold py-4 px-12 rounded-full shadow-xl transition transform hover:scale-105 border-4 border-red-100">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                            ダウンロード開始
+                        </a>
+                        <p class="text-gray-500 text-sm mt-4">ダウンロードが完了したらタブを閉じて構いません</p>
+                    </div>
+
                 </div>
             </div>
+            
+            <footer class="text-center text-gray-400 text-xs mt-8">
+                &copy; GigaShare P2P - Serverless File Transfer<br>
+                ファイルはサーバーに保存されません。あなたのPCから直接送信されます。
+            </footer>
 
-        </div>
-        
-        <div class="bg-gray-900/80 p-3 text-center text-[10px] text-gray-600 border-t border-gray-800">
-            Secure P2P Transfer
         </div>
     </div>
 
     <script>
-        const { createApp, ref, onMounted, computed } = Vue;
+        const { createApp, ref, onMounted, computed, watch, nextTick } = Vue;
 
         createApp({
             setup() {
                 const mode = ref('send');
                 const myId = ref('');
-                const manualInput = ref(''); // 入力されたURLまたはID
+                const manualInput = ref('');
                 const selectedFile = ref(null);
+                const memo = ref('');
                 const peer = ref(null);
                 const statusMsg = ref('');
-                const statusType = ref(''); // loading, info, success, error
+                const statusType = ref(''); // loading, success, error, info
                 const isAutoConnecting = ref(false);
-                
                 const receivedFileUrl = ref(null);
                 const receivedFileName = ref('');
+                const incomingMeta = ref(null); // 受信中のファイル情報
+                const qrCodeRef = ref(null);
 
-                // 共有URL生成
+                // ID生成
+                const generateId = () => Math.random().toString(36).substr(2, 6).toUpperCase();
+
                 const shareUrl = computed(() => {
                     if (!myId.value) return '';
                     const url = new URL(window.location.href);
@@ -130,54 +223,77 @@
                     return url.toString();
                 });
 
-                // ID生成
-                const generateShortId = () => Math.random().toString(36).substr(2, 6).toUpperCase();
+                // QRコード生成
+                const generateQR = () => {
+                    nextTick(() => {
+                        if (qrCodeRef.value) {
+                            qrCodeRef.value.innerHTML = '';
+                            new QRCode(qrCodeRef.value, {
+                                text: shareUrl.value,
+                                width: 96,
+                                height: 96,
+                                colorDark : "#000000",
+                                colorLight : "#ffffff",
+                                correctLevel : QRCode.CorrectLevel.L
+                            });
+                        }
+                    });
+                };
+
+                watch(shareUrl, (newUrl) => {
+                    if (newUrl && mode.value === 'send') generateQR();
+                });
 
                 onMounted(() => {
-                    // 1. ページ読み込み時にURLパラメータがあれば自動接続モードへ
                     const params = new URLSearchParams(window.location.search);
                     const sharedId = params.get('id');
 
-                    if (sharedId) {
-                        mode.value = 'receive';
-                        manualInput.value = sharedId; // 自動入力扱いに
-                        isAutoConnecting.value = true;
-                        setStatus('初期化中...', 'loading');
-                    }
-
-                    // 2. PeerJS初期化
-                    peer.value = new Peer(generateShortId(), { debug: 1 });
+                    // PeerJS設定
+                    peer.value = new Peer(generateId(), { debug: 1 });
 
                     peer.value.on('open', (id) => {
                         myId.value = id;
-                        console.log('My ID:', id);
-
-                        // 自動接続モードなら即座に接続開始
-                        if (isAutoConnecting.value && sharedId) {
-                            connectToPeer(sharedId);
+                        if (sharedId) {
+                            mode.value = 'receive';
+                            manualInput.value = sharedId;
+                            isAutoConnecting.value = true;
+                            setTimeout(() => connectToPeer(sharedId), 500);
+                        } else {
+                            // 送信モードの初期表示でQR生成
+                            if(mode.value === 'send') generateQR();
                         }
                     });
 
                     peer.value.on('error', (err) => {
-                        setStatus('通信エラー: ' + err.type, 'error');
+                        let msg = 'エラーが発生しました';
+                        if (err.type === 'peer-unavailable') msg = '相手が見つかりません。相手がページを閉じているか、IDが間違っています。';
+                        setStatus(msg, 'error');
                         isAutoConnecting.value = false;
                     });
 
-                    // 送信側の処理：相手が接続してきたら
+                    // 送信側: 接続要求があったとき
                     peer.value.on('connection', (conn) => {
                         if (mode.value === 'send' && selectedFile.value) {
-                            setStatus('接続されました。転送を開始します...', 'loading');
+                            setStatus('相手が接続しました。転送準備中...', 'loading');
                             
                             conn.on('open', () => {
+                                setStatus('送信中... (ブラウザを閉じないでください)', 'loading');
+                                // メタデータ送信
                                 conn.send({
                                     type: 'meta',
                                     name: selectedFile.value.name,
                                     size: selectedFile.value.size,
-                                    fileType: selectedFile.value.type
+                                    fileType: selectedFile.value.type,
+                                    memo: memo.value
                                 });
+                                // ファイル送信
                                 const blob = selectedFile.value;
                                 conn.send(blob);
-                                setStatus('送信完了！', 'success');
+                                
+                                // PeerJSは完了イベントが明確でないため、少し遅延させて完了表示
+                                setTimeout(() => {
+                                     setStatus('送信完了！相手がダウンロード可能です。', 'success');
+                                }, 1000);
                             });
                         } else {
                             conn.close();
@@ -185,62 +301,43 @@
                     });
                 });
 
-                // URLまたはIDの入力から接続を開始する処理
                 const connectFromInput = () => {
                     const input = manualInput.value.trim();
                     if (!input) return;
-
                     let targetId = input;
-
-                    // 入力がURLかどうか判定し、URLならパラメータからIDを抽出
                     try {
                         const urlObj = new URL(input);
                         const params = new URLSearchParams(urlObj.search);
-                        if (params.has('id')) {
-                            targetId = params.get('id');
-                        }
-                    } catch (e) {
-                        // URLでない場合は、入力された文字列をそのままIDとして扱う
-                    }
-
-                    console.log('Target ID extracted:', targetId);
+                        if (params.has('id')) targetId = params.get('id');
+                    } catch (e) {}
                     connectToPeer(targetId);
                 };
 
-                // Peer接続処理（共通）
                 const connectToPeer = (remoteId) => {
-                    setStatus('相手を探しています...', 'loading');
+                    setStatus('サーバー(相手)に接続中...', 'loading');
                     receivedFileUrl.value = null;
+                    incomingMeta.value = null;
 
-                    const conn = peer.value.connect(remoteId);
+                    const conn = peer.value.connect(remoteId, { reliable: true });
                     
-                    let incomingMeta = null;
-
                     conn.on('open', () => {
-                        setStatus('接続成功！データを受信待機中...', 'loading');
+                        setStatus('接続成功！データ受信を待機しています...', 'loading');
                     });
 
                     conn.on('data', (data) => {
                         if (data.type === 'meta') {
-                            incomingMeta = data;
-                            setStatus(`データ受信中... ${formatSize(data.size)}`, 'loading');
+                            incomingMeta.value = data;
+                            setStatus(`受信中... (${formatSize(data.size)})`, 'loading');
                         } else if (data instanceof Blob || data instanceof ArrayBuffer || data instanceof Uint8Array) {
-                            const blob = new Blob([data], { type: incomingMeta ? incomingMeta.fileType : 'application/octet-stream' });
+                            const blob = new Blob([data], { type: incomingMeta.value ? incomingMeta.value.fileType : 'application/octet-stream' });
                             receivedFileUrl.value = URL.createObjectURL(blob);
-                            receivedFileName.value = incomingMeta ? incomingMeta.name : 'download.file';
-                            setStatus('受信完了！下のボタンから保存してください。', 'success');
-                            isAutoConnecting.value = false; // 処理完了
+                            receivedFileName.value = incomingMeta.value ? incomingMeta.value.name : 'download.file';
+                            setStatus('受信完了！ダウンロードできます。', 'success');
                         }
                     });
 
                     conn.on('close', () => {
-                        if(!receivedFileUrl.value) setStatus('接続が切断されました。相手がページを閉じている可能性があります。', 'error');
-                        isAutoConnecting.value = false;
-                    });
-                    
-                    conn.on('error', (err) => {
-                        setStatus('接続失敗: IDが間違っているか、相手がいません。', 'error');
-                        isAutoConnecting.value = false;
+                        if(!receivedFileUrl.value) setStatus('接続が切断されました。', 'error');
                     });
                 };
 
@@ -249,23 +346,20 @@
                     if (file) {
                         selectedFile.value = file;
                         setStatus('', '');
+                        generateQR();
                     }
                 };
 
                 const switchMode = (newMode) => {
                     mode.value = newMode;
                     setStatus('', '');
+                    incomingMeta.value = null;
                     if (newMode === 'send') {
                         window.history.replaceState({}, document.title, window.location.pathname);
                         manualInput.value = '';
-                        isAutoConnecting.value = false;
+                        // DOM更新後にQR生成
+                        nextTick(() => generateQR());
                     }
-                };
-
-                const resetReceive = () => {
-                    receivedFileUrl.value = null;
-                    setStatus('', '');
-                    manualInput.value = '';
                 };
 
                 const setStatus = (msg, type) => {
@@ -274,7 +368,7 @@
                 };
 
                 const copyLink = () => {
-                    navigator.clipboard.writeText(shareUrl.value).then(() => alert('コピーしました'));
+                    navigator.clipboard.writeText(shareUrl.value).then(() => alert('URLをコピーしました！'));
                 };
 
                 const formatSize = (bytes) => {
@@ -285,31 +379,18 @@
                     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
                 };
 
-                const statusColor = computed(() => {
-                    if (statusType.value === 'error') return 'bg-red-500/20 text-red-200 border border-red-500/50';
-                    if (statusType.value === 'success') return 'bg-emerald-500/20 text-emerald-200 border border-emerald-500/50';
-                    if (statusType.value === 'loading') return 'bg-blue-500/20 text-blue-200 border border-blue-500/50';
-                    return 'bg-gray-700 text-gray-300';
+                const statusClass = computed(() => {
+                    if (statusType.value === 'error') return 'bg-gray-800 text-red-400 border border-red-500';
+                    if (statusType.value === 'success') return 'bg-green-600 text-white';
+                    if (statusType.value === 'loading') return 'bg-red-600 text-white';
+                    return 'bg-gray-700 text-white';
                 });
 
                 return {
-                    mode,
-                    myId,
-                    manualInput,
-                    selectedFile,
-                    shareUrl,
-                    statusMsg,
-                    statusType,
-                    statusColor,
-                    receivedFileUrl,
-                    receivedFileName,
-                    isAutoConnecting,
-                    handleFileSelect,
-                    switchMode,
-                    connectFromInput,
-                    resetReceive,
-                    copyLink,
-                    formatSize
+                    mode, myId, manualInput, selectedFile, memo, shareUrl,
+                    statusMsg, statusType, statusClass,
+                    receivedFileUrl, receivedFileName, incomingMeta, isAutoConnecting, qrCodeRef,
+                    handleFileSelect, switchMode, connectFromInput, copyLink, formatSize
                 };
             }
         }).mount('#app');
