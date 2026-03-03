@@ -1,0 +1,1025 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    
+    <meta name="theme-color" content="#606060">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    
+    <title>本格オセロ - 背景グレー</title>
+    
+    <!-- ▼▼▼ 変更: 通信・マッチング用ライブラリを読み込み ▼▼▼ -->
+    <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+    <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
+
+    <style>
+        :root {
+            /* ▼▼▼ 変更: 背景色を灰色に変更 ▼▼▼ */
+            --bg-color: #3d3d3d;
+            --board-color: #2e7d32;
+            --cell-border: #1b5e20;
+            --black-piece: #111;
+            --white-piece: #fff;
+            --highlight-color: #00e676;
+        }
+
+        html {
+            /* ▼▼▼ 変更: HTML全体の背景色も合わせる ▼▼▼ */
+            background-color: #3d3d3d;
+            height: 100%;
+            overscroll-behavior: none; 
+        }
+
+        body {
+            font-family: 'Segoe UI', sans-serif;
+            background-color: var(--bg-color);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-start; 
+            padding-top: 15px;
+        }
+
+        :fullscreen { background-color: var(--bg-color); }
+        :-webkit-full-screen { background-color: var(--bg-color); }
+
+        .game-center-wrapper { 
+            display: contents; 
+        }
+
+        /* ▼▼▼ スタートボタン用オーバーレイ ▼▼▼ */
+        .start-overlay {
+            display: none;
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.6);
+            z-index: 50;
+            align-items: center;
+            justify-content: center;
+            backdrop-filter: blur(2px);
+        }
+        
+        .start-btn-main {
+            font-size: 24px;
+            font-weight: bold;
+            color: #606060;
+            background: linear-gradient(135deg, #4caf50, #2e7d32);
+            padding: 15px 40px;
+            border: 2px solid #fff;
+            border-radius: 50px;
+            cursor: pointer;
+            box-shadow: 0 0 20px rgba(76, 175, 80, 0.8);
+            animation: pulse-btn 1.5s infinite ease-in-out;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+
+        @keyframes pulse-btn {
+            0% { transform: scale(1); box-shadow: 0 0 20px rgba(76, 175, 80, 0.8); }
+            50% { transform: scale(1.05); box-shadow: 0 0 30px rgba(76, 175, 80, 1); }
+            100% { transform: scale(1); box-shadow: 0 0 20px rgba(76, 175, 80, 0.8); }
+        }
+
+        /* ▼▼▼ 2人対戦（PvP）モード用スタイル ▼▼▼ */
+        
+        .pvp-ui {
+            display: none;
+            position: relative;
+            width: 100%;
+            height: auto;
+            align-items: center;
+            justify-content: center;
+            z-index: 10;
+            pointer-events: none;
+            margin: 0; 
+        }
+
+        .player-info {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            padding: 8px 25px;
+            border-radius: 50px;
+            background: rgba(30, 30, 30, 0.8);
+            border: 2px solid transparent;
+            transition: all 0.3s ease;
+        }
+
+        .player-info.active-turn {
+            background: rgba(50, 50, 50, 0.9);
+            border-color: var(--highlight-color);
+            box-shadow: 0 0 15px rgba(0, 230, 118, 0.3);
+            transform: scale(1.05);
+        }
+
+        .info-piece {
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.5);
+        }
+        .info-piece.black { background: var(--black-piece); border: 1px solid #444; }
+        .info-piece.white { background: var(--white-piece); }
+
+        .score-text {
+            font-size: 28px;
+            font-weight: bold;
+            font-family: monospace;
+            min-width: 40px;
+            text-align: center;
+            color: #fff; /* テキスト色を白に明示 */
+        }
+
+        #pvp-ui-top { transform: rotate(180deg); }
+
+        body.pvp-mode {
+            background-color: var(--bg-color);
+            padding: 0;
+            justify-content: flex-start;
+        }
+        
+        body.pvp-mode .game-center-wrapper {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+            height: 100vh;
+            height: 100dvh; 
+            gap: 20px;
+            padding-bottom: calc(5vh + env(safe-area-inset-bottom));
+            padding-top: env(safe-area-inset-top);
+            box-sizing: border-box;
+        }
+
+        body.pvp-mode h1,
+        body.pvp-mode .settings-area,
+        body.pvp-mode .score-container,
+        body.pvp-mode #status,
+        body.pvp-mode .controls {
+            display: none !important; 
+        }
+
+        body.pvp-mode .pvp-ui { display: flex; }
+
+        body.pvp-mode .board {
+            width: 90vw; 
+            height: 90vw;
+            max-width: 65vh; 
+            max-height: 65vh;
+            border-width: 2px;
+            box-shadow: 0 0 20px rgba(0,0,0,0.5);
+        }
+
+        /* ▼ PvPモード用の操作ボタン群（右下） ▼ */
+        .pvp-button-wrapper {
+            display: none;
+            position: fixed;
+            bottom: calc(10px + env(safe-area-inset-bottom));
+            right: 20px;
+            gap: 10px;
+            z-index: 100;
+        }
+        body.pvp-mode .pvp-button-wrapper { display: flex; }
+
+        /* ▼▼▼ 画面最下部を埋める帯要素 ▼▼▼ */
+        .pvp-bottom-fill {
+            display: block; 
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: calc(env(safe-area-inset-bottom));
+            background-color: #606060;
+            z-index: 99;
+        }
+
+        .pvp-btn {
+            background: rgba(60, 60, 60, 0.6);
+            color: rgba(255, 255, 255, 0.8);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            padding: 10px 15px;
+            border-radius: 8px;
+            font-size: 12px;
+            cursor: pointer;
+            backdrop-filter: blur(4px);
+            transition: background 0.2s;
+            pointer-events: auto;
+        }
+        .pvp-btn:active { background: rgba(100, 100, 100, 0.9); }
+        .pvp-btn:disabled { background: rgba(40, 40, 40, 0.4); color: rgba(255, 255, 255, 0.3); cursor: not-allowed; }
+
+        .header { text-align: center; margin-bottom: 5px; }
+        h1 { margin: 0; font-size: 22px; color: #4caf50; text-shadow: 1px 1px 2px rgba(0,0,0,0.3); }
+        
+        .settings-area {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 5px;
+            margin: 5px 0;
+            transition: opacity 0.3s ease;
+        }
+        .settings-area.locked { pointer-events: none; }
+
+        .selector-group { display: flex; gap: 5px; align-items: center; }
+        .label-text { font-size: 12px; color: #eee; margin-right: 5px; text-shadow: 0 1px 2px rgba(0,0,0,0.5); }
+
+        .btn {
+            padding: 4px 10px; font-size: 12px; border: 1px solid #4caf50;
+            background: transparent; color: #4caf50; cursor: pointer; border-radius: 4px;
+        }
+        .btn.active { background: #4caf50; color: white; }
+        .btn:not(.active) { background: rgba(0,0,0,0.2); }
+
+        .score-container { 
+            display: flex; 
+            justify-content: center;
+            gap: 15px; 
+            margin-top: 5px; 
+        }
+        .score-box {
+            background: #333; padding: 5px 15px; border-radius: 8px;
+            min-width: 70px; text-align: center;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+        }
+        .score-label { font-size: 10px; color: #aaa; }
+        .score-value { font-size: 18px; font-weight: bold; color: #fff; }
+
+        #status { 
+            margin: 5px 0; 
+            font-size: 15px; 
+            color: #ffeb3b; 
+            height: 20px; 
+            text-align: center;
+            text-shadow: 0 1px 2px rgba(0,0,0,0.8);
+        }
+
+        .board {
+            display: grid;
+            grid-template-columns: repeat(8, 1fr);
+            grid-template-rows: repeat(8, 1fr);
+            width: 94vw; max-width: 400px;
+            height: 94vw; max-height: 400px;
+            background-color: var(--cell-border);
+            border: 4px solid #222;
+            border-radius: 4px;
+            touch-action: none;
+            position: relative;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.4);
+        }
+
+        .cell {
+            background-color: var(--board-color);
+            border: 0.5px solid var(--cell-border);
+            display: flex; align-items: center; justify-content: center;
+            position: relative; cursor: pointer;
+        }
+
+        .piece {
+            width: 85%; height: 85%; border-radius: 50%;
+            transition: transform 0.3s ease;
+            box-shadow: 0 3px 3px rgba(0,0,0,0.3);
+            z-index: 2;
+        }
+        .black { background-color: var(--black-piece); transform: scale(1); }
+        .white { background-color: var(--white-piece); transform: scale(1); }
+
+        .can-move-guide {
+            width: 25%; height: 25%;
+            background-color: rgba(0,0,0,0.2);
+            border-radius: 50%;
+            border: 1px solid rgba(255,255,255,0.3);
+            animation: pulse 1.5s infinite ease-in-out;
+            z-index: 1;
+        }
+        .last-move-marker {
+            position: absolute; width: 20%; height: 20%;
+            background-color: var(--highlight-color);
+            border-radius: 50%; box-shadow: 0 0 4px var(--highlight-color);
+            z-index: 3;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); opacity: 0.4; }
+            50% { transform: scale(1.4); opacity: 0.8; }
+            100% { transform: scale(1); opacity: 0.4; }
+        }
+
+        .controls { margin-top: 15px; }
+        .reset-btn {
+            padding: 8px 25px; background: #e67e22; color: white;
+            border: none; border-radius: 5px; cursor: pointer;
+            font-weight: bold; font-size: 14px; transition: background 0.3s;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        }
+        .reset-btn:disabled { background: #7f8c8d; cursor: not-allowed; opacity: 0.7; }
+
+        /* ▼▼▼ 追加: オンラインマッチング用のローディングスピナー ▼▼▼ */
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid rgba(0, 229, 255, 0.3);
+            border-radius: 50%;
+            border-top-color: #00e5ff;
+            animation: spin 1s ease-in-out infinite;
+            margin: 20px auto;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <h1>本格オセロ</h1>
+        
+        <div class="settings-area" id="settings-area">
+            <div class="selector-group">
+                <span class="label-text">手番:</span>
+                <button class="btn active" id="mode-first" onclick="setPlayerColor(1)">先行(黒)</button>
+                <button class="btn" id="mode-second" onclick="setPlayerColor(2)">後攻(白)</button>
+            </div>
+
+            <div class="selector-group">
+                <span class="label-text">強さ:</span>
+                <button class="btn" id="btn-weak" onclick="setDiff('weak')">弱い</button>
+                <button class="btn active" id="btn-normal" onclick="setDiff('normal')">普通</button>
+                <button class="btn" id="btn-strong" onclick="setDiff('strong')">強い</button>
+                <button class="btn" id="btn-strongest" onclick="setDiff('strongest')">最強</button>
+                <button class="btn" id="btn-pvp" onclick="setDiff('pvp')" style="border-color:#e040fb; color:#e040fb;">2人</button>
+                <!-- ▼▼▼ 変更: オンライン通信ボタン ▼▼▼ -->
+                <button class="btn" id="btn-online" onclick="setDiff('online')" style="border-color:#00e5ff; color:#00e5ff;">通信</button>
+            </div>
+        </div>
+
+        <div class="score-container">
+            <div class="score-box">
+                <div class="score-label" id="label-black">あなた(黒)</div>
+                <div id="black-score" class="score-value">2</div>
+            </div>
+            <div class="score-box">
+                <div class="score-label" id="label-white">CPU(白)</div>
+                <div id="white-score" class="score-value">2</div>
+            </div>
+        </div>
+    </div>
+
+    <div id="status">あなたの番です</div>
+
+    <div class="game-center-wrapper">
+        <div id="pvp-ui-top" class="pvp-ui">
+            <div class="player-info" id="p-info-white">
+                <div class="info-piece white"></div>
+                <span id="pvp-score-white" class="score-text">2</span>
+            </div>
+        </div>
+
+        <div class="board" id="board">
+            <div id="start-overlay" class="start-overlay">
+                <button id="start-btn" class="start-btn-main" onclick="startGame()">GAME START</button>
+            </div>
+        </div>
+
+        <div id="pvp-ui-bottom" class="pvp-ui">
+            <div class="player-info" id="p-info-black">
+                <div class="info-piece black"></div>
+                <span id="pvp-score-black" class="score-text">2</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="controls">
+        <button class="reset-btn" id="reset-btn" onclick="handleReset()">リセット</button>
+    </div>
+
+    <div class="pvp-button-wrapper">
+        <button class="pvp-btn" id="pvp-reset-btn" onclick="handlePvpReset()">リセット</button>
+        <button class="pvp-btn" id="back-to-cpu-btn" onclick="exitPvpMode()">CPU戦へ戻る</button>
+    </div>
+
+    <div class="pvp-bottom-fill"></div>
+
+    <!-- ▼▼▼ 追加: オートマッチング待機画面 ▼▼▼ -->
+    <div id="online-modal" class="start-overlay" style="z-index: 200;">
+        <div style="background: rgba(40, 40, 40, 0.95); padding: 25px; border-radius: 12px; text-align: center; color: white; border: 2px solid #00e5ff; box-shadow: 0 0 20px rgba(0, 229, 255, 0.4); width: 85%; max-width: 320px; backdrop-filter: blur(5px);">
+            <h3 style="color: #00e5ff; margin: 0 0 15px 0;">オンライン対戦</h3>
+            <div class="spinner"></div>
+            <div id="online-status" style="margin-top: 15px; font-size: 15px; font-weight: bold; min-height: 40px; line-height: 1.4; color: #fff;">通信の準備中...</div>
+            <button onclick="cancelMatchmaking()" class="btn" style="margin-top: 20px; color:#aaa; border: 1px solid #aaa; padding: 8px 25px; border-radius: 6px; cursor: pointer; background: transparent;">キャンセル</button>
+        </div>
+    </div>
+
+    <script>
+        const BLACK = 1, WHITE = 2, EMPTY = 0;
+        let board = [], turn = BLACK, isCpuThinking = false, difficulty = 'normal';
+        let playerColor = BLACK;
+        let gameStarted = false;
+        let lastMove = null;
+
+        // ▼▼▼ オンライン通信用変数 ▼▼▼
+        let peer = null;
+        let conn = null;
+        let mqttClient = null;
+        let matchInterval = null;
+        let myPeerId = null;
+        let isMatching = false;
+        let isOnlineReady = false;
+
+        const MATCH_TOPIC = 'othello-public-match-v1';
+
+        const WEIGHTS = [
+            [100, -20, 10,  5,  5, 10, -20, 100],
+            [-20, -50, -2, -2, -2, -2, -50, -20],
+            [ 10,  -2,  5,  1,  1,  5,  -2,  10],
+            [  5,  -2,  1,  0,  0,  1,  -2,   5],
+            [  5,  -2,  1,  0,  0,  1,  -2,   5],
+            [ 10,  -2,  5,  1,  1,  5,  -2,  10],
+            [-20, -50, -2, -2, -2, -2, -50, -20],
+            [100, -20, 10,  5,  5, 10, -20, 100]
+        ];
+
+        // ▼▼▼ オートマッチング処理 ▼▼▼
+        function startMatchmaking() {
+            document.getElementById('online-modal').style.display = 'flex';
+            document.getElementById('online-status').innerText = '通信の準備中...';
+            
+            // 既存の接続があればリセット
+            cancelMatchmaking(true);
+            isMatching = true;
+
+            // 1. PeerJSで自分の通信IDを取得
+            peer = new Peer();
+            peer.on('open', id => {
+                myPeerId = id;
+                document.getElementById('online-status').innerText = '対戦相手を探しています...\n(そのままお待ちください)';
+                
+                // 2. 無料のMQTTサーバーに接続してマッチング開始
+                mqttClient = mqtt.connect('wss://broker.emqx.io:8084/mqtt');
+                mqttClient.on('connect', () => {
+                    mqttClient.subscribe(MATCH_TOPIC);
+                    
+                    // 2秒ごとに「対戦相手募集」の合図を送信
+                    matchInterval = setInterval(() => {
+                        if(isMatching) {
+                            mqttClient.publish(MATCH_TOPIC, myPeerId);
+                        }
+                    }, 2000);
+                });
+
+                // 他の人が送信した合図を受信
+                mqttClient.on('message', (topic, message) => {
+                    if (!isMatching) return;
+                    const opponentId = message.toString();
+                    
+                    // 自分以外の合図を見つけたら接続しに行く
+                    // ※お互いが同時に接続しようとするのを防ぐため、ID文字列が大きい方からのみ接続する
+                    if (opponentId !== myPeerId && myPeerId > opponentId) {
+                        isMatching = false;
+                        document.getElementById('online-status').innerText = '相手が見つかりました！\n接続中...';
+                        const newConn = peer.connect(opponentId);
+                        setupConnection(newConn, opponentId);
+                    }
+                });
+            });
+
+            // 相手から接続された場合（自分よりIDが大きい相手からの接続）
+            peer.on('connection', newConn => {
+                if (!isMatching && conn) return; // すでに対戦中なら無視
+                isMatching = false;
+                document.getElementById('online-status').innerText = '相手が見つかりました！\n接続中...';
+                setupConnection(newConn, newConn.peer);
+            });
+            
+            peer.on('error', err => {
+                document.getElementById('online-status').innerText = '通信エラーが発生しました。\n再試行してください。';
+            });
+        }
+
+        // ▼▼▼ 接続完了時のゲーム準備処理 ▼▼▼
+        function setupConnection(newConn, opponentId) {
+            // マッチング用の通信を終了する
+            if (matchInterval) clearInterval(matchInterval);
+            if (mqttClient) mqttClient.end();
+            
+            conn = newConn;
+            
+            conn.on('open', () => {
+                document.getElementById('online-modal').style.display = 'none';
+                
+                // 先行(黒)・後攻(白)の決定（通信トラブルを避けるためIDの大小で固定決定）
+                let isBlack = myPeerId > opponentId;
+                
+                isOnlineReady = true;
+                gameStarted = true;
+                difficulty = 'online';
+                playerColor = isBlack ? BLACK : WHITE;
+                
+                document.querySelectorAll('.btn').forEach(b => b.classList.remove('active'));
+                document.getElementById('btn-online').classList.add('active');
+                document.body.classList.remove('pvp-mode');
+                
+                initGameForOnline();
+                
+                if (isBlack) {
+                    updateStatus("あなたの番です");
+                    setTimeout(() => alert("対戦相手が見つかりました！\nあなたは先攻(黒)です。"), 100);
+                } else {
+                    updateStatus("相手の番です");
+                    setTimeout(() => alert("対戦相手が見つかりました！\nあなたは後攻(白)です。\n相手が置くのを待っています。"), 100);
+                }
+                
+                document.getElementById('label-black').innerText = isBlack ? "あなた(黒)" : "相手(黒)";
+                document.getElementById('label-white').innerText = isBlack ? "相手(白)" : "あなた(白)";
+                
+                document.getElementById('start-overlay').style.display = 'none';
+                updateSettingsUI();
+                render();
+            });
+
+            // 相手の手やリセット信号を受け取る
+            conn.on('data', data => {
+                if (data.type === 'move') {
+                    applyMove(board, data.r, data.c, turn);
+                    endTurn();
+                } else if (data.type === 'reset') {
+                    alert("相手がゲームをリセットしました。\n新しいゲームが始まります。");
+                    initGameForOnline();
+                    render();
+                    updateStatus(playerColor === BLACK ? "あなたの番です" : "相手の番です");
+                }
+            });
+
+            conn.on('close', () => {
+                alert("相手との通信が切断されました。\nゲームを終了します。");
+                cancelMatchmaking();
+            });
+        }
+
+        function cancelMatchmaking(isInternal = false) {
+            isMatching = false;
+            isOnlineReady = false;
+            if (matchInterval) clearInterval(matchInterval);
+            if (mqttClient) mqttClient.end();
+            if (conn) { conn.close(); conn = null; }
+            if (peer) { peer.destroy(); peer = null; }
+            
+            if (!isInternal) {
+                document.getElementById('online-modal').style.display = 'none';
+                setDiff('normal');
+            }
+        }
+
+        function initGameForOnline() {
+            board = Array(8).fill().map(() => Array(8).fill(EMPTY));
+            board[3][3] = WHITE; board[3][4] = BLACK;
+            board[4][3] = BLACK; board[4][4] = WHITE;
+            turn = BLACK;
+            isCpuThinking = false;
+            lastMove = null;
+        }
+
+        // ▼▼▼ 既存の関数ロジック ▼▼▼
+
+        function handleReset() {
+            const btn = document.getElementById('reset-btn');
+            
+            if (difficulty === 'online') {
+                if (conn && conn.open) {
+                    conn.send({ type: 'reset' });
+                    initGameForOnline();
+                    render();
+                    updateStatus(playerColor === BLACK ? "あなたの番です" : "相手の番です");
+                }
+            } else {
+                initGame();
+            }
+
+            btn.disabled = true;
+            const originalText = btn.innerText;
+            let count = 5;
+            btn.innerText = `待機(${count})`;
+            const timer = setInterval(() => {
+                count--;
+                if(count > 0) { btn.innerText = `待機(${count})`; } 
+                else { clearInterval(timer); btn.disabled = false; btn.innerText = originalText; }
+            }, 1000);
+        }
+
+        function handlePvpReset() {
+            const btn = document.getElementById('pvp-reset-btn');
+            gameStarted = false;
+            initGame();
+            btn.disabled = true;
+            const originalText = btn.innerText;
+            let count = 5;
+            btn.innerText = `待機(${count})`;
+            const timer = setInterval(() => {
+                count--;
+                if(count > 0) { btn.innerText = `待機(${count})`; } 
+                else { clearInterval(timer); btn.disabled = false; btn.innerText = originalText; }
+            }, 1000);
+        }
+
+        function exitPvpMode() {
+            if(document.fullscreenElement) {
+                document.exitFullscreen().catch(e=>{});
+            }
+            gameStarted = false;
+            isCpuThinking = false;
+            setDiff('normal');
+        }
+
+        function setDiff(d) {
+            if (gameStarted || isCpuThinking) return;
+
+            if (d === 'online') {
+                startMatchmaking();
+                return;
+            }
+
+            // オンライン待機中に他の難易度が押された場合は通信キャンセル
+            if (difficulty === 'online' && d !== 'online') {
+                cancelMatchmaking();
+            }
+
+            difficulty = d;
+            document.querySelectorAll('#btn-weak, #btn-normal, #btn-strong, #btn-strongest, #btn-pvp, #btn-online').forEach(b => b.classList.remove('active'));
+            document.getElementById('btn-' + d).classList.add('active');
+
+            if (difficulty === 'pvp') {
+                document.body.classList.add('pvp-mode');
+                const docEl = document.documentElement;
+                if (docEl.requestFullscreen) {
+                    docEl.requestFullscreen().catch(err => {});
+                } else if (docEl.webkitRequestFullscreen) {
+                    docEl.webkitRequestFullscreen();
+                }
+            } else {
+                document.body.classList.remove('pvp-mode');
+            }
+
+            initGame();
+        }
+
+        function setPlayerColor(c) {
+            if (gameStarted || isCpuThinking || difficulty === 'online') return;
+            playerColor = c;
+            document.getElementById('mode-first').classList.toggle('active', c === BLACK);
+            document.getElementById('mode-second').classList.toggle('active', c === WHITE);
+            initGame();
+        }
+
+        function updateSettingsUI() {
+            const settingsArea = document.getElementById('settings-area');
+            if (gameStarted || isCpuThinking) {
+                settingsArea.classList.add('locked');
+            } else {
+                settingsArea.classList.remove('locked');
+            }
+        }
+
+        function initGame() {
+            board = Array(8).fill().map(() => Array(8).fill(EMPTY));
+            board[3][3] = WHITE; board[3][4] = BLACK;
+            board[4][3] = BLACK; board[4][4] = WHITE;
+            
+            turn = BLACK;
+            isCpuThinking = false;
+            gameStarted = false; 
+            lastMove = null;
+
+            const overlay = document.getElementById('start-overlay');
+            overlay.style.display = 'none';
+
+            if (difficulty === 'pvp') {
+                updatePvpUI(2, 2);
+            } else if (playerColor === BLACK) {
+                document.getElementById('label-black').innerText = "あなた(黒)";
+                document.getElementById('label-white').innerText = "CPU(白)";
+                updateStatus("あなたの番です");
+            } else {
+                document.getElementById('label-black').innerText = "CPU(黒)";
+                document.getElementById('label-white').innerText = "あなた(白)";
+                overlay.style.display = 'flex';
+                updateStatus("難易度を選んでSTARTを押してください");
+            }
+
+            updateSettingsUI();
+            render();
+        }
+
+        function startGame() {
+            document.getElementById('start-overlay').style.display = 'none';
+            updateStatus("CPU思考中...");
+            startCpuThinking();
+        }
+
+        function updatePvpUI(bCount, wCount) {
+            document.getElementById('pvp-score-black').innerText = bCount;
+            document.getElementById('pvp-score-white').innerText = wCount;
+
+            const blackInfo = document.getElementById('p-info-black');
+            const whiteInfo = document.getElementById('p-info-white');
+
+            if (turn === BLACK) {
+                blackInfo.classList.add('active-turn');
+                whiteInfo.classList.remove('active-turn');
+            } else {
+                blackInfo.classList.remove('active-turn');
+                whiteInfo.classList.add('active-turn');
+            }
+        }
+
+        function getFlips(tempBoard, r, c, color) {
+            if (tempBoard[r][c] !== EMPTY) return [];
+            const opponent = color === BLACK ? WHITE : BLACK;
+            const dirs = [[-1,-1],[-1,0],[-1,1],[0,-1],[0,1],[1,-1],[1,0],[1,1]];
+            let total = [];
+            for (let [dr, dc] of dirs) {
+                let temp = [], cr = r + dr, cc = c + dc;
+                while (cr>=0 && cr<8 && cc>=0 && cc<8) {
+                    if (tempBoard[cr][cc] === opponent) temp.push({r:cr, c:cc});
+                    else if (tempBoard[cr][cc] === color) { total = total.concat(temp); break; }
+                    else break;
+                    cr += dr; cc += dc;
+                }
+            }
+            return total;
+        }
+
+        function getValidMoves(targetBoard, color) {
+            let m = [];
+            for(let r=0; r<8; r++) for(let c=0; c<8; c++) 
+                if(getFlips(targetBoard, r, c, color).length > 0) m.push({r, c});
+            return m;
+        }
+
+        function render() {
+            const boardEl = document.getElementById('board');
+            const overlay = document.getElementById('start-overlay');
+            const isOverlayVisible = overlay && overlay.style.display !== 'none';
+
+            boardEl.innerHTML = '';
+            
+            const newOverlay = document.createElement('div');
+            newOverlay.id = 'start-overlay';
+            newOverlay.className = 'start-overlay';
+            newOverlay.style.display = isOverlayVisible ? 'flex' : 'none';
+            newOverlay.innerHTML = '<button id="start-btn" class="start-btn-main" onclick="startGame()">GAME START</button>';
+            boardEl.appendChild(newOverlay);
+
+            let b=0, w=0;
+            const moves = getValidMoves(board, turn);
+            const showGuides = !isCpuThinking && (difficulty === 'pvp' || turn === playerColor);
+
+            for(let r=0; r<8; r++) {
+                for(let c=0; c<8; c++) {
+                    const cell = document.createElement('div');
+                    cell.className = 'cell';
+                    
+                    if(board[r][c]!==EMPTY) {
+                        const p = document.createElement('div');
+                        p.className = 'piece ' + (board[r][c]===BLACK?'black':'white');
+                        cell.appendChild(p);
+                        board[r][c]===BLACK?b++:w++;
+                    } 
+                    else if(showGuides && moves.some(m=>m.r===r && m.c===c)) {
+                        const g = document.createElement('div');
+                        g.className = 'can-move-guide';
+                        cell.appendChild(g);
+                        cell.onclick = () => playerMove(r, c);
+                    }
+
+                    if (lastMove && lastMove.r === r && lastMove.c === c) {
+                        const marker = document.createElement('div');
+                        marker.className = 'last-move-marker';
+                        cell.appendChild(marker);
+                    }
+
+                    boardEl.appendChild(cell);
+                }
+            }
+            
+            document.getElementById('black-score').innerText = b;
+            document.getElementById('white-score').innerText = w;
+
+            if (difficulty === 'pvp') {
+                updatePvpUI(b, w);
+            }
+        }
+
+        function playerMove(r, c) {
+            if (difficulty === 'online') {
+                if (!isOnlineReady || turn !== playerColor) return;
+            } else if (difficulty !== 'pvp') {
+                if(turn !== playerColor || isCpuThinking) return;
+            }
+            
+            gameStarted = true;
+            updateSettingsUI();
+
+            applyMove(board, r, c, turn);
+            
+            // 相手に自分が石を置いた場所を送信
+            if (difficulty === 'online' && conn && conn.open) {
+                conn.send({ type: 'move', r: r, c: c });
+            }
+
+            endTurn();
+        }
+
+        function applyMove(targetBoard, r, c, color) {
+            const flips = getFlips(targetBoard, r, c, color);
+            targetBoard[r][c] = color;
+            flips.forEach(f => targetBoard[f.r][f.c] = color);
+            
+            if(targetBoard === board) {
+                lastMove = {r, c};
+            }
+        }
+
+        function endTurn() {
+            turn = (turn === BLACK) ? WHITE : BLACK;
+            render();
+
+            const moves = getValidMoves(board, turn);
+
+            if (moves.length === 0) {
+                const otherMoves = getValidMoves(board, (turn === BLACK ? WHITE : BLACK));
+                if (otherMoves.length === 0) {
+                    gameOver();
+                    return;
+                }
+                
+                let whoPass = "相手";
+                if (difficulty === 'pvp') {
+                    whoPass = (turn === BLACK) ? "黒" : "白";
+                } else if (difficulty === 'online') {
+                    whoPass = (turn === playerColor) ? "あなた" : "相手";
+                } else {
+                    whoPass = (turn === playerColor) ? "あなた" : "CPU";
+                }
+                
+                const passMsg = whoPass + "に置ける場所がないためパスします。";
+                updateStatus("パスが発生しました");
+                
+                setTimeout(() => {
+                    alert(passMsg);
+                    turn = (turn === BLACK ? WHITE : BLACK);
+                    render();
+                    
+                    if (difficulty !== 'pvp' && difficulty !== 'online') {
+                        if (turn !== playerColor) startCpuThinking();
+                        else updateStatus("あなたの番です");
+                    } else if (difficulty === 'online') {
+                        if (turn === playerColor) updateStatus("あなたの番です");
+                        else updateStatus("相手の番です");
+                    }
+                }, 50);
+            } else {
+                if (difficulty !== 'pvp' && difficulty !== 'online') {
+                    if (turn !== playerColor) {
+                        startCpuThinking();
+                    } else {
+                        updateStatus("あなたの番です");
+                    }
+                } else if (difficulty === 'online') {
+                    if (turn === playerColor) updateStatus("あなたの番です");
+                    else updateStatus("相手の番です");
+                }
+            }
+        }
+
+        function startCpuThinking() {
+            isCpuThinking = true;
+            updateSettingsUI();
+            setTimeout(cpuMove, 1000);
+        }
+
+        function cpuMove() {
+            const cpuColor = (playerColor === BLACK) ? WHITE : BLACK;
+            const moves = getValidMoves(board, cpuColor);
+            
+            if (moves.length > 0) {
+                gameStarted = true;
+                
+                let choice;
+                if (difficulty === 'weak') {
+                    choice = moves[Math.floor(Math.random() * moves.length)];
+                } else if (difficulty === 'normal') {
+                    moves.sort((a,b) => getNormalScore(b) - getNormalScore(a));
+                    choice = moves[0];
+                } else if (difficulty === 'strong') {
+                    moves.sort((a,b) => WEIGHTS[b.r][b.c] - WEIGHTS[a.r][a.c]);
+                    choice = moves[0];
+                } else {
+                    choice = minimaxRoot(board, 4, cpuColor);
+                }
+                applyMove(board, choice.r, choice.c, cpuColor);
+            }
+            isCpuThinking = false;
+            updateSettingsUI();
+            endTurn();
+        }
+
+        function getNormalScore(m) {
+            if((m.r===0||m.r===7) && (m.c===0||m.c===7)) return 100;
+            if(m.r===0||m.r===7||m.c===0||m.c===7) return 10;
+            return 1;
+        }
+
+        function minimaxRoot(currentBoard, depth, myColor) {
+            const moves = getValidMoves(currentBoard, myColor);
+            let bestMove = moves[0], bestVal = -Infinity;
+            for(let m of moves) {
+                let nextB = currentBoard.map(row => [...row]);
+                applyMove(nextB, m.r, m.c, myColor);
+                let val = minimax(nextB, depth - 1, -Infinity, Infinity, false, myColor);
+                if(val > bestVal) { bestVal = val; bestMove = m; }
+            }
+            return bestMove;
+        }
+
+        function minimax(currB, depth, alpha, beta, isMax, originalCpuColor) {
+            if(depth === 0) return evaluate(currB, originalCpuColor);
+            
+            const currentPlayer = isMax ? originalCpuColor : (originalCpuColor === BLACK ? WHITE : BLACK);
+            const moves = getValidMoves(currB, currentPlayer);
+            
+            if(moves.length === 0) return evaluate(currB, originalCpuColor);
+
+            if(isMax) {
+                let maxEval = -Infinity;
+                for(let m of moves) {
+                    let nextB = currB.map(row => [...row]);
+                    applyMove(nextB, m.r, m.c, currentPlayer);
+                    maxEval = Math.max(maxEval, minimax(nextB, depth-1, alpha, beta, false, originalCpuColor));
+                    alpha = Math.max(alpha, maxEval);
+                    if(beta <= alpha) break;
+                }
+                return maxEval;
+            } else {
+                let minEval = Infinity;
+                for(let m of moves) {
+                    let nextB = currB.map(row => [...row]);
+                    applyMove(nextB, m.r, m.c, currentPlayer);
+                    minEval = Math.min(minEval, minimax(nextB, depth-1, alpha, beta, true, originalCpuColor));
+                    beta = Math.min(beta, minEval);
+                    if(beta <= alpha) break;
+                }
+                return minEval;
+            }
+        }
+
+        function evaluate(b, myColor) {
+            let score = 0;
+            for(let r=0; r<8; r++) for(let c=0; c<8; c++) {
+                if(b[r][c] === myColor) score += WEIGHTS[r][c];
+                else if(b[r][c] !== EMPTY) score -= WEIGHTS[r][c];
+            }
+            return score;
+        }
+
+        function gameOver() {
+            const b = parseInt(document.getElementById('black-score').innerText);
+            const w = parseInt(document.getElementById('white-score').innerText);
+            
+            let msg;
+            if (difficulty === 'pvp') {
+                msg = b > w ? "黒の勝ち！" : (b < w ? "白の勝ち！" : "引き分け！");
+                alert("ゲーム終了！\n黒: " + b + " / 白: " + w + "\n" + msg);
+            } else if (difficulty === 'online') {
+                let playerScore, opScore;
+                if (playerColor === BLACK) { playerScore = b; opScore = w; }
+                else { playerScore = w; opScore = b; }
+
+                let result = playerScore > opScore ? "あなたの勝ち！" : (playerScore < opScore ? "相手の勝ち！" : "引き分け！");
+                msg = "ゲーム終了！ " + result;
+                setTimeout(() => alert("ゲーム終了！\nあなた: " + playerScore + " / 相手: " + opScore + "\n" + result), 100);
+            } else {
+                let playerScore, cpuScore;
+                if (playerColor === BLACK) { playerScore = b; cpuScore = w; }
+                else { playerScore = w; cpuScore = b; }
+
+                let result = playerScore > cpuScore ? "あなたの勝ち！" : (playerScore < cpuScore ? "CPUの勝ち！" : "引き分け！");
+                msg = "ゲーム終了！ " + result;
+                setTimeout(() => alert("ゲーム終了！\nあなた: " + playerScore + " / CPU: " + cpuScore + "\n" + result), 100);
+            }
+            updateStatus(msg);
+        }
+
+        function updateStatus(txt) {
+            document.getElementById('status').innerText = txt;
+        }
+
+        initGame();
+    </script>
+</body>
+</html>
