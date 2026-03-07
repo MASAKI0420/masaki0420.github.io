@@ -320,7 +320,6 @@
         }
         .reset-btn:disabled { background: #7f8c8d; cursor: not-allowed; opacity: 0.7; }
 
-        /* ▼▼ 追加: オンラインモード時はリセットボタンを完全に非表示 ▼▼ */
         body.online-mode .controls {
             display: none !important;
         }
@@ -359,8 +358,7 @@
                 <button class="btn" id="btn-strong" onclick="setDiff('strong')">強い</button>
                 <button class="btn" id="btn-strongest" onclick="setDiff('strongest')">最強</button>
                 <button class="btn" id="btn-pvp" onclick="setDiff('pvp')" style="border-color:#e040fb; color:#e040fb;">2人</button>
-                <button class="btn" id="btn-online" onclick="setDiff('online')" style="border-color:#00e5ff; color:#00e5ff;">オンライン対戦
-                </button>
+                <button class="btn" id="btn-online" onclick="setDiff('online')" style="border-color:#00e5ff; color:#00e5ff;">通信</button>
             </div>
         </div>
 
@@ -413,6 +411,7 @@
 
     <div class="pvp-bottom-fill"></div>
 
+    <!-- 各種モーダルUI群 -->
     <div id="profile-modal" class="start-overlay" style="z-index: 201;">
         <div style="background: rgba(40, 40, 40, 0.95); padding: 25px; border-radius: 12px; text-align: center; color: white; border: 2px solid #00e5ff; box-shadow: 0 0 20px rgba(0, 229, 255, 0.4); width: 85%; max-width: 320px; backdrop-filter: blur(5px);">
             <h3 style="color: #00e5ff; margin: 0 0 15px 0;">プレイヤー情報</h3>
@@ -431,6 +430,17 @@
             <div class="spinner"></div>
             <div id="online-status" style="margin-top: 15px; font-size: 15px; font-weight: bold; min-height: 40px; line-height: 1.4; color: #fff;">通信の準備中...</div>
             <button onclick="cancelMatchmaking()" class="btn" style="margin-top: 20px; color:#aaa; border: 1px solid #aaa; padding: 8px 25px; border-radius: 6px; cursor: pointer; background: transparent;">キャンセル</button>
+        </div>
+    </div>
+
+    <!-- ▼▼ 追加: ゲーム終了・再戦選択モーダル ▼▼ -->
+    <div id="online-result-modal" class="start-overlay" style="z-index: 202;">
+        <div style="background: rgba(40, 40, 40, 0.95); padding: 25px; border-radius: 12px; text-align: center; color: white; border: 2px solid #00e5ff; box-shadow: 0 0 20px rgba(0, 229, 255, 0.4); width: 85%; max-width: 320px; backdrop-filter: blur(5px);">
+            <h3 style="color: #00e5ff; margin: 0 0 15px 0;">ゲーム終了</h3>
+            <p id="online-result-text" style="font-size: 16px; margin-bottom: 20px; white-space: pre-wrap; line-height: 1.5;"></p>
+            <p id="online-rematch-status" style="font-size: 13px; color: #ffeb3b; margin-bottom: 15px; min-height: 20px;"></p>
+            <button id="btn-rematch" onclick="requestRematch()" class="btn active" style="background: #00e5ff; color: #000; border: none; padding: 12px 20px; font-weight: bold; font-size: 16px; border-radius: 6px; cursor: pointer; width: 100%; margin-bottom: 15px;">もう一度戦う</button>
+            <button id="btn-leave" onclick="leaveOnline()" class="btn" style="color:#aaa; border: 1px solid #aaa; padding: 8px 20px; border-radius: 6px; cursor: pointer; background: transparent; width: 100%;">CPU対戦に戻る</button>
         </div>
     </div>
 
@@ -456,7 +466,11 @@
         let isMatching = false;
         let isOnlineReady = false;
 
-        const MATCH_TOPIC = 'othello-public-match-v2';
+        // ▼▼ 追加: 再戦希望のフラグ ▼▼
+        let myRematchReq = false;
+        let opRematchReq = false;
+
+        const MATCH_TOPIC = 'othello-public-match-v3';
 
         const WEIGHTS = [
             [100, -20, 10,  5,  5, 10, -20, 100],
@@ -529,6 +543,73 @@
             }
         }
 
+        // ▼▼ 追加: 再戦用モーダル管理関数群 ▼▼
+        function showOnlineResultModal(msg) {
+            myRematchReq = false;
+            opRematchReq = false;
+            document.getElementById('online-result-text').innerText = msg;
+            document.getElementById('online-rematch-status').innerText = '';
+            
+            const btnRematch = document.getElementById('btn-rematch');
+            btnRematch.disabled = false;
+            btnRematch.style.opacity = '1';
+            btnRematch.innerText = 'もう一度戦う';
+            
+            document.getElementById('online-result-modal').style.display = 'flex';
+        }
+
+        function closeOnlineResultModal() {
+            document.getElementById('online-result-modal').style.display = 'none';
+        }
+
+        function requestRematch() {
+            myRematchReq = true;
+            
+            const btnRematch = document.getElementById('btn-rematch');
+            btnRematch.disabled = true;
+            btnRematch.innerText = '返答待ち...';
+            btnRematch.style.opacity = '0.7';
+
+            if (conn && conn.open) {
+                conn.send({ type: 'rematch' });
+            }
+
+            if (opRematchReq) {
+                startRematch();
+            } else {
+                document.getElementById('online-rematch-status').innerText = '相手の返答を待っています...';
+            }
+        }
+
+        function leaveOnline() {
+            if (conn && conn.open) {
+                conn.send({ type: 'leave' });
+            }
+            closeOnlineResultModal();
+            cancelMatchmaking();
+        }
+
+        function startRematch() {
+            closeOnlineResultModal();
+            // 先攻後攻を交代
+            playerColor = (playerColor === BLACK) ? WHITE : BLACK;
+            updateOnlineLabels();
+            
+            initGameForOnline();
+            
+            if (playerColor === BLACK) {
+                updateStatus("あなたの番です");
+                setTimeout(() => alert("再戦が始まりました！\nあなたは先攻(黒)です。"), 100);
+            } else {
+                updateStatus("相手の番です");
+                setTimeout(() => alert("再戦が始まりました！\nあなたは後攻(白)です。\n相手が置くのを待っています。"), 100);
+            }
+            
+            gameStarted = true;
+            updateSettingsUI();
+            render();
+        }
+
         function startMatchmaking() {
             document.getElementById('online-modal').style.display = 'flex';
             document.getElementById('online-status').innerText = '通信の準備中...';
@@ -593,7 +674,6 @@
                 document.querySelectorAll('.btn').forEach(b => b.classList.remove('active'));
                 document.getElementById('btn-online').classList.add('active');
                 
-                // ▼▼ 追加: オンラインモードクラスを付与し、リセットボタンを消す ▼▼
                 document.body.classList.remove('pvp-mode');
                 document.body.classList.add('online-mode');
                 
@@ -621,11 +701,39 @@
                 } else if (data.type === 'move') {
                     applyMove(board, data.r, data.c, turn);
                     endTurn();
+                } 
+                // ▼▼ 追加: 再戦・キャンセルの受信処理 ▼▼
+                else if (data.type === 'rematch') {
+                    opRematchReq = true;
+                    if (myRematchReq) {
+                        startRematch();
+                    } else {
+                        document.getElementById('online-rematch-status').innerText = '相手が再戦を希望しています！';
+                    }
+                } else if (data.type === 'leave') {
+                    if (myRematchReq) {
+                        alert("相手がキャンセルしました。\nCPU対戦に戻ります。");
+                        closeOnlineResultModal();
+                        cancelMatchmaking();
+                    } else {
+                        document.getElementById('online-rematch-status').innerText = '相手が退出しました。';
+                        const btnRematch = document.getElementById('btn-rematch');
+                        btnRematch.disabled = true;
+                        btnRematch.style.opacity = '0.5';
+                    }
                 }
             });
 
             conn.on('close', () => {
-                alert("相手との通信が切断されました。\nゲームを終了します。");
+                // 対戦中・またはリザルト画面での切断検知
+                if (document.getElementById('online-result-modal').style.display === 'flex') {
+                    if (myRematchReq) {
+                        alert("相手との通信が切れました。\nCPU対戦に戻ります。");
+                    }
+                    closeOnlineResultModal();
+                } else {
+                    alert("相手との通信が切断されました。\nゲームを終了します。");
+                }
                 cancelMatchmaking();
             });
         }
@@ -638,7 +746,6 @@
             if (conn) { conn.close(); conn = null; }
             if (peer) { peer.destroy(); peer = null; }
             
-            // ▼▼ 追加: オンラインモードを解除し、リセットボタンを再表示 ▼▼
             document.body.classList.remove('online-mode');
             
             if (!isInternal) {
@@ -657,19 +764,8 @@
         }
 
         function handleReset() {
+            initGame();
             const btn = document.getElementById('reset-btn');
-            
-            if (difficulty === 'online') {
-                if (conn && conn.open) {
-                    conn.send({ type: 'reset' });
-                    initGameForOnline();
-                    render();
-                    updateStatus(playerColor === BLACK ? "あなたの番です" : "相手の番です");
-                }
-            } else {
-                initGame();
-            }
-
             btn.disabled = true;
             const originalText = btn.innerText;
             let count = 5;
@@ -1061,7 +1157,9 @@
             if (difficulty === 'pvp') {
                 msg = b > w ? "黒の勝ち！" : (b < w ? "白の勝ち！" : "引き分け！");
                 alert("ゲーム終了！\n黒: " + b + " / 白: " + w + "\n" + msg);
-            } else if (difficulty === 'online') {
+            } 
+            // ▼▼ 変更: オンライン終了時はアラートの代わりにリザルト・再戦モーダルを表示 ▼▼
+            else if (difficulty === 'online') {
                 let playerScore, opScore;
                 if (playerColor === BLACK) { playerScore = b; opScore = w; }
                 else { playerScore = w; opScore = b; }
@@ -1083,7 +1181,14 @@
                 updateOnlineLabels();
 
                 msg = "ゲーム終了！ " + result;
-                setTimeout(() => alert(`ゲーム終了！\nあなた: ${playerScore} / 相手: ${opScore}\n${result}`), 100);
+                updateStatus(msg);
+
+                setTimeout(() => {
+                    const resultMsg = `あなた: ${playerScore} / 相手: ${opScore}\n\n${result}`;
+                    showOnlineResultModal(resultMsg);
+                }, 500);
+                
+                return; // ここで終了
             } else {
                 let playerScore, cpuScore;
                 if (playerColor === BLACK) { playerScore = b; cpuScore = w; }
@@ -1093,9 +1198,8 @@
                 msg = "ゲーム終了！ " + result;
                 setTimeout(() => alert("ゲーム終了！\nあなた: " + playerScore + " / CPU: " + cpuScore + "\n" + result), 100);
             }
+            
             updateStatus(msg);
-
-            // ▼▼ 追加: ゲーム終了後は上部のボタンを押して次の行動ができるようにする ▼▼
             gameStarted = false;
             updateSettingsUI();
         }
