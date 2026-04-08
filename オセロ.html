@@ -27,6 +27,11 @@
             height: 100%;
             overscroll-behavior: none; 
         }
+        
+        /* ▼ フルスクリーン時やPVP時の余白（ノッチ部分など）を黒にするための設定 ▼ */
+        html.pvp-active { background-color: #000; }
+        :fullscreen { background-color: #000 !important; }
+        :-webkit-full-screen { background-color: #000 !important; }
 
         body {
             font-family: 'Segoe UI', sans-serif;
@@ -36,10 +41,8 @@
             align-items: center;
             justify-content: flex-start; 
             padding-top: 15px;
+            margin: 0;
         }
-
-        :fullscreen { background-color: var(--bg-color); }
-        :-webkit-full-screen { background-color: var(--bg-color); }
 
         .game-center-wrapper { 
             display: contents; 
@@ -131,7 +134,7 @@
         #pvp-ui-top { transform: rotate(180deg); }
 
         body.pvp-mode {
-            background-color: var(--bg-color);
+            background-color: #000; /* 余白を黒にする */
             padding: 0;
             justify-content: flex-start;
         }
@@ -145,9 +148,11 @@
             height: 100vh;
             height: 100dvh; 
             gap: 20px;
-            padding-bottom: calc(5vh + env(safe-area-inset-bottom));
-            padding-top: env(safe-area-inset-top);
+            /* 黒帯の分だけパディングを空ける */
+            padding-bottom: max(env(safe-area-inset-bottom), 35px);
+            padding-top: max(env(safe-area-inset-top), 35px);
             box-sizing: border-box;
+            background-color: var(--bg-color); /* メインエリアはグレー維持 */
         }
 
         body.pvp-mode h1,
@@ -172,22 +177,32 @@
         .pvp-button-wrapper {
             display: none;
             position: fixed;
-            bottom: calc(10px + env(safe-area-inset-bottom));
+            bottom: calc(max(env(safe-area-inset-bottom), 35px) + 10px);
             right: 20px;
             gap: 10px;
-            z-index: 100;
+            z-index: 1001; /* 黒帯より上に配置 */
         }
         body.pvp-mode .pvp-button-wrapper { display: flex; }
 
-        .pvp-bottom-fill {
-            display: block; 
+        /* ▼ ノッチ隠し用の黒い縁（上下） ▼ */
+        .pvp-top-fill, .pvp-bottom-fill {
+            display: none; 
             position: fixed;
-            bottom: 0;
             left: 0;
             width: 100%;
-            height: calc(env(safe-area-inset-bottom));
-            background-color: #606060;
-            z-index: 99;
+            background-color: #000;
+            z-index: 1000;
+            pointer-events: none; /* タップを邪魔しない */
+        }
+        body.pvp-mode .pvp-top-fill {
+            display: block;
+            top: 0;
+            height: max(env(safe-area-inset-top), 35px);
+        }
+        body.pvp-mode .pvp-bottom-fill {
+            display: block;
+            bottom: 0;
+            height: max(env(safe-area-inset-bottom), 35px);
         }
 
         .pvp-btn {
@@ -274,6 +289,17 @@
             box-shadow: 0 5px 15px rgba(0,0,0,0.4);
         }
 
+        .board-star {
+            position: absolute;
+            width: clamp(5px, 1.5vw, 8px);
+            height: clamp(5px, 1.5vw, 8px);
+            background-color: #111;
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 1; 
+            pointer-events: none; 
+        }
+
         .cell {
             background-color: var(--board-color);
             border: 0.5px solid var(--cell-border);
@@ -322,6 +348,62 @@
 
         body.online-mode .controls {
             display: none !important;
+        }
+
+        .online-controls {
+            display: none;
+            margin-top: 15px;
+        }
+        body.online-mode .online-controls {
+            display: flex;
+            justify-content: center;
+        }
+
+        /* ▼ 変更: 中断ボタンのスタイルを修正（グレー初期色、赤ゲージ、ハイライト消去） ▼ */
+        .abort-btn {
+            position: relative;
+            overflow: hidden;
+            padding: 8px 25px; 
+            background: #7f8c8d; /* 初期状態はグレー */
+            color: white;
+            border: none; 
+            border-radius: 5px; 
+            cursor: pointer;
+            font-weight: bold; 
+            font-size: 14px; 
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+            
+            /* 青い枠やテキスト選択を無効化 */
+            -webkit-user-select: none;
+            user-select: none;
+            -webkit-touch-callout: none;
+            -webkit-tap-highlight-color: transparent;
+            outline: none;
+        }
+
+        /* テキストはゲージより上に表示 */
+        .abort-btn span {
+            position: relative;
+            z-index: 2;
+            pointer-events: none;
+        }
+
+        /* ゲージ要素 */
+        .abort-btn::before {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: 0;
+            height: 100%;
+            width: 0%;
+            background-color: #e74c3c; /* 長押し時の赤い色 */
+            z-index: 1;
+        }
+
+        /* 長押し中クラスが付与されたら1秒かけて幅100%にする */
+        .abort-btn.pressing::before {
+            width: 100%;
+            transition: width 1s linear;
         }
 
         .spinner {
@@ -378,6 +460,8 @@
 
     <div id="status">あなたの番です</div>
 
+    <div class="pvp-top-fill"></div>
+
     <div class="game-center-wrapper">
         <div id="pvp-ui-top" class="pvp-ui">
             <div class="player-info" id="p-info-white">
@@ -402,6 +486,11 @@
 
     <div class="controls">
         <button class="reset-btn" id="reset-btn" onclick="handleReset()">リセット</button>
+    </div>
+
+    <div class="online-controls">
+        <!-- ▼ 変更: テキストをspanで囲む ▼ -->
+        <button class="abort-btn" id="abort-btn" oncontextmenu="return false;"><span>バトル中断(1秒長押し)</span></button>
     </div>
 
     <div class="pvp-button-wrapper">
@@ -433,7 +522,6 @@
         </div>
     </div>
 
-    <!-- ▼▼ 追加: ゲーム終了・再戦選択モーダル ▼▼ -->
     <div id="online-result-modal" class="start-overlay" style="z-index: 202;">
         <div style="background: rgba(40, 40, 40, 0.95); padding: 25px; border-radius: 12px; text-align: center; color: white; border: 2px solid #00e5ff; box-shadow: 0 0 20px rgba(0, 229, 255, 0.4); width: 85%; max-width: 320px; backdrop-filter: blur(5px);">
             <h3 style="color: #00e5ff; margin: 0 0 15px 0;">ゲーム終了</h3>
@@ -466,7 +554,6 @@
         let isMatching = false;
         let isOnlineReady = false;
 
-        // ▼▼ 追加: 再戦希望のフラグ ▼▼
         let myRematchReq = false;
         let opRematchReq = false;
 
@@ -482,6 +569,21 @@
             [-20, -50, -2, -2, -2, -2, -50, -20],
             [100, -20, 10,  5,  5, 10, -20, 100]
         ];
+
+        function enforceFullscreen() {
+            if (difficulty === 'pvp') {
+                if (!document.fullscreenElement && !document.webkitFullscreenElement) {
+                    const docEl = document.documentElement;
+                    if (docEl.requestFullscreen) {
+                        docEl.requestFullscreen().catch(() => {});
+                    } else if (docEl.webkitRequestFullscreen) {
+                        docEl.webkitRequestFullscreen();
+                    }
+                }
+            }
+        }
+        document.addEventListener('click', enforceFullscreen);
+        document.addEventListener('touchstart', enforceFullscreen, {passive: true});
 
         function openProfileModal() {
             document.getElementById('player-name-input').value = myName;
@@ -543,7 +645,6 @@
             }
         }
 
-        // ▼▼ 追加: 再戦用モーダル管理関数群 ▼▼
         function showOnlineResultModal(msg) {
             myRematchReq = false;
             opRematchReq = false;
@@ -585,13 +686,11 @@
             if (conn && conn.open) {
                 conn.send({ type: 'leave' });
             }
-            closeOnlineResultModal();
-            cancelMatchmaking();
+            location.reload(); 
         }
 
         function startRematch() {
             closeOnlineResultModal();
-            // 先攻後攻を交代
             playerColor = (playerColor === BLACK) ? WHITE : BLACK;
             updateOnlineLabels();
             
@@ -675,6 +774,7 @@
                 document.getElementById('btn-online').classList.add('active');
                 
                 document.body.classList.remove('pvp-mode');
+                document.documentElement.classList.remove('pvp-active');
                 document.body.classList.add('online-mode');
                 
                 initGameForOnline();
@@ -702,7 +802,6 @@
                     applyMove(board, data.r, data.c, turn);
                     endTurn();
                 } 
-                // ▼▼ 追加: 再戦・キャンセルの受信処理 ▼▼
                 else if (data.type === 'rematch') {
                     opRematchReq = true;
                     if (myRematchReq) {
@@ -711,30 +810,33 @@
                         document.getElementById('online-rematch-status').innerText = '相手が再戦を希望しています！';
                     }
                 } else if (data.type === 'leave') {
-                    if (myRematchReq) {
-                        alert("相手がキャンセルしました。\nCPU対戦に戻ります。");
-                        closeOnlineResultModal();
-                        cancelMatchmaking();
+                    if (document.getElementById('online-result-modal').style.display === 'flex') {
+                        if (myRematchReq) {
+                            alert("相手がキャンセルしました。\nCPU対戦に戻ります。");
+                            location.reload();
+                        } else {
+                            document.getElementById('online-rematch-status').innerText = '相手が退出しました。';
+                            const btnRematch = document.getElementById('btn-rematch');
+                            btnRematch.disabled = true;
+                            btnRematch.style.opacity = '0.5';
+                        }
                     } else {
-                        document.getElementById('online-rematch-status').innerText = '相手が退出しました。';
-                        const btnRematch = document.getElementById('btn-rematch');
-                        btnRematch.disabled = true;
-                        btnRematch.style.opacity = '0.5';
+                        alert("相手が対戦を中断しました。\nCPU対戦に戻ります。");
+                        location.reload();
                     }
                 }
             });
 
             conn.on('close', () => {
-                // 対戦中・またはリザルト画面での切断検知
                 if (document.getElementById('online-result-modal').style.display === 'flex') {
                     if (myRematchReq) {
                         alert("相手との通信が切れました。\nCPU対戦に戻ります。");
+                        location.reload();
                     }
-                    closeOnlineResultModal();
                 } else {
-                    alert("相手との通信が切断されました。\nゲームを終了します。");
+                    alert("相手との通信が切断されました。\nCPU対戦に戻ります。");
+                    location.reload();
                 }
-                cancelMatchmaking();
             });
         }
 
@@ -750,6 +852,8 @@
             
             if (!isInternal) {
                 document.getElementById('online-modal').style.display = 'none';
+                gameStarted = false;
+                isCpuThinking = false;
                 setDiff('normal');
             }
         }
@@ -793,8 +897,12 @@
         }
 
         function exitPvpMode() {
-            if(document.fullscreenElement) {
-                document.exitFullscreen().catch(e=>{});
+            if(document.fullscreenElement || document.webkitFullscreenElement) {
+                if (document.exitFullscreen) {
+                    document.exitFullscreen().catch(e=>{});
+                } else if (document.webkitExitFullscreen) {
+                    document.webkitExitFullscreen();
+                }
             }
             gameStarted = false;
             isCpuThinking = false;
@@ -818,6 +926,7 @@
             document.getElementById('btn-' + d).classList.add('active');
 
             if (difficulty === 'pvp') {
+                document.documentElement.classList.add('pvp-active');
                 document.body.classList.add('pvp-mode');
                 const docEl = document.documentElement;
                 if (docEl.requestFullscreen) {
@@ -826,6 +935,7 @@
                     docEl.webkitRequestFullscreen();
                 }
             } else {
+                document.documentElement.classList.remove('pvp-active');
                 document.body.classList.remove('pvp-mode');
             }
 
@@ -931,6 +1041,16 @@
 
             boardEl.innerHTML = '';
             
+            const starPositions = ['25% 25%', '75% 25%', '25% 75%', '75% 75%'];
+            starPositions.forEach(pos => {
+                const [left, top] = pos.split(' ');
+                const star = document.createElement('div');
+                star.className = 'board-star';
+                star.style.left = left;
+                star.style.top = top;
+                boardEl.appendChild(star);
+            });
+
             const newOverlay = document.createElement('div');
             newOverlay.id = 'start-overlay';
             newOverlay.className = 'start-overlay';
@@ -1158,7 +1278,6 @@
                 msg = b > w ? "黒の勝ち！" : (b < w ? "白の勝ち！" : "引き分け！");
                 alert("ゲーム終了！\n黒: " + b + " / 白: " + w + "\n" + msg);
             } 
-            // ▼▼ 変更: オンライン終了時はアラートの代わりにリザルト・再戦モーダルを表示 ▼▼
             else if (difficulty === 'online') {
                 let playerScore, opScore;
                 if (playerColor === BLACK) { playerScore = b; opScore = w; }
@@ -1188,7 +1307,7 @@
                     showOnlineResultModal(resultMsg);
                 }, 500);
                 
-                return; // ここで終了
+                return; 
             } else {
                 let playerScore, cpuScore;
                 if (playerColor === BLACK) { playerScore = b; cpuScore = w; }
@@ -1208,6 +1327,56 @@
             document.getElementById('status').innerText = txt;
         }
 
+        // ▼ 変更: アニメーション付き長押しボタンの制御 ▼
+        let abortTimer = null;
+        function setupAbortButton() {
+            const abortBtn = document.getElementById('abort-btn');
+            if(!abortBtn) return;
+            const textSpan = abortBtn.querySelector('span');
+            
+            const startAbort = (e) => {
+                abortBtn.classList.add('pressing');
+                textSpan.innerText = "中断中...";
+                abortTimer = setTimeout(() => {
+                    executeAbort();
+                }, 1000);
+            };
+            
+            const cancelAbort = (e) => {
+                if(abortTimer) {
+                    clearTimeout(abortTimer);
+                    abortTimer = null;
+                }
+                abortBtn.classList.remove('pressing');
+                textSpan.innerText = "バトル中断(1秒長押し)";
+            };
+
+            abortBtn.addEventListener('mousedown', startAbort);
+            abortBtn.addEventListener('touchstart', startAbort, {passive: true});
+            
+            abortBtn.addEventListener('mouseup', cancelAbort);
+            abortBtn.addEventListener('mouseleave', cancelAbort);
+            abortBtn.addEventListener('touchend', cancelAbort);
+            abortBtn.addEventListener('touchcancel', cancelAbort);
+        }
+        
+        function executeAbort() {
+            if (abortTimer) clearTimeout(abortTimer);
+            abortTimer = null;
+            const abortBtn = document.getElementById('abort-btn');
+            const textSpan = abortBtn.querySelector('span');
+            abortBtn.classList.remove('pressing');
+            if(textSpan) textSpan.innerText = "バトル中断(1秒長押し)";
+            
+            if (conn && conn.open) {
+                conn.send({ type: 'leave' });
+            }
+            alert("対戦を中断しました。\nCPU対戦に戻ります。");
+            
+            location.reload(); 
+        }
+
+        setupAbortButton();
         initGame();
     </script>
 </body>
