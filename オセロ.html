@@ -20,30 +20,7 @@
         document.write('<link rel="icon" type="image/png" href="' + appIconBase64 + '">');
         document.write('<link rel="apple-touch-icon" href="' + appIconBase64 + '">');
 
-        // ③ アプリとして認識させるための設定（マニフェスト）を動的に作成
-        const manifestJSON = {
-            "name": "本格オセロ",
-            "short_name": "オセロ",
-            "start_url": location.pathname, // 現在のURLをスタートに設定
-            "display": "standalone", // アプリのように全画面表示にする
-            "background_color": "#3d3d3d",
-            "theme_color": "#606060",
-            "icons": [
-                { "src": appIconBase64, "sizes": "192x192", "type": "image/png" },
-                { "src": appIconBase64, "sizes": "512x512", "type": "image/png" }
-            ]
-        };
-        const manifestDataUrl = 'data:application/manifest+json;charset=utf-8,' + encodeURIComponent(JSON.stringify(manifestJSON));
-        document.write('<link rel="manifest" href="' + manifestDataUrl + '">');
-
-        // ④ インストール条件を満たすためのダミー・サービスワーカーを動的に登録
-        if ('serviceWorker' in navigator) {
-            window.addEventListener('load', () => {
-                const swCode = "self.addEventListener('fetch', function(e) { });";
-                const blob = new Blob([swCode], { type: 'application/javascript' });
-                const swUrl = URL.createObjectURL(blob);
-                navigator.serviceWorker.register(swUrl).catch((err) => console.log('SW登録エラー:', err));
-            });
+    
         }
     </script>
     <!-- ▲ PWA化のコード ここまで ▲ -->
