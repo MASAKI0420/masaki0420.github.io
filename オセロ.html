@@ -6,9 +6,87 @@
     
     <meta name="theme-color" content="#606060">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-capable" content="yes">
     
     <title>本格オセロ - 背景グレー</title>
-    
+
+    <!-- ▼▼▼ PWA完全自己完結スクリプト（アイコン自動生成付き） ▼▼▼ -->
+    <script>
+        (function() {
+            // 1. オセロのアイコン画像を自動生成
+            const size = 512;
+            const canvas = document.createElement('canvas');
+            canvas.width = size;
+            canvas.height = size;
+            const ctx = canvas.getContext('2d');
+            
+            // 背景の緑
+            ctx.fillStyle = "#2e7d32";
+            ctx.fillRect(0, 0, size, size);
+            
+            // 枠と十字線
+            ctx.strokeStyle = "#1b5e20";
+            ctx.lineWidth = 20;
+            ctx.strokeRect(0, 0, size, size);
+            ctx.beginPath();
+            ctx.moveTo(size/2, 0); ctx.lineTo(size/2, size);
+            ctx.moveTo(0, size/2); ctx.lineTo(size, size/2);
+            ctx.stroke();
+            
+            // 白黒の石
+            function drawPiece(x, y, color) {
+                ctx.beginPath();
+                ctx.arc(x, y, size*0.2, 0, Math.PI*2);
+                ctx.fillStyle = color;
+                ctx.fill();
+                ctx.lineWidth = 4;
+                ctx.strokeStyle = "#111";
+                ctx.stroke();
+            }
+            drawPiece(size*0.25, size*0.25, "#fff"); // 左上:白
+            drawPiece(size*0.75, size*0.75, "#fff"); // 右下:白
+            drawPiece(size*0.75, size*0.25, "#111"); // 右上:黒
+            drawPiece(size*0.25, size*0.75, "#111"); // 左下:黒
+            
+            const iconBase64 = canvas.toDataURL('image/png');
+
+            // 2. マニフェスト（アプリ設定）を動的生成
+            const currentPath = window.location.pathname;
+            const manifestJson = {
+                "id": "othello-app-" + encodeURIComponent(currentPath),
+                "name": "本格オセロ",
+                "short_name": "オセロ",
+                "start_url": currentPath,
+                "scope": currentPath,
+                "display": "standalone",
+                "background_color": "#3d3d3d",
+                "theme_color": "#606060",
+                "icons": [{ "src": iconBase64, "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }]
+            };
+            const manifestString = JSON.stringify(manifestJson);
+            const base64Manifest = btoa(unescape(encodeURIComponent(manifestString)));
+            
+            document.write('<link rel="manifest" href="data:application/manifest+json;base64,' + base64Manifest + '">');
+            document.write('<link rel="icon" type="image/png" href="' + iconBase64 + '">');
+            document.write('<link rel="apple-touch-icon" href="' + iconBase64 + '">');
+
+            // 3. Service Workerの動的登録
+            if ('serviceWorker' in navigator) {
+                const swCode = `
+                    self.addEventListener('install', e => e.waitUntil(self.skipWaiting()));
+                    self.addEventListener('activate', e => e.waitUntil(self.clients.claim()));
+                    self.addEventListener('fetch', e => e.respondWith(fetch(e.request)));
+                `;
+                const swBlob = new Blob([swCode], {type: 'application/javascript'});
+                const swUrl = URL.createObjectURL(swBlob);
+                window.addEventListener('load', () => {
+                    navigator.serviceWorker.register(swUrl, { scope: currentPath }).catch(err => console.log('SW Failed', err));
+                });
+            }
+        })();
+    </script>
+    <!-- ▲▲▲ PWA自己完結スクリプトここまで ▲▲▲ -->
+
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
 
@@ -28,7 +106,6 @@
             overscroll-behavior: none; 
         }
         
-        /* ▼ フルスクリーン時やPVP時の余白（ノッチ部分など）を黒にするための設定 ▼ */
         html.pvp-active { background-color: #000; }
         :fullscreen { background-color: #000 !important; }
         :-webkit-full-screen { background-color: #000 !important; }
@@ -134,7 +211,7 @@
         #pvp-ui-top { transform: rotate(180deg); }
 
         body.pvp-mode {
-            background-color: #000; /* 余白を黒にする */
+            background-color: #000;
             padding: 0;
             justify-content: flex-start;
         }
@@ -148,11 +225,10 @@
             height: 100vh;
             height: 100dvh; 
             gap: 20px;
-            /* 黒帯の分だけパディングを空ける */
             padding-bottom: max(env(safe-area-inset-bottom), 35px);
             padding-top: max(env(safe-area-inset-top), 35px);
             box-sizing: border-box;
-            background-color: var(--bg-color); /* メインエリアはグレー維持 */
+            background-color: var(--bg-color);
         }
 
         body.pvp-mode h1,
@@ -180,11 +256,10 @@
             bottom: calc(max(env(safe-area-inset-bottom), 35px) + 10px);
             right: 20px;
             gap: 10px;
-            z-index: 1001; /* 黒帯より上に配置 */
+            z-index: 1001; 
         }
         body.pvp-mode .pvp-button-wrapper { display: flex; }
 
-        /* ▼ ノッチ隠し用の黒い縁（上下） ▼ */
         .pvp-top-fill, .pvp-bottom-fill {
             display: none; 
             position: fixed;
@@ -192,7 +267,7 @@
             width: 100%;
             background-color: #000;
             z-index: 1000;
-            pointer-events: none; /* タップを邪魔しない */
+            pointer-events: none; 
         }
         body.pvp-mode .pvp-top-fill {
             display: block;
@@ -242,6 +317,27 @@
         }
         .btn.active { background: #4caf50; color: white; }
         .btn:not(.active) { background: rgba(0,0,0,0.2); }
+
+        /* ▼ インストールボタンのスタイル ▼ */
+        #install-btn-pwa {
+            display: none; /* 初期は非表示 */
+            border-color: #00e676;
+            color: #00e676;
+            margin-top: 10px;
+            font-weight: bold;
+            box-shadow: 0 0 10px rgba(0, 230, 118, 0.3);
+            animation: pulse-install 2s infinite;
+        }
+        @keyframes pulse-install {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+        
+        /* 既にアプリとして開かれている場合は非表示 */
+        @media all and (display-mode: standalone) {
+            #install-btn-pwa { display: none !important; }
+        }
 
         .score-container { 
             display: flex; 
@@ -359,12 +455,11 @@
             justify-content: center;
         }
 
-        /* ▼ 変更: 中断ボタンのスタイルを修正（グレー初期色、赤ゲージ、ハイライト消去） ▼ */
         .abort-btn {
             position: relative;
             overflow: hidden;
             padding: 8px 25px; 
-            background: #7f8c8d; /* 初期状態はグレー */
+            background: #7f8c8d; 
             color: white;
             border: none; 
             border-radius: 5px; 
@@ -372,8 +467,6 @@
             font-weight: bold; 
             font-size: 14px; 
             box-shadow: 0 2px 5px rgba(0,0,0,0.2);
-            
-            /* 青い枠やテキスト選択を無効化 */
             -webkit-user-select: none;
             user-select: none;
             -webkit-touch-callout: none;
@@ -381,14 +474,12 @@
             outline: none;
         }
 
-        /* テキストはゲージより上に表示 */
         .abort-btn span {
             position: relative;
             z-index: 2;
             pointer-events: none;
         }
 
-        /* ゲージ要素 */
         .abort-btn::before {
             content: "";
             position: absolute;
@@ -396,11 +487,10 @@
             left: 0;
             height: 100%;
             width: 0%;
-            background-color: #e74c3c; /* 長押し時の赤い色 */
+            background-color: #e74c3c; 
             z-index: 1;
         }
 
-        /* 長押し中クラスが付与されたら1秒かけて幅100%にする */
         .abort-btn.pressing::before {
             width: 100%;
             transition: width 1s linear;
@@ -442,6 +532,9 @@
                 <button class="btn" id="btn-pvp" onclick="setDiff('pvp')" style="border-color:#e040fb; color:#e040fb;">2人</button>
                 <button class="btn" id="btn-online" onclick="setDiff('online')" style="border-color:#00e5ff; color:#00e5ff;">オンライン対戦</button>
             </div>
+
+            <!-- ▼ インストールボタン ▼ -->
+            <button id="install-btn-pwa" class="btn" onclick="installApp()">📲 アプリとしてインストール</button>
         </div>
 
         <div class="score-container">
@@ -489,7 +582,6 @@
     </div>
 
     <div class="online-controls">
-        <!-- ▼ 変更: テキストをspanで囲む ▼ -->
         <button class="abort-btn" id="abort-btn" oncontextmenu="return false;"><span>バトル中断(1秒長押し)</span></button>
     </div>
 
@@ -533,6 +625,25 @@
     </div>
 
     <script>
+        // ▼ インストールボタンの処理 ▼
+        let deferredPrompt;
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            deferredPrompt = e;
+            document.getElementById('install-btn-pwa').style.display = 'inline-block';
+        });
+
+        function installApp() {
+            if (deferredPrompt) {
+                deferredPrompt.prompt();
+                deferredPrompt.userChoice.then((choiceResult) => {
+                    deferredPrompt = null;
+                });
+            } else {
+                alert("すでにインストールされているか、ブラウザのメニューから「ホーム画面に追加」をお試しください。");
+            }
+        }
+
         const BLACK = 1, WHITE = 2, EMPTY = 0;
         let board = [], turn = BLACK, isCpuThinking = false, difficulty = 'normal';
         let playerColor = BLACK;
@@ -1327,7 +1438,6 @@
             document.getElementById('status').innerText = txt;
         }
 
-        // ▼ 変更: アニメーション付き長押しボタンの制御 ▼
         let abortTimer = null;
         function setupAbortButton() {
             const abortBtn = document.getElementById('abort-btn');
