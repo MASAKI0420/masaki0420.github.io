@@ -386,19 +386,25 @@
         #taiko-wrapper .settings-grid .control-group.span-2 {
             grid-column: 1 / -1;
         }
-        #taiko-wrapper .assist-options, #taiko-wrapper .sound-options {
+        #taiko-wrapper .assist-options {
             display: flex;
             flex-direction: column;
             gap: 5px;
         }
+        /* ▼▼▼ 変更点 ▼▼▼ */
         #taiko-wrapper .sound-options {
-            flex-direction: row;
-            gap: 10px;
+            display: grid;
+            grid-template-columns: 1fr 1fr 50px;
+            gap: 8px;
+            align-items: center;
         }
-        #taiko-wrapper .sound-options .file-input-label {
-            flex: 1;
+        #taiko-wrapper .sound-options .file-input-label { flex: 1; }
+        #taiko-wrapper #don-sound-reset, #taiko-wrapper #katsu-sound-reset {
+            padding: 8px 10px;
+            font-size: 0.8em;
+            background-color: #555c6f;
         }
-
+        /* ▲▲▲ 変更ここまで ▲▲▲ */
 
         #taiko-wrapper #taiko-game-container { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: #000; overflow: hidden; display: none; z-index: 10; }
         
@@ -730,7 +736,28 @@
                             <span>オートプレイ</span>
                         </label>
                     </div>
-                     <div class="settings-buttons">
+                    
+                    <!-- 新しいサウンド設定 -->
+                    <div class="sound-control">
+                        <label>サウンド設定</label>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 15px;">
+                            <div>
+                                <label for="music-volume-slider-mania" style="margin-bottom: 5px; display: block;">曲の音量: <span id="music-volume-label-mania">100</span>%</label>
+                                <input type="range" id="music-volume-slider-mania" min="0" max="1" value="1" step="0.01">
+                            </div>
+                            <div>
+                                <label for="se-volume-slider-mania" style="margin-bottom: 5px; display: block;">SEの音量: <span id="se-volume-label-mania">100</span>%</label>
+                                <input type="range" id="se-volume-slider-mania" min="0" max="1" value="1" step="0.01">
+                            </div>
+                        </div>
+                        <div style="display: flex; gap: 10px; align-items: center;">
+                            <label for="hit-sound-file-mania" class="file-input-label" style="flex: 1; height: 45px; display: flex; align-items: center; justify-content: center; white-space: nowrap; margin: 0; background-color: #394362; border: 1px solid #4a5578; border-radius: 6px; cursor: pointer;">Hit音(SE)</label>
+                            <input type="file" id="hit-sound-file-mania" accept="audio/*">
+                            <button id="hit-sound-reset-mania" class="control-button" style="width: 100px; height: 45px; padding: 0; margin: 0;">リセット</button>
+                        </div>
+                    </div>
+
+                     <div class="settings-buttons" style="margin-top: 15px;">
                         <button id="open-settings-button" class="control-button">UI設定</button>
                         <button id="switch-to-taiko-button" class="control-button">Taiko Playerへ</button>
                     </div>
@@ -935,34 +962,59 @@
                             <input type="range" id="lane-cover-slider" min="0" max="70" value="0" step="1">
                         </div>
                          <div class="control-group span-2">
-                            <label>プレイアシスト</label>
-                            <div class="assist-options">
-                                <label for="taiko-auto-play-checkbox" class="checkbox-wrapper">
-                                    <input type="checkbox" id="taiko-auto-play-checkbox">
-                                    <span class="custom-checkbox"></span>
-                                    <span>オートプレイ</span>
-                                </label>
-                                 <label for="single-hand-big-note-checkbox" class="checkbox-wrapper">
-                                    <input type="checkbox" id="single-hand-big-note-checkbox" checked>
-                                    <span class="custom-checkbox"></span>
-                                    <span>大音符を片手で処理</span>
-                                </label>
-                                <label for="auto-se-checkbox" class="checkbox-wrapper">
-                                    <input type="checkbox" id="auto-se-checkbox">
-                                    <span class="custom-checkbox"></span>
-                                    <span>自動SE</span>
-                                </label>
-                            </div>
-                        </div>
+    <label>プレイアシスト</label>
+    <div class="assist-options" style="flex-direction: row; justify-content: space-around;"> <!-- ← このように変更 -->
+        <label for="taiko-auto-play-checkbox" class="checkbox-wrapper">
+            <input type="checkbox" id="taiko-auto-play-checkbox">
+            <span class="custom-checkbox"></span>
+            <span>オートプレイ</span>
+        </label>
+        <label for="single-hand-big-note-checkbox" class="checkbox-wrapper">
+            <input type="checkbox" id="single-hand-big-note-checkbox" checked>
+            <span class="custom-checkbox"></span>
+            <span>大音符を片手で処理</span>
+        </label>
+        <label for="auto-se-checkbox" class="checkbox-wrapper">
+            <input type="checkbox" id="auto-se-checkbox">
+            <span class="custom-checkbox"></span>
+            <span>自動SE</span>
+        </label>
+    </div>
+</div>
+                        <!-- ▼▼▼ 変更点 ▼▼▼ -->
                         <div class="control-group span-2">
-                            <label>サウンド設定</label>
-                            <div class="sound-options">
-                                <label for="don-sound-file" class="file-input-label">ドン(SE)</label>
-                                <input type="file" id="don-sound-file" accept="audio/*">
-                                <label for="katsu-sound-file" class="file-input-label">カッ(SE)</label>
-                                <input type="file" id="katsu-sound-file" accept="audio/*">
-                            </div>
-                        </div>
+    <label>サウンド設定</label>
+    
+    <!-- 上段: 音量調整 (横並び) -->
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 15px;">
+        <div>
+            <label for="music-volume-slider-taiko" style="margin-bottom: 5px;">曲の音量: <span id="music-volume-label-taiko">100</span>%</label>
+            <input type="range" id="music-volume-slider-taiko" min="0" max="1" value="1" step="0.01">
+        </div>
+        <div>
+            <label for="se-volume-slider-taiko" style="margin-bottom: 5px;">SEの音量: <span id="se-volume-label-taiko">100</span>%</label>
+            <input type="range" id="se-volume-slider-taiko" min="0" max="1" value="1" step="0.01">
+        </div>
+    </div>
+
+    <!-- 下段: SEファイル選択 (ドンとカッを横並び) -->
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+        <!-- ドンのブロック -->
+        <div style="display: flex; gap: 10px; align-items: center;">
+            <label for="don-sound-file" class="file-input-label" style="flex: 1; height: 25px; display: flex; align-items: center; justify-content: center; white-space: nowrap; margin: 0;">ドン(SE)</label>
+            <input type="file" id="don-sound-file" accept="audio/*">
+            <button id="don-sound-reset" class="control-button" style="width: 100px; height: 45px; padding: 0; margin: 0;">リセット</button>
+        </div>
+
+        <!-- カッのブロック -->
+        <div style="display: flex; gap: 10px; align-items: center;">
+            <label for="katsu-sound-file" class="file-input-label" style="flex: 1; height:25px; display: flex; align-items: center; justify-content: center; white-space: nowrap; margin: 0;">カッ(SE)</label>
+            <input type="file" id="katsu-sound-file" accept="audio/*">
+            <button id="katsu-sound-reset" class="control-button" style="width: 100px; height: 45px; padding: 0; margin: 0;">リセット</button>
+        </div>
+    </div>
+</div>
+                        <!-- ▲▲▲ 変更ここまで ▲▲▲ -->
                         <div id="background-select-wrapper" class="control-group span-2" style="display: none;">
                             <label for="background-select">背景</label>
                             <select id="background-select" class="control-button"></select>
@@ -1252,7 +1304,6 @@
     // --- osu!mania Game Logic (Scoped) ---
     const ManiaGame = (() => {
         const root = document.getElementById('mania-wrapper');
-        // ... (ManiaGameのJavaScriptコードは変更なしなので省略) ...
         const dom = {
             appContainer: root.querySelector('#app-container'),
             gameContainer: root.querySelector('#game-container'),
@@ -1332,7 +1383,13 @@
             modSelectContainer: root.querySelector('#mod-select-container'),
             errorBar: root.querySelector('#error-bar'),
             keyCountSelector: root.querySelector('#key-count-selector'),
-            resultsRankValue: root.querySelector('#mania-results-rank-value'), 
+            resultsRankValue: root.querySelector('#mania-results-rank-value'),
+            musicVolumeSliderMania: root.querySelector('#music-volume-slider-mania'),
+            musicVolumeLabelMania: root.querySelector('#music-volume-label-mania'),
+            seVolumeSliderMania: root.querySelector('#se-volume-slider-mania'),
+            seVolumeLabelMania: root.querySelector('#se-volume-label-mania'),
+            hitSoundFileInputMania: root.querySelector('#hit-sound-file-mania'),
+            hitSoundResetMania: root.querySelector('#hit-sound-reset-mania'),
         };
         if (dom.settingsOverlay) { const closeBtn = dom.settingsOverlay.querySelector('.overlay-button'); if (closeBtn) closeBtn.addEventListener('click', () => dom.settingsOverlay.style.display = 'none'); }
         if (dom.openSettingsButton) { dom.openSettingsButton.addEventListener('click', () => dom.settingsOverlay.style.display = 'flex'); }
@@ -1341,8 +1398,8 @@
         let keyConfigs = {};
         let activeKeys = [];
         let numLanes = 4;
-        let keyState = [];
-        let keyJustPressed = [];
+        let keyState =[];
+        let keyJustPressed =[];
         const getGameHeight = () => dom.gameContainer.clientHeight;
         const JUDGMENT_LINE_POS_VH = 15;
         const NOTE_HEIGHT = 22;
@@ -1358,13 +1415,13 @@
         let judgmentCounts = { 'PERFECT+': 0, PERFECT: 0, GREAT: 0, GOOD: 0, OK: 0, MISS: 0 };
         let isGameRunning = false, isPaused = false, isAutoPlay = false;
         let selectedPauseIndex = 0;
-        let allNotes = [];
+        let allNotes =[];
         let nextUnjudgedNoteIndex = 0;
-        let activeHolds = [];
+        let activeHolds =[];
         let beatmap = null;
         let audioLoaded = false;
         let animationFrameId = null;
-        let currentOszFiles = { beatmaps: [], audio: {}, video: {}, image: {} };
+        let currentOszFiles = { beatmaps:[], audio: {}, video: {}, image: {} };
         let db;
         let gameContext = { visualStartTime: 0, rate: 1.0 };
         let activeMods = { NF: false, HT: false, DT: false, HD: false };
@@ -1373,19 +1430,101 @@
         let audioContext;
         let audioBuffer;
         let audioSourceNode;
+        let musicGainNode;
+        let seGainNode;
+        let hitSoundBuffer = null;
         let audioContextState = { startedAt: 0, pausedAt: 0, isReady: false };
         let playEndTime = 0; 
         let songDuration = 0;
-        function generateDefaultKeyConfigs() { return { 4: ['D', 'F', 'J', 'K'], 5: ['D', 'F', ' ', 'J', 'K'], 6: ['S', 'D', 'F', 'J', 'K', 'L'], 7: ['S', 'D', 'F', ' ', 'J', 'K', 'L'], 8: ['A', 'S', 'D', 'F', 'J', 'K', 'L', ';'], 9: ['A', 'S', 'D', 'F', ' ', 'J', 'K', 'L', ';'], 10: ['A', 'S', 'D', 'F', 'G', 'H', 'J', 'K', 'L', ';'] }; }
-        function initDB() { return new Promise((resolve, reject) => { const request = indexedDB.open('maniaPlayerDB', 1); request.onerror = event => reject('Database error: ' + event.target.errorCode); request.onsuccess = event => { db = event.target.result; resolve(db); }; request.onupgradeneeded = event => { const db = event.target.result; db.createObjectStore('beatmaps', { keyPath: 'id', autoIncrement: true }); }; }); }
+        
+        function generateDefaultKeyConfigs() { return { 4: ['D', 'F', 'J', 'K'], 5:['D', 'F', ' ', 'J', 'K'], 6:['S', 'D', 'F', 'J', 'K', 'L'], 7:['S', 'D', 'F', ' ', 'J', 'K', 'L'], 8:['A', 'S', 'D', 'F', 'J', 'K', 'L', ';'], 9:['A', 'S', 'D', 'F', ' ', 'J', 'K', 'L', ';'], 10:['A', 'S', 'D', 'F', 'G', 'H', 'J', 'K', 'L', ';'] }; }
+        
+        function initDB() { 
+            return new Promise((resolve, reject) => { 
+                const request = indexedDB.open('maniaPlayerDB', 2); 
+                request.onerror = event => reject('Database error: ' + event.target.errorCode); 
+                request.onsuccess = event => { db = event.target.result; resolve(db); }; 
+                request.onupgradeneeded = event => { 
+                    const db = event.target.result; 
+                    if (!db.objectStoreNames.contains('beatmaps')) {
+                        db.createObjectStore('beatmaps', { keyPath: 'id', autoIncrement: true }); 
+                    }
+                    if (!db.objectStoreNames.contains('sounds')) {
+                        db.createObjectStore('sounds', { keyPath: 'id' }); 
+                    }
+                }; 
+            }); 
+        }
+
+        async function saveSE(id, buffer) { return new Promise((resolve, reject) => { const transaction = db.transaction(['sounds'], 'readwrite'); const store = transaction.objectStore('sounds'); const request = store.put({ id, buffer }); request.onsuccess = () => resolve(); request.onerror = (event) => reject(event.target.error); }); }
+        async function getSE(id) { return new Promise((resolve, reject) => { const transaction = db.transaction(['sounds'], 'readonly'); const store = transaction.objectStore('sounds'); const request = store.get(id); request.onsuccess = (event) => resolve(event.target.result ? event.target.result.buffer : null); request.onerror = (event) => reject(event.target.error); }); }
+        async function deleteSE(id) { return new Promise((resolve, reject) => { const transaction = db.transaction(['sounds'], 'readwrite'); const store = transaction.objectStore('sounds'); const request = store.delete(id); request.onsuccess = () => resolve(); request.onerror = (event) => reject(event.target.error); }); }
+
+        function playHitSound() {
+            if (!audioContext || !hitSoundBuffer || !seGainNode) return;
+            const source = audioContext.createBufferSource();
+            source.buffer = hitSoundBuffer;
+            source.connect(seGainNode);
+            source.start(0);
+        }
+
+        async function loadAndSaveSound(file) {
+            if (!file || !audioContext) return;
+            try {
+                const arrayBuffer = await file.arrayBuffer();
+                const audioBuffer = await audioContext.decodeAudioData(arrayBuffer.slice(0));
+                hitSoundBuffer = audioBuffer;
+                await saveSE('hit', arrayBuffer);
+                alert(`Hit音(SE)を保存しました。`);
+            } catch (error) {
+                console.error(`Error processing sound file:`, error);
+                alert("サウンドファイルの処理中にエラーが発生しました。");
+            }
+        }
+
+        async function loadDefaultSounds() {
+            try {
+                const buffer = await getSE('hit');
+                if (buffer) {
+                    hitSoundBuffer = await audioContext.decodeAudioData(buffer);
+                }
+            } catch (e) {
+                console.error("Failed to load default sounds from DB:", e);
+            }
+        }
+
+        async function resetSound() {
+            if (confirm(`Hit音(SE)をデフォルトに戻しますか？ (保存されたSEは削除されます)`)) {
+                try {
+                    await deleteSE('hit');
+                    hitSoundBuffer = null;
+                    alert(`Hit音(SE)をリセットしました。`);
+                } catch (e) {
+                    alert("SEのリセットに失敗しました。");
+                    console.error(e);
+                }
+            }
+        }
+
+        function applyMusicVolume(value) {
+            if (musicGainNode) musicGainNode.gain.value = value;
+            if (dom.musicVolumeLabelMania) dom.musicVolumeLabelMania.textContent = Math.round(value * 100);
+        }
+        
+        function applySEVolume(value) {
+            if (seGainNode) seGainNode.gain.value = value;
+            if (dom.seVolumeLabelMania) dom.seVolumeLabelMania.textContent = Math.round(value * 100);
+        }
+
         async function addBeatmapsToDB(files) { if (!db) return; const transaction = db.transaction(['beatmaps'], 'readwrite'); const store = transaction.objectStore('beatmaps'); for (const file of files) { store.add({ name: file.name, file: file }); } transaction.oncomplete = () => loadBeatmapsFromDB(); transaction.onerror = (event) => console.error('Error adding beatmaps:', event.target.error); }
         async function loadBeatmapsFromDB() { if (!db) return; const transaction = db.transaction(['beatmaps'], 'readonly'); const store = transaction.objectStore('beatmaps'); const request = store.getAll(); request.onsuccess = () => { dom.beatmapLibrarySelector.innerHTML = ''; request.result.forEach(beatmapFile => { const option = new Option(beatmapFile.name, beatmapFile.id); dom.beatmapLibrarySelector.add(option); }); }; }
         async function removeBeatmapFromDB() { if (!db) return; const selectedId = parseInt(dom.beatmapLibrarySelector.value, 10); if (isNaN(selectedId)) { alert('削除する譜面を選択してください。'); return; } const transaction = db.transaction(['beatmaps'], 'readwrite'); const store = transaction.objectStore('beatmaps'); const request = store.delete(selectedId); request.onsuccess = () => { resetBeatmapSelection(); loadBeatmapsFromDB(); }; }
         async function getBeatmapRecordFromDB(id) { return new Promise((resolve, reject) => { if (!db) return reject('DB not initialized'); const transaction = db.transaction(['beatmaps'], 'readonly'); const store = transaction.objectStore('beatmaps'); const request = store.get(id); request.onsuccess = () => resolve(request.result || null); request.onerror = (event) => reject(event.target.error); }); }
+        
         function parseBeatmap(text) {
             const lines = text.split('\n').map(l => l.trim());
             const result = {
-                title: '', artist: '', keyCount: 0, hitObjects: [],
+                title: '', artist: '', keyCount: 0, hitObjects:[],
                 audioFilename: '', version: '', audioLeadIn: 0,
                 videoFilename: '', videoOffset: 0, overallDifficulty: 8 
             };
@@ -1443,7 +1582,7 @@
                     artist: data.meta.artist || 'Unknown Artist',
                     version: data.meta.version || 'Unknown Difficulty',
                     keyCount: mode_ext.column,
-                    hitObjects: [],
+                    hitObjects:[],
                     audioFilename: (data.meta.audio || '').trim(),
                     audioLeadIn: 0,
                     videoFilename: '',
@@ -1452,9 +1591,9 @@
                 };
                 const offset = data.meta.offset || 0;
                 const BEATS_PER_MEASURE = 4;
-                const timingPoints = (data.time || []).sort((a, b) => a.beat[0] - b.beat[0] || a.beat[1] - b.beat[1] || a.beat[2] - b.beat[2]);
+                const timingPoints = (data.time ||[]).sort((a, b) => a.beat[0] - b.beat[0] || a.beat[1] - b.beat[1] || a.beat[2] - b.beat[2]);
                 if (timingPoints.length === 0 || (timingPoints[0].beat[0] !== 0 || timingPoints[0].beat[1] !== 0)) {
-                    timingPoints.unshift({ beat: [0, 0, 4], bpm: 120 });
+                    timingPoints.unshift({ beat:[0, 0, 4], bpm: 120 });
                 }
                 let currentTimeMs = 0;
                 let lastBeatPosition = 0;
@@ -1484,7 +1623,7 @@
                     const msSinceTp = beatDelta * (60000 / targetTp.bpm);
                     return Math.round(targetTp.timeMs + msSinceTp + offset);
                 };
-                for (const note of (data.note || [])) {
+                for (const note of (data.note ||[])) {
                     if (note.column === undefined) continue;
                     const time = beatToMs(note.beat);
                     const lane = note.column;
@@ -1532,7 +1671,7 @@
                 const jszip = new JSZip();
                 const zip = await jszip.loadAsync(file);
                 currentOszFiles = { beatmaps: [], audio: {}, video: {}, image: {} };
-                const filePromises = [];
+                const filePromises =[];
                 zip.forEach((relativePath, zipEntry) => {
                     const lowerCasePath = relativePath.toLowerCase();
                     if (lowerCasePath.endsWith('.osu')) {
@@ -1657,14 +1796,14 @@
                 checkReadyState();
             }
         }
-        function resetBeatmapSelection() { beatmap = null; audioLoaded = false; audioBuffer = null; currentOszFiles = { beatmaps: [], audio: {}, video: {}, image: {} }; dom.beatmapSelectorContainer.style.display = 'none'; dom.beatmapSelector.innerHTML = ''; dom.backgroundSelectorContainer.style.display = 'none'; dom.force4kContainer.style.display = 'none'; dom.force4kCheckbox.checked = false; applyBackgroundChoice(); dom.songTitleElement.textContent = '譜面を選択してください'; dom.songArtistElement.textContent = ''; dom.saveOszButton.disabled = true; currentBeatmapSetId = null; currentBeatmapVersion = null; dom.keyCountSelector.disabled = false; loadBeatmapSpecificSettings(); checkReadyState(); }
+        function resetBeatmapSelection() { beatmap = null; audioLoaded = false; audioBuffer = null; currentOszFiles = { beatmaps:[], audio: {}, video: {}, image: {} }; dom.beatmapSelectorContainer.style.display = 'none'; dom.beatmapSelector.innerHTML = ''; dom.backgroundSelectorContainer.style.display = 'none'; dom.force4kContainer.style.display = 'none'; dom.force4kCheckbox.checked = false; applyBackgroundChoice(); dom.songTitleElement.textContent = '譜面を選択してください'; dom.songArtistElement.textContent = ''; dom.saveOszButton.disabled = true; currentBeatmapSetId = null; currentBeatmapVersion = null; dom.keyCountSelector.disabled = false; loadBeatmapSpecificSettings(); checkReadyState(); }
         function updateBackgroundSelector() { const hasVideo = Object.keys(currentOszFiles.video).length > 0; const hasImage = Object.keys(currentOszFiles.image).length > 0; dom.backgroundSelector.innerHTML = ''; if(hasVideo || hasImage) { dom.backgroundSelector.add(new Option('自動', 'auto')); if(hasVideo) dom.backgroundSelector.add(new Option('動画', 'video')); if(hasImage) dom.backgroundSelector.add(new Option('画像', 'image')); dom.backgroundSelector.add(new Option('なし', 'none')); dom.backgroundSelectorContainer.style.display = 'block'; } else { dom.backgroundSelectorContainer.style.display = 'none'; } }
         function applyBackgroundChoice() { const choice = dom.backgroundSelector.value; const videoURL = Object.values(currentOszFiles.video)[0]; const imageURL = Object.values(currentOszFiles.image)[0]; dom.videoBackground.style.display = 'none'; dom.imageBackground.style.display = 'none'; let show = choice; if (choice === 'auto') { if (videoURL) show = 'video'; else if (imageURL) show = 'image'; else show = 'none'; } if (show === 'video' && videoURL) { dom.videoBackground.src = videoURL; dom.videoBackground.style.display = 'block'; } else if (show === 'image' && imageURL) { dom.imageBackground.src = imageURL; dom.imageBackground.style.display = 'block'; } }
         function checkReadyState() { dom.startButton.disabled = !(beatmap && audioLoaded); }
         function updateSpeed() { dom.speedLabel.textContent = `ノーツ速度 (x${parseFloat(dom.speedSlider.value).toFixed(1)})`; }
         function getFallMs() { return BASE_FALL_MS / parseFloat(dom.speedSlider.value); }
         function setKeyCount(count) { numLanes = parseInt(count, 10); root.style.setProperty('--num-lanes', numLanes); activeKeys = keyConfigs[numLanes]; initKeyConfig(); initGameUI(); }
-        function initKeyConfig() { dom.keyConfigInputsContainer.innerHTML = ''; const currentKeys = keyConfigs[numLanes] || []; for (let i = 0; i < numLanes; i++) { const keyInput = document.createElement('div'); keyInput.className = 'key-config-input'; keyInput.textContent = currentKeys[i] || '...'; keyInput.dataset.laneIndex = i; keyInput.tabIndex = 0; keyInput.addEventListener('click', e => { if (isGameRunning) return; root.querySelectorAll('.key-config-input.is-waiting').forEach(el => el.blur()); e.currentTarget.textContent = '...'; e.currentTarget.classList.add('is-waiting'); }); keyInput.addEventListener('blur', e => { e.currentTarget.classList.remove('is-waiting'); e.currentTarget.textContent = keyConfigs[numLanes][e.currentTarget.dataset.laneIndex]; }); keyInput.addEventListener('keydown', e => { e.preventDefault(); if (!e.currentTarget.classList.contains('is-waiting')) return; if (e.key === 'Escape') { e.currentTarget.blur(); return; } const newKey = e.key.toUpperCase(); if (newKey.length !== 1 && newKey !== ' ') return; const index = parseInt(e.currentTarget.dataset.laneIndex, 10); if (keyConfigs[numLanes].some((key, k_idx) => key === newKey && k_idx !== index)) { alert('そのキーは他のレーンで既に使用されています。'); return; } keyConfigs[numLanes][index] = newKey; e.currentTarget.blur(); updateKeyIndicators(); saveSettings(); }); dom.keyConfigInputsContainer.appendChild(keyInput); } }
+        function initKeyConfig() { dom.keyConfigInputsContainer.innerHTML = ''; const currentKeys = keyConfigs[numLanes] ||[]; for (let i = 0; i < numLanes; i++) { const keyInput = document.createElement('div'); keyInput.className = 'key-config-input'; keyInput.textContent = currentKeys[i] || '...'; keyInput.dataset.laneIndex = i; keyInput.tabIndex = 0; keyInput.addEventListener('click', e => { if (isGameRunning) return; root.querySelectorAll('.key-config-input.is-waiting').forEach(el => el.blur()); e.currentTarget.textContent = '...'; e.currentTarget.classList.add('is-waiting'); }); keyInput.addEventListener('blur', e => { e.currentTarget.classList.remove('is-waiting'); e.currentTarget.textContent = keyConfigs[numLanes][e.currentTarget.dataset.laneIndex]; }); keyInput.addEventListener('keydown', e => { e.preventDefault(); if (!e.currentTarget.classList.contains('is-waiting')) return; if (e.key === 'Escape') { e.currentTarget.blur(); return; } const newKey = e.key.toUpperCase(); if (newKey.length !== 1 && newKey !== ' ') return; const index = parseInt(e.currentTarget.dataset.laneIndex, 10); if (keyConfigs[numLanes].some((key, k_idx) => key === newKey && k_idx !== index)) { alert('そのキーは他のレーンで既に使用されています。'); return; } keyConfigs[numLanes][index] = newKey; e.currentTarget.blur(); updateKeyIndicators(); saveSettings(); }); dom.keyConfigInputsContainer.appendChild(keyInput); } }
         function initGameUI() {
             dom.lanesContainer.innerHTML = '';
             dom.keyIndicatorsContainer.innerHTML = '';
@@ -1701,7 +1840,7 @@
             }
             updateKeyIndicators();
         }
-        function updateKeyIndicators() { const currentKeys = keyConfigs[numLanes] || []; dom.keyConfigInputsContainer.childNodes.forEach((input, i) => { if (currentKeys[i]) input.textContent = currentKeys[i]; }); if(dom.keyIndicatorsContainer) { dom.keyIndicatorsContainer.childNodes.forEach((indicator, i) => { if (currentKeys[i]) indicator.textContent = currentKeys[i]; }); } }
+        function updateKeyIndicators() { const currentKeys = keyConfigs[numLanes] ||[]; dom.keyConfigInputsContainer.childNodes.forEach((input, i) => { if (currentKeys[i]) input.textContent = currentKeys[i]; }); if(dom.keyIndicatorsContainer) { dom.keyIndicatorsContainer.childNodes.forEach((indicator, i) => { if (currentKeys[i]) indicator.textContent = currentKeys[i]; }); } }
         function resetGame() {
             score = 0; combo = 0; maxCombo = 0; accuracy = 100; totalJudgments = 0; weightedAccuracy = 0; nextUnjudgedNoteIndex = 0;
             judgmentCounts = { 'PERFECT+': 0, PERFECT: 0, GREAT: 0, GOOD: 0, OK: 0, MISS: 0 };
@@ -1712,7 +1851,7 @@
             if(dom.errorBar) dom.errorBar.innerHTML = '';
             if (animationFrameId) cancelAnimationFrame(animationFrameId);
             allNotes.forEach(note => { if (note.tickInterval) clearInterval(note.tickInterval); });
-            allNotes = [];
+            allNotes =[];
             activeHolds = Array(numLanes).fill(null);
             dom.lanesContainer.querySelectorAll('.note-wrapper').forEach(n => n.remove());
             dom.keyIndicatorsContainer.childNodes.forEach(key => key.classList.remove('active'));
@@ -1813,7 +1952,18 @@
             }
             animationFrameId = requestAnimationFrame(gameLoop);
         }
-        function playAudio(offsetSeconds = 0, startTime = 0) { if (!audioContextState.isReady || !audioBuffer) return; if (audioSourceNode) { audioSourceNode.stop(); } audioSourceNode = audioContext.createBufferSource(); audioSourceNode.buffer = audioBuffer; audioSourceNode.connect(audioContext.destination); audioSourceNode.playbackRate.value = gameContext.rate; const startOffset = Math.max(0, offsetSeconds); const scheduledStart = Math.max(audioContext.currentTime, startTime); audioContextState.startedAt = scheduledStart - startOffset; audioSourceNode.start(scheduledStart, startOffset); }
+        function playAudio(offsetSeconds = 0, startTime = 0) { 
+            if (!audioContextState.isReady || !audioBuffer) return; 
+            if (audioSourceNode) { audioSourceNode.stop(); } 
+            audioSourceNode = audioContext.createBufferSource(); 
+            audioSourceNode.buffer = audioBuffer; 
+            audioSourceNode.connect(musicGainNode); 
+            audioSourceNode.playbackRate.value = gameContext.rate; 
+            const startOffset = Math.max(0, offsetSeconds); 
+            const scheduledStart = Math.max(audioContext.currentTime, startTime); 
+            audioContextState.startedAt = scheduledStart - startOffset; 
+            audioSourceNode.start(scheduledStart, startOffset); 
+        }
         function getCurrentBeatmapTime() { if (!isGameRunning) return -Infinity; if (isPaused) { return (audioContextState.pausedAt * 1000) - (applyRateToTime(beatmap.audioLeadIn) || 0) + (parseInt(dom.audioOffsetInput.value, 10) || 0); } if (audioContextState.startedAt > 0) { const elapsed = (audioContext.currentTime - audioContextState.startedAt) * 1000 * gameContext.rate; return elapsed - (beatmap.audioLeadIn || 0) + (parseInt(dom.audioOffsetInput.value, 10) || 0); } const visualElapsed = performance.now() - gameContext.visualStartTime; return (visualElapsed - (getFallMs() + AUDIO_START_DELAY_MS)) * gameContext.rate; }
         function applyRateToTime(time) { return time / gameContext.rate; }
         function gameLoop() {
@@ -1856,7 +2006,15 @@
             }
         }
         function updateNotePositions(now, userOffset, pixelsPerMs, gameHeight, judgmentLinePx) { const isCircleStyle = dom.playfield.classList.contains('note-style-circle'); const noteHeightForOffset = isCircleStyle ? 70 : 22; const yOffset = noteHeightForOffset / 2; for (const note of allNotes) { if ((note.judged && note.type === 'note') || note.released) continue; const timeToHit = (note.time + userOffset) - now; let headY = (gameHeight - judgmentLinePx) - (timeToHit * pixelsPerMs); if (!note.spawned && headY > -noteHeightForOffset) { note.spawned = true; note.element.classList.remove('hidden'); } if (note.element) { if (activeMods.HD) { const fadeInEndPos = gameHeight * 0.40; const fadeOutStartPos = gameHeight * 0.75; if (headY > fadeInEndPos) { const fadeProgress = Math.max(0, Math.min(1, (headY - fadeInEndPos) / (fadeOutStartPos - fadeInEndPos))); note.element.style.opacity = 1 - fadeProgress; } else { note.element.style.opacity = 1; } } if (note.type === 'long' && note.hit) { headY = gameHeight - judgmentLinePx; if (note.element.querySelector('.note')) note.element.querySelector('.note').style.display = 'none'; } note.element.style.transform = `translateY(${headY - yOffset}px)`; if (note.type === 'long') { const body = note.element.querySelector('.long-note-body'); if (body) { const timeToRelease = (note.endTime + userOffset) - now; const tailY = (gameHeight - judgmentLinePx) - (timeToRelease * pixelsPerMs); const headHeight = noteHeightForOffset; const bodyTopOffset = headHeight / 2; body.style.top = `${tailY - headY}px`; body.style.height = `${Math.max(0, (headY + bodyTopOffset) - tailY)}px`; } } } if (headY > gameHeight + 50) { if (note.element) note.element.classList.add('hidden'); note.judged = true; note.released = true; } } }
-        function autoPlayHandler(now, userOffset) { for (const note of allNotes) { if (!note.judged && now >= (note.time + userOffset)) handleHit('PERFECT+', note, 0); if (note.type === 'long' && note.hit && !note.released && now >= (note.endTime + userOffset)) judgeRelease(note.lane, { isAutoCompletion: true }); } }
+        function autoPlayHandler(now, userOffset) { 
+            for (const note of allNotes) { 
+                if (!note.judged && now >= (note.time + userOffset)) {
+                    handleHit('PERFECT+', note, 0); 
+                    playHitSound(); 
+                }
+                if (note.type === 'long' && note.hit && !note.released && now >= (note.endTime + userOffset)) judgeRelease(note.lane, { isAutoCompletion: true }); 
+            } 
+        }
         function updateNoteStates(now, userOffset) {
             while (nextUnjudgedNoteIndex < allNotes.length) {
                 const note = allNotes[nextUnjudgedNoteIndex];
@@ -1921,6 +2079,7 @@
             if (laneIndex === -1 || keyState[laneIndex]) return; 
             keyState[laneIndex] = true; 
             keyJustPressed[laneIndex] = true; 
+            playHitSound();
         }
 
         function handleKeyup(e) {
@@ -2114,8 +2273,63 @@
         function applyComboPositionY(value) { root.style.setProperty('--combo-position-y', value + '%'); if (dom.comboPositionValue) dom.comboPositionValue.textContent = value; }
         function applyJudgmentPositionY(value) { root.style.setProperty('--judgment-text-top', value + 'vh'); if (dom.judgmentPositionValue) dom.judgmentPositionValue.textContent = value; }
         function applyNoteStyle(style) { dom.playfield.classList.toggle('note-style-circle', style === 'circle'); updateOpacitySliderLabel(); applyLaneOpacity(dom.laneOpacitySlider.value); }
-        function saveSettings() { const settings = { speed: dom.speedSlider.value, offset: dom.offsetInput.value, autoPlay: dom.autoPlayCheckbox.checked, force4k: dom.force4kCheckbox.checked, keyConfigs: keyConfigs, mods: activeMods, noteStyle: dom.noteStyleSelector.value, brightness: dom.backgroundBrightnessSlider.value, laneOpacity: dom.laneOpacitySlider.value, comboSize: dom.comboSizeSlider.value, comboPosition: dom.comboPositionSlider.value, judgmentPosition: dom.judgmentPositionSlider.value, keyCount: numLanes }; localStorage.setItem('maniaPlayerSettings', JSON.stringify(settings)); }
-        function loadSettings() { const savedSettings = localStorage.getItem('maniaPlayerSettings'); const defaultConfigs = generateDefaultKeyConfigs(); if (savedSettings) { const settings = JSON.parse(savedSettings); dom.speedSlider.value = settings.speed || 1.5; dom.offsetInput.value = settings.offset || 0; dom.autoPlayCheckbox.checked = settings.autoPlay || false; dom.force4kCheckbox.checked = settings.force4k || false; keyConfigs = { ...defaultConfigs, ...settings.keyConfigs }; if(settings.mods) { activeMods = settings.mods; Object.keys(activeMods).forEach(modKey => { const button = dom.modSelectContainer.querySelector(`[data-mod="${modKey}"]`); if (button) button.classList.toggle('active', activeMods[modKey]); }); } const noteStyle = settings.noteStyle || 'bar'; dom.noteStyleSelector.value = noteStyle; dom.backgroundBrightnessSlider.value = settings.brightness || 50; dom.laneOpacitySlider.value = settings.laneOpacity || 50; dom.comboSizeSlider.value = settings.comboSize || 100; dom.comboPositionSlider.value = settings.comboPosition || 45; dom.judgmentPositionSlider.value = settings.judgmentPosition || 65; dom.keyCountSelector.value = settings.keyCount || 4; } else { keyConfigs = defaultConfigs; } setKeyCount(dom.keyCountSelector.value); updateSpeed(); applyBrightness(dom.backgroundBrightnessSlider.value); applyComboSize(dom.comboSizeSlider.value); applyComboPositionY(dom.comboPositionSlider.value); applyJudgmentPositionY(dom.judgmentPositionSlider.value); applyNoteStyle(dom.noteStyleSelector.value); }
+        
+        function saveSettings() { 
+            const settings = { 
+                speed: dom.speedSlider.value, 
+                offset: dom.offsetInput.value, 
+                autoPlay: dom.autoPlayCheckbox.checked, 
+                force4k: dom.force4kCheckbox.checked, 
+                keyConfigs: keyConfigs, 
+                mods: activeMods, 
+                noteStyle: dom.noteStyleSelector.value, 
+                brightness: dom.backgroundBrightnessSlider.value, 
+                laneOpacity: dom.laneOpacitySlider.value, 
+                comboSize: dom.comboSizeSlider.value, 
+                comboPosition: dom.comboPositionSlider.value, 
+                judgmentPosition: dom.judgmentPositionSlider.value, 
+                keyCount: numLanes,
+                musicVolume: dom.musicVolumeSliderMania ? dom.musicVolumeSliderMania.value : 1,
+                seVolume: dom.seVolumeSliderMania ? dom.seVolumeSliderMania.value : 1,
+            }; 
+            localStorage.setItem('maniaPlayerSettings', JSON.stringify(settings)); 
+        }
+
+        function loadSettings() { 
+            const savedSettings = localStorage.getItem('maniaPlayerSettings'); 
+            const defaultConfigs = generateDefaultKeyConfigs(); 
+            if (savedSettings) { 
+                const settings = JSON.parse(savedSettings); 
+                dom.speedSlider.value = settings.speed || 1.5; 
+                dom.offsetInput.value = settings.offset || 0; 
+                dom.autoPlayCheckbox.checked = settings.autoPlay || false; 
+                dom.force4kCheckbox.checked = settings.force4k || false; 
+                keyConfigs = { ...defaultConfigs, ...settings.keyConfigs }; 
+                if(settings.mods) { activeMods = settings.mods; Object.keys(activeMods).forEach(modKey => { const button = dom.modSelectContainer.querySelector(`[data-mod="${modKey}"]`); if (button) button.classList.toggle('active', activeMods[modKey]); }); } 
+                const noteStyle = settings.noteStyle || 'bar'; 
+                dom.noteStyleSelector.value = noteStyle; 
+                dom.backgroundBrightnessSlider.value = settings.brightness || 50; 
+                dom.laneOpacitySlider.value = settings.laneOpacity || 50; 
+                dom.comboSizeSlider.value = settings.comboSize || 100; 
+                dom.comboPositionSlider.value = settings.comboPosition || 45; 
+                dom.judgmentPositionSlider.value = settings.judgmentPosition || 65; 
+                dom.keyCountSelector.value = settings.keyCount || 4;
+                if(dom.musicVolumeSliderMania) dom.musicVolumeSliderMania.value = settings.musicVolume !== undefined ? settings.musicVolume : 1;
+                if(dom.seVolumeSliderMania) dom.seVolumeSliderMania.value = settings.seVolume !== undefined ? settings.seVolume : 1;
+            } else { 
+                keyConfigs = defaultConfigs; 
+            } 
+            setKeyCount(dom.keyCountSelector.value); 
+            updateSpeed(); 
+            if(dom.musicVolumeSliderMania) applyMusicVolume(dom.musicVolumeSliderMania.value);
+            if(dom.seVolumeSliderMania) applySEVolume(dom.seVolumeSliderMania.value);
+            applyBrightness(dom.backgroundBrightnessSlider.value); 
+            applyComboSize(dom.comboSizeSlider.value); 
+            applyComboPositionY(dom.comboPositionSlider.value); 
+            applyJudgmentPositionY(dom.judgmentPositionSlider.value); 
+            applyNoteStyle(dom.noteStyleSelector.value); 
+        }
+
         function updateJudgmentWindows(od) {
             JUDGMENT_WINDOWS = {
                 PERFECT_PLUS: 16,
@@ -2130,10 +2344,22 @@
         return {
             initialize: async function() {
                 for (let i = 4; i <= 10; i++) { dom.keyCountSelector.add(new Option(`${i}K`, i)); }
-                loadSettings();
+                
+                try { 
+                    audioContext = new (window.AudioContext || window.webkitAudioContext)(); 
+                    musicGainNode = audioContext.createGain();
+                    musicGainNode.connect(audioContext.destination);
+                    seGainNode = audioContext.createGain();
+                    seGainNode.connect(audioContext.destination);
+                } catch (e) { alert("Web Audio APIがこのブラウザではサポートされていません。"); }
+                
+                loadSettings(); 
                 setupMods();
-                try { audioContext = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { alert("Web Audio APIがこのブラウザではサポートされていません。"); }
-                try { await initDB(); await loadBeatmapsFromDB(); } catch (error) { console.error("Failed to initialize DB:", error); alert("データベースの初期化に失敗しました。譜面ライブラリ機能は使用できません。"); }
+                try { 
+                    await initDB(); 
+                    await loadBeatmapsFromDB(); 
+                    await loadDefaultSounds();
+                } catch (error) { console.error("Failed to initialize DB:", error); alert("データベースの初期化に失敗しました。譜面ライブラリ機能は使用できません。"); }
                 setupFileListeners();
                 dom.startButton.addEventListener('click', startGame);
                 dom.resumeButton.addEventListener('click', togglePause);
@@ -2157,6 +2383,12 @@
                 dom.comboPositionSlider.addEventListener('input', (e) => { applyComboPositionY(e.target.value); saveSettings(); });
                 dom.judgmentPositionSlider.addEventListener('input', (e) => { applyJudgmentPositionY(e.target.value); saveSettings(); });
                 dom.keyCountSelector.addEventListener('change', (e) => { setKeyCount(e.target.value); saveSettings(); });
+                
+                if(dom.musicVolumeSliderMania) dom.musicVolumeSliderMania.addEventListener('input', (e) => { applyMusicVolume(e.target.value); saveSettings(); });
+                if(dom.seVolumeSliderMania) dom.seVolumeSliderMania.addEventListener('input', (e) => { applySEVolume(e.target.value); saveSettings(); });
+                if(dom.hitSoundFileInputMania) dom.hitSoundFileInputMania.addEventListener('change', e => { loadAndSaveSound(e.target.files[0]); });
+                if(dom.hitSoundResetMania) dom.hitSoundResetMania.addEventListener('click', () => resetSound());
+
                 initializeShortcutKeySetup('mania-shortcut-retry', 'mania-shortcut-menu');
             },
             togglePauseExternal: togglePause,
@@ -2179,6 +2411,14 @@
             songArtistElement: root.querySelector('#taiko-song-artist'),
             donSoundFileInput: root.querySelector('#don-sound-file'),
             katsuSoundFileInput: root.querySelector('#katsu-sound-file'),
+            // ▼▼▼ 変更点 ▼▼▼
+            donSoundReset: root.querySelector('#don-sound-reset'),
+            katsuSoundReset: root.querySelector('#katsu-sound-reset'),
+            musicVolumeSlider: root.querySelector('#music-volume-slider-taiko'),
+            musicVolumeLabel: root.querySelector('#music-volume-label-taiko'),
+            seVolumeSlider: root.querySelector('#se-volume-slider-taiko'),
+            seVolumeLabel: root.querySelector('#se-volume-label-taiko'),
+            // ▲▲▲ 変更ここまで ▲▲▲
             speedSlider: root.querySelector('#taiko-speed-slider'),
             speedLabel: root.querySelector('#taiko-speed-label'),
             offsetInput: root.querySelector('#taiko-offset-input'),
@@ -2236,7 +2476,38 @@
             songSearchInput: root.querySelector('#song-search-input'),
             errorBar: root.querySelector('#taiko-error-bar'),
         };
-        const db = { _db: null, DB_NAME: 'TaikoPlayerDB', STORE_NAME: 'songs', init() { return new Promise((resolve, reject) => { const request = indexedDB.open(this.DB_NAME, 1); request.onupgradeneeded = (event) => { const db = event.target.result; if (!db.objectStoreNames.contains(this.STORE_NAME)) { db.createObjectStore(this.STORE_NAME, { keyPath: 'id' }); } }; request.onsuccess = (event) => { this._db = event.target.result; resolve(); }; request.onerror = (event) => { console.error('Database error:', event.target.errorCode); reject(event.target.errorCode); }; }); }, addSong(songData) { return new Promise((resolve, reject) => { const transaction = this._db.transaction([this.STORE_NAME], 'readwrite'); const store = transaction.objectStore(this.STORE_NAME); const request = store.add(songData); request.onsuccess = () => resolve(); request.onerror = (event) => reject(event.target.error); }); }, getSongsMeta() { return new Promise((resolve, reject) => { const transaction = this._db.transaction([this.STORE_NAME], 'readonly'); const store = transaction.objectStore(this.STORE_NAME); const request = store.getAll(); request.onsuccess = (event) => { const songs = event.target.result.map(({ id, title, artist }) => ({ id, title, artist })); resolve(songs); }; request.onerror = (event) => reject(event.target.error); }); }, getSongBlob(id) { return new Promise((resolve, reject) => { const transaction = this._db.transaction([this.STORE_NAME], 'readonly'); const store = transaction.objectStore(this.STORE_NAME); const request = store.get(id); request.onsuccess = (event) => { if (event.target.result) { resolve(event.target.result.blob); } else { reject('Song not found'); } }; request.onerror = (event) => reject(event.target.error); }); }, deleteSong(id) { return new Promise((resolve, reject) => { const transaction = this._db.transaction([this.STORE_NAME], 'readwrite'); const store = transaction.objectStore(this.STORE_NAME); const request = store.delete(id); request.onsuccess = () => resolve(); request.onerror = (event) => reject(event.target.error); }); } };
+        // ▼▼▼ 変更点 ▼▼▼
+        const db = {
+            _db: null,
+            DB_NAME: 'TaikoPlayerDB',
+            DB_VERSION: 2, // データベースのバージョンを上げる
+            SONGS_STORE: 'songs',
+            SE_STORE: 'sounds', // SE用のストア名
+            init() {
+                return new Promise((resolve, reject) => {
+                    const request = indexedDB.open(this.DB_NAME, this.DB_VERSION);
+                    request.onupgradeneeded = (event) => {
+                        const db = event.target.result;
+                        if (!db.objectStoreNames.contains(this.SONGS_STORE)) {
+                            db.createObjectStore(this.SONGS_STORE, { keyPath: 'id' });
+                        }
+                        if (!db.objectStoreNames.contains(this.SE_STORE)) {
+                            db.createObjectStore(this.SE_STORE, { keyPath: 'id' });
+                        }
+                    };
+                    request.onsuccess = (event) => { this._db = event.target.result; resolve(); };
+                    request.onerror = (event) => { console.error('Database error:', event.target.errorCode); reject(event.target.errorCode); };
+                });
+            },
+            addSong(songData) { return new Promise((resolve, reject) => { const transaction = this._db.transaction([this.SONGS_STORE], 'readwrite'); const store = transaction.objectStore(this.SONGS_STORE); const request = store.put(songData); request.onsuccess = () => resolve(); request.onerror = (event) => reject(event.target.error); }); },
+            getSongsMeta() { return new Promise((resolve, reject) => { const transaction = this._db.transaction([this.SONGS_STORE], 'readonly'); const store = transaction.objectStore(this.SONGS_STORE); const request = store.getAll(); request.onsuccess = (event) => { const songs = event.target.result.map(({ id, title, artist }) => ({ id, title, artist })); resolve(songs); }; request.onerror = (event) => reject(event.target.error); }); },
+            getSongBlob(id) { return new Promise((resolve, reject) => { const transaction = this._db.transaction([this.SONGS_STORE], 'readonly'); const store = transaction.objectStore(this.SONGS_STORE); const request = store.get(id); request.onsuccess = (event) => { if (event.target.result) { resolve(event.target.result.blob); } else { reject('Song not found'); } }; request.onerror = (event) => reject(event.target.error); }); },
+            deleteSong(id) { return new Promise((resolve, reject) => { const transaction = this._db.transaction([this.SONGS_STORE], 'readwrite'); const store = transaction.objectStore(this.SONGS_STORE); const request = store.delete(id); request.onsuccess = () => resolve(); request.onerror = (event) => reject(event.target.error); }); },
+            saveSE(id, buffer) { return new Promise((resolve, reject) => { const transaction = this._db.transaction([this.SE_STORE], 'readwrite'); const store = transaction.objectStore(this.SE_STORE); const request = store.put({ id, buffer }); request.onsuccess = () => resolve(); request.onerror = (event) => reject(event.target.error); }); },
+            getSE(id) { return new Promise((resolve, reject) => { const transaction = this._db.transaction([this.SE_STORE], 'readonly'); const store = transaction.objectStore(this.SE_STORE); const request = store.get(id); request.onsuccess = (event) => resolve(event.target.result ? event.target.result.buffer : null); request.onerror = (event) => reject(event.target.error); }); },
+            deleteSE(id) { return new Promise((resolve, reject) => { const transaction = this._db.transaction([this.SE_STORE], 'readwrite'); const store = transaction.objectStore(this.SE_STORE); const request = store.delete(id); request.onsuccess = () => resolve(); request.onerror = (event) => reject(event.target.error); }); }
+        };
+        // ▲▲▲ 変更ここまで ▲▲▲
         let KEYS = { don_left: 'D', don_right: 'K', katsu_left: 'S', katsu_right: 'L' };
         const BASE_SCROLL_SPEED = 6;
         let uiScrollSpeed = BASE_SCROLL_SPEED;
@@ -2244,6 +2515,9 @@
         const EARLY_MISS_WINDOW = 100;
         const JUDGE_POINT_X = 390;
         let audioContext;
+        // ▼▼▼ 変更点 ▼▼▼
+        let seGainNode;
+        // ▲▲▲ 変更ここまで ▲▲▲
         let donSoundBuffer = null, katsuSoundBuffer = null;
         let fileContent = null, audioSrc = null;
         let songInfo = { title: '', artist: '', version: '', audioFilename: '' };
@@ -2279,11 +2553,15 @@
         let currentSongId = null;
         let playEndTime = 0;
 
-        function initAudioContext() { if (!audioContext) { try { audioContext = new (window.AudioContext || window.webkitAudioContext)(); if (audioContext.state === 'suspended') { audioContext.resume(); } } catch (e) { console.error("Web Audio API is not supported in this browser"); } } document.body.removeEventListener('click', initAudioContext, true); document.body.removeEventListener('keydown', initAudioContext, true); }
+        // ▼▼▼ 変更点 ▼▼▼
+        function initAudioContext() { if (!audioContext) { try { audioContext = new (window.AudioContext || window.webkitAudioContext)(); if (audioContext.state === 'suspended') { audioContext.resume(); } seGainNode = audioContext.createGain(); seGainNode.connect(audioContext.destination); } catch (e) { console.error("Web Audio API is not supported in this browser"); } } document.body.removeEventListener('click', initAudioContext, true); document.body.removeEventListener('keydown', initAudioContext, true); }
+        // ▲▲▲ 変更ここまで ▲▲▲
         document.body.addEventListener('click', initAudioContext, true);
         document.body.addEventListener('keydown', initAudioContext, true);
-        function saveSettings() { try { const settings = { offset: dom.offsetInput.value, videoOffset: dom.videoOffsetInput.value, seOffset: dom.seOffsetInput.value, keys: KEYS, autoPlay: dom.autoPlayCheckbox.checked, singleHandBigNote: dom.singleHandBigNoteCheckbox.checked, autoSE: dom.autoSeCheckbox.checked, laneOpacity: dom.laneOpacitySlider.value, bgBrightness: dom.bgBrightnessSlider.value, laneCover: dom.laneCoverSlider.value }; localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings)); } catch (e) { console.error("Failed to save settings:", e); } }
-        function loadSettings() { const savedSettings = localStorage.getItem(SETTINGS_KEY); if (savedSettings) { try { const settings = JSON.parse(savedSettings); if (settings.offset !== undefined) dom.offsetInput.value = settings.offset; if (settings.videoOffset !== undefined) dom.videoOffsetInput.value = settings.videoOffset; if (settings.seOffset !== undefined) dom.seOffsetInput.value = settings.seOffset; if (settings.keys) { KEYS = settings.keys; for (const keyId in KEYS) { const elId = `key-${keyId.replace('_', '-')}`; const el = root.querySelector(`#${elId}`); if (el) el.textContent = KEYS[keyId]; } } if (settings.autoPlay !== undefined) dom.autoPlayCheckbox.checked = settings.autoPlay; if (settings.singleHandBigNote !== undefined) dom.singleHandBigNoteCheckbox.checked = settings.singleHandBigNote; if (settings.autoSE !== undefined) dom.autoSeCheckbox.checked = settings.autoSE; if (settings.laneOpacity !== undefined) dom.laneOpacitySlider.value = settings.laneOpacity; if (settings.bgBrightness !== undefined) dom.bgBrightnessSlider.value = settings.bgBrightness; if (settings.laneCover !== undefined) dom.laneCoverSlider.value = settings.laneCover; } catch (e) { console.error("Failed to load settings:", e); localStorage.removeItem(SETTINGS_KEY); } } }
+        // ▼▼▼ 変更点 ▼▼▼
+        function saveSettings() { try { const settings = { offset: dom.offsetInput.value, videoOffset: dom.videoOffsetInput.value, seOffset: dom.seOffsetInput.value, keys: KEYS, autoPlay: dom.autoPlayCheckbox.checked, singleHandBigNote: dom.singleHandBigNoteCheckbox.checked, autoSE: dom.autoSeCheckbox.checked, laneOpacity: dom.laneOpacitySlider.value, bgBrightness: dom.bgBrightnessSlider.value, laneCover: dom.laneCoverSlider.value, musicVolume: dom.musicVolumeSlider.value, seVolume: dom.seVolumeSlider.value }; localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings)); } catch (e) { console.error("Failed to save settings:", e); } }
+        function loadSettings() { const savedSettings = localStorage.getItem(SETTINGS_KEY); if (savedSettings) { try { const settings = JSON.parse(savedSettings); if (settings.offset !== undefined) dom.offsetInput.value = settings.offset; if (settings.videoOffset !== undefined) dom.videoOffsetInput.value = settings.videoOffset; if (settings.seOffset !== undefined) dom.seOffsetInput.value = settings.seOffset; if (settings.keys) { KEYS = settings.keys; for (const keyId in KEYS) { const elId = `key-${keyId.replace('_', '-')}`; const el = root.querySelector(`#${elId}`); if (el) el.textContent = KEYS[keyId]; } } if (settings.autoPlay !== undefined) dom.autoPlayCheckbox.checked = settings.autoPlay; if (settings.singleHandBigNote !== undefined) dom.singleHandBigNoteCheckbox.checked = settings.singleHandBigNote; if (settings.autoSE !== undefined) dom.autoSeCheckbox.checked = settings.autoSE; if (settings.laneOpacity !== undefined) dom.laneOpacitySlider.value = settings.laneOpacity; if (settings.bgBrightness !== undefined) dom.bgBrightnessSlider.value = settings.bgBrightness; if (settings.laneCover !== undefined) dom.laneCoverSlider.value = settings.laneCover; if (settings.musicVolume !== undefined) dom.musicVolumeSlider.value = settings.musicVolume; if (settings.seVolume !== undefined) dom.seVolumeSlider.value = settings.seVolume; } catch (e) { console.error("Failed to load settings:", e); localStorage.removeItem(SETTINGS_KEY); } } applyMusicVolume(dom.musicVolumeSlider.value); applySEVolume(dom.seVolumeSlider.value); }
+        // ▲▲▲ 変更ここまで ▲▲▲
         
         function getTaikoBeatmapSettingsKey() {
             if (currentSongId && songInfo && songInfo.version) {
@@ -2335,8 +2613,12 @@
         function setupFileListeners() {
             dom.oszFileInput.addEventListener('change', handleNewFiles);
             dom.oszFileLabel.addEventListener('click', () => { isRequestingFile = true; });
-            dom.donSoundFileInput.addEventListener('change', e => { isRequestingFile = true; loadAndDecodeSound(e.target.files[0], true); });
-            dom.katsuSoundFileInput.addEventListener('change', e => { isRequestingFile = true; loadAndDecodeSound(e.target.files[0], false); });
+            // ▼▼▼ 変更点 ▼▼▼
+            dom.donSoundFileInput.addEventListener('change', e => { isRequestingFile = true; loadAndSaveSound(e.target.files[0], 'don'); });
+            dom.katsuSoundFileInput.addEventListener('change', e => { isRequestingFile = true; loadAndSaveSound(e.target.files[0], 'katsu'); });
+            dom.donSoundReset.addEventListener('click', () => resetSound('don'));
+            dom.katsuSoundReset.addEventListener('click', () => resetSound('katsu'));
+            // ▲▲▲ 変更ここまで ▲▲▲
             dom.beatmapSelector.addEventListener('change', handleBeatmapSelection);
             dom.savedSongsList.addEventListener('change', handleSavedSongSelect);
             dom.deleteSongButton.addEventListener('click', handleDeleteSong);
@@ -2346,7 +2628,55 @@
         function handleSongSearch() { const searchTerm = dom.songSearchInput.value.toLowerCase(); for (const option of dom.savedSongsList.options) { if (option.value === "") continue; const songTitle = option.textContent.toLowerCase(); option.style.display = songTitle.includes(searchTerm) ? '' : 'none'; } }
         async function handleSavedSongSelect(e) { const songId = e.target.value; currentSongId = songId; dom.saveSongToPcButton.disabled = !songId; if (!songId) { resetGameAndFiles(false); return; } try { dom.beatmapSelectorContainer.style.display = 'none'; dom.songTitleElement.textContent = '読み込み中...'; const blob = await db.getSongBlob(songId); await processOszBlob(blob); } catch(e) { alert('保存済み譜面の読み込みに失敗しました。'); console.error(e); } }
         async function handleDeleteSong() { const songId = dom.savedSongsList.value; if (!songId) { alert('削除する譜面を選択してください。'); return; } if (confirm(`「${dom.savedSongsList.options[dom.savedSongsList.selectedIndex].text}」を削除しますか？`)) { try { await db.deleteSong(songId); await loadSavedSongsList(); resetGameAndFiles(true); alert('譜面を削除しました。'); } catch (e) { alert('譜面の削除に失敗しました。'); console.error(e); } } }
-        function loadAndDecodeSound(file, isDon) { if (!file || !audioContext) return; const reader = new FileReader(); reader.onload = (e) => { const arrayBuffer = e.target.result; audioContext.decodeAudioData(arrayBuffer, (buffer) => { if (isDon) { donSoundBuffer = buffer; } else { katsuSoundBuffer = buffer; } }, (error) => { console.error(`Error decoding audio data for ${isDon ? 'Don' : 'Katsu'}:`, error); alert("サウンドファイルのデコードに失敗しました。"); }); }; reader.onerror = () => { alert("サウンドファイルの読み込みに失敗しました。"); }; reader.readAsArrayBuffer(file); }
+        // ▼▼▼ 変更点 ▼▼▼
+        async function loadAndSaveSound(file, type) {
+            if (!file || !audioContext) return;
+            try {
+                const arrayBuffer = await file.arrayBuffer();
+                const audioBuffer = await audioContext.decodeAudioData(arrayBuffer.slice(0)); // slice(0)でコピーを作成
+                if (type === 'don') {
+                    donSoundBuffer = audioBuffer;
+                } else {
+                    katsuSoundBuffer = audioBuffer;
+                }
+                await db.saveSE(type, arrayBuffer);
+                alert(`${type.toUpperCase()}のSEを保存しました。`);
+            } catch (error) {
+                console.error(`Error processing sound file for ${type}:`, error);
+                alert("サウンドファイルの処理中にエラーが発生しました。");
+            }
+        }
+        async function loadDefaultSounds() {
+            try {
+                const donBuffer = await db.getSE('don');
+                if (donBuffer) {
+                    donSoundBuffer = await audioContext.decodeAudioData(donBuffer);
+                }
+                const katsuBuffer = await db.getSE('katsu');
+                if (katsuBuffer) {
+                    katsuSoundBuffer = await audioContext.decodeAudioData(katsuBuffer);
+                }
+            } catch (e) {
+                console.error("Failed to load default sounds from DB:", e);
+            }
+        }
+        async function resetSound(type) {
+            if (confirm(`${type.toUpperCase()}のSEをデフォルトに戻しますか？ (保存されたSEは削除されます)`)) {
+                try {
+                    await db.deleteSE(type);
+                    if (type === 'don') {
+                        donSoundBuffer = null;
+                    } else {
+                        katsuSoundBuffer = null;
+                    }
+                    alert(`${type.toUpperCase()}のSEをリセットしました。`);
+                } catch (e) {
+                    alert("SEのリセットに失敗しました。");
+                    console.error(e);
+                }
+            }
+        }
+        // ▲▲▲ 変更ここまで ▲▲▲
         async function handleNewFiles(e) {
             const files = e.target.files;
             if (!files || files.length === 0) return;
@@ -3017,7 +3347,27 @@
         }
         function drawRollCounter(elapsedTime) { if (rollCounterClearTime > 0 && elapsedTime >= rollCounterClearTime) { activeRollHits = 0; rollCounterClearTime = 0; } if (activeRollHits > 0) { dom.rollCounterDisplay.textContent = activeRollHits; dom.rollCounterDisplay.classList.add('visible'); } else { dom.rollCounterDisplay.classList.remove('visible'); } }
         
-        function playHitSound(type, offset = 0) { if (!audioContext) return; const buffer = (type === 'don') ? donSoundBuffer : katsuSoundBuffer; if (!buffer) return; const source = audioContext.createBufferSource(); source.buffer = buffer; source.connect(audioContext.destination); const offsetInSeconds = offset / 1000; let playTime = audioContext.currentTime; let playOffset = 0; if (offsetInSeconds >= 0) { playTime += offsetInSeconds; } else { playOffset = -offsetInSeconds; } if (playOffset < buffer.duration) { source.start(playTime, playOffset); } }
+        // ▼▼▼ 変更点 ▼▼▼
+        function playHitSound(type, offset = 0) {
+            if (!audioContext) return;
+            const buffer = (type === 'don') ? donSoundBuffer : katsuSoundBuffer;
+            if (!buffer) return;
+            const source = audioContext.createBufferSource();
+            source.buffer = buffer;
+            source.connect(seGainNode); // 宛先をGainNodeに変更
+            const offsetInSeconds = offset / 1000;
+            let playTime = audioContext.currentTime;
+            let playOffset = 0;
+            if (offsetInSeconds >= 0) {
+                playTime += offsetInSeconds;
+            } else {
+                playOffset = -offsetInSeconds;
+            }
+            if (playOffset < buffer.duration) {
+                source.start(playTime, playOffset);
+            }
+        }
+        // ▲▲▲ 変更ここまで ▲▲▲
         function autoSEHandler(elapsedTime) { for (let i = lastAutoSEIndex; i < hitObjects.length; i++) { const note = hitObjects[i]; if (note.sePlayed) continue; if (elapsedTime >= note.time) { if (note.type === 'don' || note.type === 'katsu') { playHitSound(note.type); note.sePlayed = true; } } else { break; } } while(hitObjects[lastAutoSEIndex] && hitObjects[lastAutoSEIndex].sePlayed) { lastAutoSEIndex++; } }
         function showHitError(diff) {
             if (!dom.errorBar) return;
@@ -3341,9 +3691,22 @@
                 dom.saveSongToPcButton.disabled = !dom.savedSongsList.value;
             }
         }
+        // ▼▼▼ 追加関数 ▼▼▼
+        function applyMusicVolume(value) {
+            dom.audioPlayer.volume = value;
+            dom.musicVolumeLabel.textContent = Math.round(value * 100);
+        }
+        function applySEVolume(value) {
+            if (seGainNode) {
+                seGainNode.gain.value = value;
+            }
+            dom.seVolumeLabel.textContent = Math.round(value * 100);
+        }
+        // ▲▲▲ 追加ここまで ▲▲▲
 
         return {
             initialize: async function() {
+                initAudioContext(); // audioContextを初期化
                 initKeyConfig();
                 setupFileListeners();
                 loadSettings();
@@ -3373,10 +3736,15 @@
                 dom.bgBrightnessSlider.addEventListener('input', () => { updateBgBrightness(); saveSettings(); });
                 dom.laneCoverSlider.addEventListener('input', () => { updateLaneCover(); saveSettings(); });
                 dom.backgroundSelect.addEventListener('change', e => { selectedBackgroundType = e.target.value; saveTaikoBeatmapSpecificSettings(); });
+                // ▼▼▼ 変更点 ▼▼▼
+                dom.musicVolumeSlider.addEventListener('input', e => { applyMusicVolume(e.target.value); saveSettings(); });
+                dom.seVolumeSlider.addEventListener('input', e => { applySEVolume(e.target.value); saveSettings(); });
+                // ▲▲▲ 変更ここまで ▲▲▲
                 window.addEventListener('resize', initGameUI);
                 try {
                     await db.init();
                     await loadSavedSongsList();
+                    await loadDefaultSounds(); // <-- 保存されたSEを読み込む
                 } catch (e) {
                     console.error('Application initialization failed:', e);
                     alert('データベースの初期化に失敗しました。保存機能は利用できません。');
