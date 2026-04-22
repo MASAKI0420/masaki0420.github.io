@@ -1186,7 +1186,8 @@
             if (activeGame === 'taiko') TaikoGame.returnToControlsExternal();
         }
     });
-//—―――――—―――――—―――――—―――――—―――――—―――――—―――――—―――――—―――――—―――――—―――――—―――――—―――――
+
+
     // --- osu!mania Game Logic (Scoped) ---
     const ManiaGame = (() => {
         const root = document.getElementById('mania-wrapper');
@@ -2175,7 +2176,7 @@
             returnToControlsExternal: function() { if (isGameRunning) returnToControls(); }
         };
     })();
-//—―――――—―――――—―――――—―――――—―――――—―――――—―――――—―――――—―――――—―――――—―――――—―――――—―――――—―――――—―――――—―――――
+//aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
      // --- osu!taiko Game Logic (Scoped) ---
     const TaikoGame = (() => {
         const root = document.getElementById('taiko-wrapper');
@@ -2287,7 +2288,7 @@
             deleteSE(id) { return new Promise((resolve, reject) => { const transaction = this._db.transaction([this.SE_STORE], 'readwrite'); const store = transaction.objectStore(this.SE_STORE); const request = store.delete(id); request.onsuccess = () => resolve(); request.onerror = (event) => reject(event.target.error); }); }
         };
         let KEYS = { don_left: 'D', don_right: 'K', katsu_left: 'S', katsu_right: 'L' };
-        const BASE_SCROLL_SPEED = 6;
+        const BASE_SCROLL_SPEED = 9;
         let uiScrollSpeed = BASE_SCROLL_SPEED;
         const HIT_WINDOW_PERFECT = 25, HIT_WINDOW_GOOD = 70, HIT_WINDOW_BAD = 100;
         const EARLY_MISS_WINDOW = 100;
@@ -3151,7 +3152,7 @@
                 }
             }, 1500);
         }
-        function autoPlayHandler(elapsedTime) { const AUTO_HIT_INTERVAL = 1; for (const note of hitObjects) { if (note.judged) continue; if (note.type === 'balloon' || note.type === 'roll') { if (elapsedTime >= note.time && elapsedTime <= note.endTime) { if (elapsedTime - (note.lastAutoHitTime || 0) > AUTO_HIT_INTERVAL) { playHitSound('don'); const hitSide = autoPlayHitCounter % 2 === 0 ? 'don_right' : 'don_left'; showDrumHit(hitSide); autoPlayHitCounter++; let hitScore = 100; if (isGoGoNow) hitScore *= 1.2; score += hitScore; note.hitsMade++; if (note.type === 'roll') { activeRollHits = note.hitsMade; rollCounterClearTime = 0; } else if (note.type === 'balloon' && note.hitsMade >= note.hitsRequired) { let burstBonus = 5000; if (isGoGoNow) burstBonus *= 1.2; score += burstBonus; note.judged = true; } dom.scoreElement.textContent = Math.floor(score); note.lastAutoHitTime = elapsedTime; } } if (elapsedTime > note.endTime && !note.judged) { if (note.type === 'roll' && note.hitsMade > 0) rollCounterClearTime = elapsedTime + 2000; note.judged = true; } } else if (elapsedTime >= note.time) { playHitSound(note.type); const isBigNoteTwoHands = note.isBig && !isSingleHandBigNoteEnabled; if (note.type === 'don') { if (isBigNoteTwoHands) { showDrumHit('don_left'); showDrumHit('don_right'); } else { const hitSide = autoPlayHitCounter % 2 === 0 ? 'don_right' : 'don_left'; showDrumHit(hitSide); } } else if (note.type === 'katsu') { if (isBigNoteTwoHands) { showDrumHit('katsu_left'); showDrumHit('katsu_right'); } else { const hitSide = autoPlayHitCounter % 2 === 0 ? 'katsu_right' : 'katsu_left'; showDrumHit(hitSide); } } autoPlayHitCounter++; handleJudgment('ryo', note, 0); } } }
+        function autoPlayHandler(elapsedTime) { const AUTO_HIT_INTERVAL = 25; for (const note of hitObjects) { if (note.judged) continue; if (note.type === 'balloon' || note.type === 'roll') { if (elapsedTime >= note.time && elapsedTime <= note.endTime) { if (elapsedTime - (note.lastAutoHitTime || 0) > AUTO_HIT_INTERVAL) { playHitSound('don'); const hitSide = autoPlayHitCounter % 2 === 0 ? 'don_right' : 'don_left'; showDrumHit(hitSide); autoPlayHitCounter++; let hitScore = 100; if (isGoGoNow) hitScore *= 1.2; score += hitScore; note.hitsMade++; if (note.type === 'roll') { activeRollHits = note.hitsMade; rollCounterClearTime = 0; } else if (note.type === 'balloon' && note.hitsMade >= note.hitsRequired) { let burstBonus = 5000; if (isGoGoNow) burstBonus *= 1.2; score += burstBonus; note.judged = true; } dom.scoreElement.textContent = Math.floor(score); note.lastAutoHitTime = elapsedTime; } } if (elapsedTime > note.endTime && !note.judged) { if (note.type === 'roll' && note.hitsMade > 0) rollCounterClearTime = elapsedTime + 100; note.judged = true; } } else if (elapsedTime >= note.time) { playHitSound(note.type); const isBigNoteTwoHands = note.isBig && !isSingleHandBigNoteEnabled; if (note.type === 'don') { if (isBigNoteTwoHands) { showDrumHit('don_left'); showDrumHit('don_right'); } else { const hitSide = autoPlayHitCounter % 2 === 0 ? 'don_right' : 'don_left'; showDrumHit(hitSide); } } else if (note.type === 'katsu') { if (isBigNoteTwoHands) { showDrumHit('katsu_left'); showDrumHit('katsu_right'); } else { const hitSide = autoPlayHitCounter % 2 === 0 ? 'katsu_right' : 'katsu_left'; showDrumHit(hitSide); } } autoPlayHitCounter++; handleJudgment('ryo', note, 0); } } }
         function showDrumHit(keyId) { const hitMap = { don_left: dom.drumDonLeft, don_right: dom.drumDonRight, katsu_left: dom.drumKatsuLeft, katsu_right: dom.drumKatsuRight, }; const element = hitMap[keyId]; if (!element) return; if (drumHitTimeouts[keyId]) { clearTimeout(drumHitTimeouts[keyId]); } element.classList.add('active'); drumHitTimeouts[keyId] = setTimeout(() => { element.classList.remove('active'); }, 0.1); }
         
         function handleKeydown(e) {
@@ -3266,7 +3267,7 @@
             pressedKeys.delete(e.key.toUpperCase());
         });
 
-        function checkMisses(elapsedTime) { for (let i = lastCheckedNoteIndex; i < hitObjects.length; i++) { const note = hitObjects[i]; if (note.judged) { continue; } if (note.time > elapsedTime + HIT_WINDOW_BAD) break; if (note.type !== 'balloon' && note.type !== 'roll') { if (elapsedTime > note.time + HIT_WINDOW_BAD) { handleJudgment('fuka', note); } } else { if (elapsedTime > note.endTime) { if (note.type === 'roll' && note.hitsMade > 0) rollCounterClearTime = elapsedTime + 2000; note.judged = true; } } } }
+        function checkMisses(elapsedTime) { for (let i = lastCheckedNoteIndex; i < hitObjects.length; i++) { const note = hitObjects[i]; if (note.judged) { continue; } if (note.time > elapsedTime + HIT_WINDOW_BAD) break; if (note.type !== 'balloon' && note.type !== 'roll') { if (elapsedTime > note.time + HIT_WINDOW_BAD) { handleJudgment('fuka', note); } } else { if (elapsedTime > note.endTime) { if (note.type === 'roll' && note.hitsMade > 0) rollCounterClearTime = elapsedTime + 100; note.judged = true; } } } }
         function handleJudgment(judgement, note, diff = null) {
             if(note.judged) return;
             note.judged = true;
