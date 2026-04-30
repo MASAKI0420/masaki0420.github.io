@@ -1,0 +1,947 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>鉄道 路線・駅名 穴埋めクイズ</title>
+    <style>
+        :root {
+            --primary-color: #d35400; /* デフォルト（近鉄オレンジ）。JSで動的に変更されます */
+            --secondary-color: #2c3e50;
+            --bg-color: #f4f7f6;
+            --box-bg: #ffffff;
+            --line-color: #34495e;
+            
+            /* 各社カラー定義 */
+            --color-kintetsu: #f9b500;
+            --color-hanshin: #004b87;
+            --color-hankyu: #630000;
+            --color-keihan: #007b43;
+            --color-nankai: #ffd700;
+            --color-hankai: #ff8c00;
+            --color-osakametro: #001c6a; /* Osaka Metro Blue */
+        }
+        
+        html {
+            scrollbar-gutter: stable;
+        }
+
+        /* --- スクロールバーのスタイル --- */
+        body::-webkit-scrollbar { width: 10px; }
+        body::-webkit-scrollbar-track { background: transparent; }
+        body::-webkit-scrollbar-thumb {
+            background-color: transparent;
+            border-radius: 5px;
+            transition: background-color 0.3s ease-in-out;
+        }
+        body.scrolling::-webkit-scrollbar-thumb { background-color: rgba(44, 62, 80, 0.5); }
+        body::-webkit-scrollbar-thumb:hover { background-color: rgba(44, 62, 80, 0.7); }
+
+        body {
+            font-family: 'Helvetica Neue', Arial, 'Hiragino Kaku Gothic ProN', 'Hiragino Sans', Meiryo, sans-serif;
+            background-color: var(--bg-color);
+            color: #333;
+            max-width: 650px;
+            margin: 0 auto;
+            /* ホーム画面固定のため padding はラッパーに移動 */
+        }
+
+        /* --- ホーム画面固定用クラス --- */
+        body.fixed-home {
+            overflow: hidden; /* スクロールを禁止 */
+        }
+
+        /* ==========================================
+           ホーム画面（会社選択）用スタイル
+        ========================================== */
+        #home-screen {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            height: 100vh; /* 古いブラウザ用 */
+            height: 100dvh; /* スマホのアドレスバーを考慮した高さ */
+            padding: 20px;
+            box-sizing: border-box;
+            text-align: center;
+        }
+
+        #home-screen h1 {
+            color: var(--secondary-color);
+            /* 画面高さに応じて文字を少し縮小させる */
+            font-size: clamp(1.4em, 4vh, 1.8em);
+            margin: 10px 0 10px 0;
+            flex-shrink: 0; /* タイトルは潰さない */
+            line-height: 1.3;
+　　　       position: relative; 
+　          top: 200px;
+        }
+
+        .company-menu {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            width: 100%;
+            flex-grow: 1; /* 残りの高さをすべて使う */
+            padding-bottom: 10px;
+        }
+
+        .company-card {
+            width: 100%;
+            max-width: 350px;
+            flex: 1; /* 高さを均等に分ける */
+            min-height: 40px; /* 縮みすぎ防止 */
+            max-height: 65px; /* 大きくなりすぎ防止 */
+            font-size: clamp(1.1em, 3vh, 1.4em); /* 高さに応じて文字も縮小 */
+            font-weight: bold;
+            color: white;
+            border: none;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 0 10px;
+        }
+
+        .company-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 8px 15px rgba(0,0,0,0.2);
+        }
+
+        .card-kintetsu { background-color: var(--color-kintetsu); }
+        .card-hanshin { background-color: var(--color-hanshin); }
+        .card-hankyu { background-color: var(--color-hankyu); }
+        .card-keihan { background-color: var(--color-keihan); }
+        .card-nankai { background-color: var(--color-nankai); }
+        .card-hankai { background-color: var(--color-hankai); }
+        .card-osakametro { background-color: var(--color-osakametro); }
+
+        /* ==========================================
+           クイズ画面用スタイル
+        ========================================== */
+        #quiz-screen {
+            display: none; /* 初期状態では非表示 */
+            padding: 20px;
+            box-sizing: border-box;
+        }
+
+        /* ヘッダー周り（戻るボタン含む） */
+        .header-container {
+            position: relative;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        .back-btn {
+            position: absolute;
+            left: 0;
+            top: 50%;
+            transform: translateY(-50%);
+            background: none;
+            border: none;
+            color: var(--secondary-color);
+            font-weight: bold;
+            font-size: 1em;
+            cursor: pointer;
+            padding: 5px 10px;
+            border-radius: 6px;
+            transition: background 0.2s;
+        }
+
+        .back-btn:hover {
+            background-color: #e2e8f0;
+        }
+
+        h1#main-title {
+            color: var(--primary-color);
+            margin: 0;
+            font-size: 1.6em;
+        }
+
+        .tabs {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 20px;
+            border-bottom: 2px solid #ccc;
+        }
+
+        .tab-btn {
+            padding: 12px 25px;
+            cursor: pointer;
+            font-weight: bold;
+            border: none;
+            background: none;
+            font-size: 1.1em;
+            color: #888;
+            border-bottom: 4px solid transparent;
+            transition: all 0.3s;
+        }
+
+        .tab-btn.active {
+            color: var(--primary-color);
+            border-bottom: 4px solid var(--primary-color);
+        }
+
+        .tab-btn:hover {
+            color: var(--primary-color);
+        }
+
+        .description {
+            text-align: center;
+            font-size: 0.9em;
+            color: #666;
+            margin-bottom: 20px;
+            line-height: 1.5;
+        }
+
+        .quiz-item {
+            background-color: var(--box-bg);
+            border-radius: 8px;
+            padding: 15px 20px;
+            margin-bottom: 15px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+            border-left: 5px solid var(--secondary-color);
+        }
+
+        .hint {
+            font-weight: bold;
+            margin-bottom: 10px;
+            font-size: 1.1em;
+            color: var(--secondary-color);
+        }
+
+        .input-area {
+            display: flex;
+            align-items: center;
+            font-size: 1.2em;
+        }
+
+        .station-controls {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 15px;
+            background-color: #e9ecef;
+            padding: 15px;
+            border-radius: 8px;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+
+        select {
+            padding: 8px 12px;
+            font-size: 1em;
+            border-radius: 6px;
+            border: 2px solid var(--primary-color);
+            outline: none;
+            background-color: white;
+            font-weight: bold;
+            max-width: 100%;
+        }
+
+        .setting-group {
+            display: flex;
+            align-items: center;
+            background-color: white;
+            padding: 6px 10px;
+            border-radius: 6px;
+            border: 2px solid #ccc;
+        }
+
+        .setting-group label {
+            font-weight: bold;
+            color: #555;
+            margin-right: 5px;
+            font-size: 0.9em;
+        }
+
+        .setting-group input[type="number"] {
+            border: none;
+            outline: none;
+            font-size: 1.1em;
+            width: 50px;
+            font-weight: bold;
+            color: var(--primary-color);
+            text-align: right;
+        }
+
+        .setting-group span {
+            color: #888;
+            margin-left: 3px;
+            font-size: 0.9em;
+        }
+
+        .btn-stack {
+            position: relative;
+            width: 120px;
+            height: 38px;
+        }
+
+        .regen-btn, .reset-st-btn {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            font-size: 1em;
+            background-color: var(--secondary-color);
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .regen-btn:hover, .reset-st-btn:hover { opacity: 0.8; }
+        .reset-st-btn { display: none; }
+
+        #station-list-container, #st-ans-controls { display: none; }
+
+        .station-list {
+            list-style: none;
+            padding: 0;
+            margin: 20px 10px 20px 25px;
+            border-left: 4px solid var(--line-color);
+        }
+
+        .station-item {
+            position: relative;
+            padding-left: 20px;
+            margin-bottom: 15px;
+            min-height: 35px;
+            display: flex;
+            align-items: center;
+        }
+
+        .station-item::before {
+            content: '';
+            position: absolute;
+            left: -12px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 14px;
+            height: 14px;
+            background-color: white;
+            border: 3px solid var(--line-color);
+            border-radius: 50%;
+        }
+
+        .station-name {
+            font-size: 1.1em;
+            font-weight: bold;
+        }
+
+        .st-input-wrapper {
+            display: flex;
+            flex-direction: column;
+        }
+
+        input[type="text"] {
+            font-size: 1em;
+            padding: 6px 10px;
+            width: 140px;
+            border: 2px solid #ccc;
+            border-radius: 4px;
+            outline: none;
+            transition: all 0.3s;
+        }
+
+        input[type="text"]:focus { border-color: var(--primary-color); }
+        input.correct { background-color: #d4edda; border-color: #28a745; color: #155724; }
+        input.incorrect { background-color: #f8d7da; border-color: #dc3545; color: #721c24; }
+
+        .correct-answer {
+            display: none;
+            color: #dc3545;
+            font-size: 0.85em;
+            margin-top: 5px;
+            font-weight: bold;
+        }
+
+        .controls {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            margin-top: 30px;
+        }
+
+        .action-btn {
+            font-size: 1.1em;
+            padding: 10px 25px;
+            border: none;
+            border-radius: 25px;
+            cursor: pointer;
+            font-weight: bold;
+            color: white;
+            background-color: var(--primary-color);
+            transition: opacity 0.2s;
+        }
+
+        .action-btn:hover { opacity: 0.8; }
+        .reset-btn { background-color: #95a5a6; }
+
+        .result-display {
+            text-align: center;
+            font-size: 1.4em;
+            font-weight: bold;
+            margin-top: 20px;
+            color: var(--secondary-color);
+            min-height: 30px;
+            padding-bottom: 30px;
+        }
+
+        /* レスポンシブ対応 */
+        @media (max-width: 480px) {
+            .header-container {
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                gap: 10px;
+            }
+            .back-btn {
+                position: static;
+                transform: none;
+                align-self: flex-start;
+            }
+        }
+    </style>
+</head>
+<body class="fixed-home">
+
+    <!-- ==========================================
+         ホーム画面（初期表示・スクロール固定）
+    ========================================== -->
+    <div id="home-screen">
+        <h1><br>挑戦する鉄道会社を<br>選んでください</h1>
+        <div class="company-menu">
+            <button class="company-card card-kintetsu" onclick="selectCompany('kintetsu')">近畿日本鉄道 (近鉄)</button>
+            <button class="company-card card-osakametro" onclick="selectCompany('osakametro')">Osaka Metro (大阪メトロ)</button>
+            <button class="company-card card-hanshin" onclick="selectCompany('hanshin')">阪神電気鉄道</button>
+            <button class="company-card card-hankyu" onclick="selectCompany('hankyu')">阪急電鉄</button>
+            <button class="company-card card-keihan" onclick="selectCompany('keihan')">京阪電気鉄道</button>
+            <button class="company-card card-nankai" onclick="selectCompany('nankai')">南海電気鉄道</button>
+            <button class="company-card card-hankai" onclick="selectCompany('hankai')">阪堺電気軌道</button>
+        </div>
+    </div>
+
+    <!-- ==========================================
+         クイズ画面
+    ========================================== -->
+    <div id="quiz-screen">
+        
+        <div class="header-container">
+            <button class="back-btn" onclick="goHome()">← 別の会社を選ぶ</button>
+            <h1 id="main-title">穴埋めクイズ</h1>
+        </div>
+
+        <!-- タブメニュー -->
+        <div class="tabs">
+            <button class="tab-btn active" id="btn-route" onclick="switchTab('route')">路線名を当てる</button>
+            <button class="tab-btn" id="btn-station" onclick="switchTab('station')">駅名を当てる</button>
+        </div>
+
+        <!-- 路線名当てタブ -->
+        <div id="tab-route">
+            <p class="description">起終点や特徴的な区間をヒントに、路線の名前を入力してください。<br>（例: 「奈良」 ※「線」は不要です）</p>
+            
+            <div id="route-container"></div>
+
+            <div class="controls">
+                <button class="action-btn" onclick="checkRouteAnswers()">答え合わせ</button>
+                <button class="action-btn reset-btn" onclick="resetRouteQuiz()">リセット</button>
+            </div>
+            <div id="route-result" class="result-display"></div>
+        </div>
+
+        <!-- 駅名当てタブ -->
+        <div id="tab-station" style="display: none;">
+            <p class="description">
+                設定を決めて「問題を作成」を押すと路線図が表示されます。<br>
+                空欄の駅名を入力してください。<span style="font-weight:bold;">（※公式がひらがなの駅はひらがなで入力）</span><br>
+                <span style="color:var(--primary-color);">※「近鉄」「阪神」「京阪」などの会社名は省略可能です</span>
+            </p>
+
+            <div class="station-controls" id="st-controls">
+                <!-- JSで動的に書き換えます -->
+                <select id="line-select" onchange="onLineChange()"></select>
+                
+                <div class="setting-group">
+                    <label for="blank-count">空白:</label>
+                    <input type="number" id="blank-count" min="1" value="5">
+                    <span id="max-station-display">/ 0 駅</span>
+                </div>
+
+                <div class="btn-stack">
+                    <button class="regen-btn" id="btn-create-st" onclick="generateStationQuiz(true)">問題を作成</button>
+                    <button class="reset-st-btn" id="btn-reset-st" onclick="resetStationUI()">リセット</button>
+                </div>
+            </div>
+
+            <ul class="station-list" id="station-list-container"></ul>
+
+            <div class="controls" id="st-ans-controls">
+                <button class="action-btn" onclick="checkStationAnswers()">答え合わせ</button>
+            </div>
+            <div id="station-result" class="result-display"></div>
+        </div>
+
+    </div>
+
+    <script>
+        // ==========================================
+        // 会社ごとの全データ管理
+        // ==========================================
+        const routeDataAll = {
+            "kintetsu": [
+                { id: "k1", hint: "大阪難波 〜 近鉄奈良", answer: "奈良" },
+                { id: "k2", hint: "大阪上本町 〜 伊勢中川", answer: "大阪" },
+                { id: "k3", hint: "近鉄名古屋 〜 伊勢中川", answer: "名古屋" },
+                { id: "k4", hint: "京都 〜 大和西大寺", answer: "京都" },
+                { id: "k5", hint: "大阪阿部野橋 〜 橿原神宮前", answer: "南大阪" },
+                { id: "k6", hint: "大和西大寺 〜 橿原神宮前", answer: "橿原" },
+                { id: "k7", hint: "生駒 〜 王寺", answer: "生駒" },
+                { id: "k8", hint: "長田 〜 学研奈良登美ヶ丘", answer: "けいはんな" },
+                { id: "k9", hint: "鳥羽 〜 賢島", answer: "志摩" }
+            ],
+            "osakametro": [
+                { id: "om1", hint: "江坂 〜 なかもず", answer: "御堂筋" },
+                { id: "om2", hint: "大日 〜 八尾南", answer: "谷町" },
+                { id: "om3", hint: "西梅田 〜 住之江公園", answer: "四つ橋" },
+                { id: "om4", hint: "コスモスクエア 〜 長田", answer: "中央" },
+                { id: "om5", hint: "野田阪神 〜 南巽", answer: "千日前" },
+                { id: "om6", hint: "天神橋筋六丁目 〜 天下茶屋", answer: "堺筋" },
+                { id: "om7", hint: "大正 〜 門真南", answer: "長堀鶴見緑地" },
+                { id: "om8", hint: "井高野 〜 今里", answer: "今里筋" },
+                { id: "om9", hint: "コスモスクエア 〜 住之江公園", answer: "南港ポートタウン" }
+            ],
+            "hanshin": [
+                { id: "hs1", hint: "大阪梅田 〜 元町", answer: "本" },
+                { id: "hs2", hint: "尼崎 〜 大阪難波", answer: "阪神なんば" },
+                { id: "hs3", hint: "武庫川 〜 武庫川団地前", answer: "武庫川" }
+            ],
+            "hankyu": [
+                { id: "hk1", hint: "大阪梅田 〜 神戸三宮", answer: "神戸本" },
+                { id: "hk2", hint: "大阪梅田 〜 宝塚", answer: "宝塚本" },
+                { id: "hk3", hint: "大阪梅田 〜 京都河原町", answer: "京都本" },
+                { id: "hk4", hint: "桂 〜 嵐山", answer: "嵐山" },
+                { id: "hk5", hint: "西宮北口 〜 宝塚", answer: "今津" }
+            ],
+            "keihan": [
+                { id: "kh1", hint: "淀屋橋 〜 三条", answer: "京阪本" },
+                { id: "kh2", hint: "三条 〜 出町柳", answer: "鴨東" },
+                { id: "kh3", hint: "枚方市 〜 私市", answer: "交野" },
+                { id: "kh4", hint: "中書島 〜 宇治", answer: "宇治" }
+            ],
+            "nankai": [
+                { id: "nk1", hint: "難波 〜 和歌山市", answer: "南海本" },
+                { id: "nk2", hint: "難波 〜 極楽橋", answer: "高野" },
+                { id: "nk3", hint: "泉佐野 〜 関西空港", answer: "空港" }
+            ],
+            "hankai": [
+                { id: "hka1", hint: "恵美須町 〜 浜寺駅前", answer: "阪堺" },
+                { id: "hka2", hint: "天王寺駅前 〜 住吉", answer: "上町" }
+            ]
+        };
+
+        const lineOptionsAll = {
+            "kintetsu": [
+                { value: "nara", text: "奈良線（難波線含む）" },
+                { value: "kyoto", text: "京都線" },
+                { value: "osaka", text: "大阪線" },
+                { value: "minamiosaka", text: "南大阪線" },
+                { value: "nagoya", text: "名古屋線" },
+                { value: "keihanna", text: "けいはんな線" }
+            ],
+            "osakametro": [
+                { value: "om_midosuji", text: "御堂筋線" },
+                { value: "om_tanimachi", text: "谷町線" },
+                { value: "om_yotsubashi", text: "四つ橋線" },
+                { value: "om_chuo", text: "中央線" },
+                { value: "om_sennichimae", text: "千日前線" },
+                { value: "om_sakaisuji", text: "堺筋線" },
+                { value: "om_nagahori", text: "長堀鶴見緑地線" },
+                { value: "om_imazato", text: "今里筋線" },
+                { value: "om_nanko", text: "南港ポートタウン線" }
+            ],
+            "hanshin": [
+                { value: "hanshin_main", text: "本線" },
+                { value: "hanshin_namba", text: "阪神なんば線" }
+            ],
+            "hankyu": [
+                { value: "hankyu_kobe", text: "神戸本線" },
+                { value: "hankyu_takarazuka", text: "宝塚本線" },
+                { value: "hankyu_kyoto", text: "京都本線" }
+            ],
+            "keihan": [
+                { value: "keihan_main", text: "京阪本線" },
+                { value: "keihan_oto", text: "鴨東線" },
+                { value: "keihan_katano", text: "交野線" },
+                { value: "keihan_uji", text: "宇治線" }
+            ],
+            "nankai": [
+                { value: "nankai_main", text: "南海本線" },
+                { value: "nankai_koya", text: "高野線" },
+                { value: "nankai_airport", text: "空港線" }
+            ],
+            "hankai": [
+                { value: "hankai_line", text: "阪堺線" },
+                { value: "hankai_uemachi", text: "上町線" }
+            ]
+        };
+
+        const stationData = {
+            // 近鉄
+            "nara": ["大阪難波", "近鉄日本橋", "大阪上本町", "鶴橋", "今里", "布施", "河内永和", "河内小阪", "八戸ノ里", "若江岩田", "河内花園", "東花園", "瓢箪山", "枚岡", "額田", "石切", "生駒", "東生駒", "富雄", "学園前", "菖蒲池", "大和西大寺", "新大宮", "近鉄奈良"],
+            "kyoto": ["京都", "東寺", "十条", "上鳥羽口", "竹田", "伏見", "近鉄丹波橋", "桃山御陵前", "向島", "小倉", "伊勢田", "大久保", "久津川", "寺田", "富野荘", "新田辺", "興戸", "三山木", "近鉄宮津", "狛田", "新祝園", "木津川台", "山田川", "高の原", "平城", "大和西大寺"],
+            "osaka": ["大阪上本町", "鶴橋", "今里", "布施", "俊徳道", "長瀬", "弥刀", "久宝寺口", "近鉄八尾", "河内山本", "高安", "恩智", "法善寺", "堅下", "安堂", "河内国分", "大阪教育大前", "関屋", "二上", "近鉄下田", "五位堂", "築山", "大和高田", "松塚", "真菅", "大和八木", "耳成", "大福", "桜井", "大和朝倉", "長谷寺", "榛原", "室生口大野", "三本松", "赤目口", "名張", "桔梗が丘", "美旗", "伊賀神戸", "青山町", "伊賀上津", "西青山", "東青山", "榊原温泉口", "大三", "伊勢石橋", "川合高岡", "伊勢中川"],
+            "minamiosaka": ["大阪阿部野橋", "河堀口", "北田辺", "今川", "針中野", "矢田", "河内天美", "布忍", "高見ノ里", "河内松原", "恵我ノ荘", "高鷲", "藤井寺", "土師ノ里", "道明寺", "古市", "駒ヶ谷", "上ノ太子", "二上山", "二上神社口", "当麻寺", "磐城", "尺土", "高田市", "浮孔", "坊城", "橿原神宮西口", "橿原神宮前"],
+            "nagoya": ["伊勢中川", "桃園", "久居", "南が丘", "津新町", "津", "江戸橋", "高田本山", "白塚", "豊津上野", "千里", "磯山", "鼓ヶ浦", "白子", "千代崎", "伊勢若松", "箕田", "長太ノ浦", "楠", "北楠", "塩浜", "海山道", "新正", "近鉄四日市", "川原町", "阿倉川", "霞ヶ浦", "近鉄富田", "川越富洲原", "伊勢朝日", "益生", "桑名", "近鉄長島", "近鉄弥富", "佐古木", "富吉", "近鉄蟹江", "戸田", "伏屋", "近鉄八田", "烏森", "黄金", "米野", "近鉄名古屋"],
+            "keihanna": ["長田", "荒本", "吉田", "新石切", "生駒", "白庭台", "学研北生駒", "学研奈良登美ヶ丘"],
+            
+            // Osaka Metro
+            "om_midosuji": ["江坂", "東三国", "新大阪", "西中島南方", "中津", "梅田", "淀屋橋", "本町", "心斎橋", "なんば", "大国町", "動物園前", "天王寺", "昭和町", "西田辺", "長居", "あびこ", "北花田", "新金岡", "なかもず"],
+            "om_tanimachi": ["大日", "守口", "太子橋今市", "千林大宮", "関目高殿", "野江内代", "都島", "天神橋筋六丁目", "中崎町", "東梅田", "南森町", "天満橋", "谷町四丁目", "谷町六丁目", "谷町九丁目", "四天王寺前夕陽ヶ丘", "天王寺", "阿倍野", "文の里", "田辺", "駒川中野", "平野", "喜連瓜破", "出戸", "長原", "八尾南"],
+            "om_yotsubashi": ["西梅田", "肥後橋", "本町", "四ツ橋", "なんば", "大国町", "花園町", "岸里", "玉出", "北加賀屋", "住之江公園"],
+            "om_chuo": ["コスモスクエア", "大阪港", "朝潮橋", "弁天町", "九条", "阿波座", "本町", "堺筋本町", "谷町四丁目", "森ノ宮", "緑橋", "深江橋", "高井田", "長田"],
+            "om_sennichimae": ["野田阪神", "玉川", "阿波座", "西長堀", "桜川", "なんば", "日本橋", "谷町九丁目", "鶴橋", "今里", "新深江", "小路", "北巽", "南巽"],
+            "om_sakaisuji": ["天神橋筋六丁目", "扇町", "南森町", "北浜", "堺筋本町", "長堀橋", "日本橋", "恵美須町", "動物園前", "天下茶屋"],
+            "om_nagahori": ["大正", "ドーム前千代崎", "西長堀", "西大橋", "心斎橋", "長堀橋", "松屋町", "谷町六丁目", "玉造", "森ノ宮", "大阪ビジネスパーク", "京橋", "蒲生四丁目", "今福鶴見", "横堤", "鶴見緑地", "門真南"],
+            "om_imazato": ["井高野", "瑞光四丁目", "だいどう豊里", "太子橋今市", "清水", "新森古市", "関目成育", "蒲生四丁目", "鴫野", "緑橋", "今里"],
+            "om_nanko": ["コスモスクエア", "トレードセンター前", "中ふ頭", "ポートタウン西", "ポートタウン東", "フェリーターミナル", "南港東", "南港口", "平林", "住之江公園"],
+
+            // 阪神
+            "hanshin_main": ["大阪梅田", "福島", "野田", "淀川", "姫島", "千船", "杭瀬", "大物", "尼崎", "出屋敷", "尼崎センタープール前", "武庫川", "鳴尾・武庫川女子大前", "甲子園", "久寿川", "今津", "西宮", "打出", "芦屋", "深江", "青木", "魚崎", "住吉", "御影", "石屋川", "新在家", "大石", "西灘", "岩屋", "春日野道", "神戸三宮", "元町"],
+            "hanshin_namba": ["尼崎", "大物", "出来島", "福", "伝法", "千鳥橋", "西九条", "九条", "ドーム前", "桜川", "大阪難波"],
+            
+            // 阪急
+            "hankyu_kobe": ["大阪梅田", "中津", "十三", "神崎川", "園田", "塚口", "武庫之荘", "西宮北口", "夙川", "芦屋川", "岡本", "御影", "六甲", "王子公園", "春日野道", "神戸三宮"],
+            "hankyu_takarazuka": ["大阪梅田", "中津", "十三", "三国", "庄内", "服部天神", "曽根", "岡町", "豊中", "蛍池", "石橋阪大前", "池田", "川西能勢口", "雲雀丘花屋敷", "山本", "中山観音", "売布神社", "清荒神", "宝塚"],
+            "hankyu_kyoto": ["大阪梅田", "十三", "南方", "崇禅寺", "淡路", "上新庄", "相川", "正雀", "摂津市", "南茨木", "茨木市", "総持寺", "富田", "高槻市", "上牧", "水無瀬", "大山崎", "西山天王山", "長岡天神", "西向日", "東向日", "洛西口", "桂", "西京極", "西院", "大宮", "烏丸", "京都河原町"],
+
+            // 京阪
+            "keihan_main": ["淀屋橋", "北浜", "天満橋", "京橋", "野江", "関目", "森小路", "千林", "滝井", "土居", "守口市", "西三荘", "門真市", "古川橋", "大和田", "萱島", "寝屋川市", "香里園", "光善寺", "枚方公園", "枚方市", "御殿山", "牧野", "樟葉", "橋本", "石清水八幡宮", "淀", "中書島", "伏見桃山", "丹波橋", "墨染", "藤森", "龍谷大前深草", "伏見稲荷", "鳥羽街道", "東福寺", "七条", "清水五条", "祇園四条", "三条"],
+            "keihan_oto": ["三条", "神宮丸太町", "出町柳"],
+            "keihan_katano": ["枚方市", "宮之阪", "星ヶ丘", "村野", "郡津", "交野市", "河内森", "私市"],
+            "keihan_uji": ["中書島", "観月橋", "桃山南口", "六地蔵", "木幡", "黄檗", "三室戸", "宇治"],
+
+            // 南海
+            "nankai_main": ["難波", "今宮戎", "新今宮", "萩ノ茶屋", "天下茶屋", "岸里玉出", "粉浜", "住吉大社", "住ノ江", "七道", "堺", "湊", "石津川", "諏訪ノ森", "浜寺公園", "羽衣", "高石", "北助松", "松ノ浜", "泉大津", "忠岡", "春木", "和泉大宮", "岸和田", "蛸地蔵", "貝塚", "二色浜", "鶴原", "井原里", "泉佐野", "羽倉崎", "吉見ノ里", "岡田浦", "樽井", "尾崎", "鳥取ノ荘", "箱作", "淡輪", "みさき公園", "孝子", "和歌山大学前", "紀ノ川", "和歌山市"],
+            "nankai_koya": ["難波", "今宮戎", "新今宮", "萩ノ茶屋", "天下茶屋", "岸里玉出", "帝塚山", "住吉東", "沢ノ町", "我孫子前", "浅香山", "堺東", "三国ヶ丘", "百舌鳥八幡", "中百舌鳥", "白鷺", "初芝", "萩原天神", "北野田", "狭山", "大阪狭山市", "金剛", "滝谷", "千代田", "河内長野", "三日市町", "美加の台", "千早口", "天見", "紀見峠", "林間田園都市", "御幸辻", "橋本", "紀伊清水", "学文路", "九度山", "高野下", "下古沢", "上古沢", "紀伊細川", "紀伊神谷", "極楽橋"],
+            "nankai_airport": ["泉佐野", "りんくうタウン", "関西空港"],
+
+            // 阪堺
+            "hankai_line": ["恵美須町", "新今宮駅前", "今池", "今船", "松田町", "北天下茶屋", "聖天坂", "天神ノ森", "東玉出", "塚西", "東粉浜", "住吉", "住吉鳥居前", "細井川", "安立町", "我孫子道", "大和川", "高須神社", "綾ノ町", "神明町", "妙国寺前", "花田口", "大小路", "宿院", "寺地町", "御陵前", "東湊", "石津北", "石津", "船尾", "浜寺駅前"],
+            "hankai_uemachi": ["天王寺駅前", "阿倍野", "松虫", "東天下茶屋", "北畠", "姫松", "帝塚山三丁目", "帝塚山四丁目", "神ノ木", "住吉"]
+        };
+
+        let currentCompany = "";
+        let routeData = [];
+
+        // ==========================================
+        // 画面切り替えロジック
+        // ==========================================
+        
+        // スタート画面に戻る
+        function goHome() {
+            document.body.classList.add('fixed-home'); // スクロール固定を戻す
+            document.getElementById('home-screen').style.display = 'flex';
+            document.getElementById('quiz-screen').style.display = 'none';
+            // クイズの状態をリセット
+            resetRouteQuiz();
+            resetStationUI();
+            window.scrollTo(0, 0);
+        }
+
+        // 会社を選んでクイズ画面へ進む
+        function selectCompany(companyId) {
+            currentCompany = companyId;
+            document.body.classList.remove('fixed-home'); // クイズ画面ではスクロール可能にする
+            
+            const companyNames = {
+                "kintetsu": "近鉄",
+                "osakametro": "Osaka Metro",
+                "hanshin": "阪神",
+                "hankyu": "阪急",
+                "keihan": "京阪",
+                "nankai": "南海",
+                "hankai": "阪堺"
+            };
+            const cName = companyNames[currentCompany];
+            
+            // タイトル変更
+            document.getElementById('main-title').innerText = `${cName} 穴埋めクイズ`;
+            document.title = `${cName} 路線・駅名 穴埋めクイズ`;
+
+            // テーマカラー変更
+            const root = document.documentElement;
+            if (currentCompany === 'kintetsu') {
+                root.style.setProperty('--primary-color', 'var(--color-kintetsu)');
+            } else if (currentCompany === 'osakametro') {
+                root.style.setProperty('--primary-color', 'var(--color-osakametro)');
+            } else if (currentCompany === 'hanshin') {
+                root.style.setProperty('--primary-color', 'var(--color-hanshin)');
+            } else if (currentCompany === 'hankyu') {
+                root.style.setProperty('--primary-color', 'var(--color-hankyu)');
+            } else if (currentCompany === 'keihan') {
+                root.style.setProperty('--primary-color', 'var(--color-keihan)');
+            } else if (currentCompany === 'nankai') {
+                root.style.setProperty('--primary-color', 'var(--color-nankai)');
+            } else if (currentCompany === 'hankai') {
+                root.style.setProperty('--primary-color', 'var(--color-hankai)');
+            }
+
+            // 路線データの入れ替え
+            routeData = routeDataAll[currentCompany];
+            initRouteQuiz();
+
+            // 駅名路線のセレクトボックスを入れ替え
+            const select = document.getElementById('line-select');
+            select.innerHTML = '';
+            lineOptionsAll[currentCompany].forEach(opt => {
+                const option = document.createElement('option');
+                option.value = opt.value;
+                option.innerText = opt.text;
+                select.appendChild(option);
+            });
+
+            // クイズタブを「路線名を当てる」に初期化
+            switchTab('route');
+            resetRouteQuiz();
+            resetStationUI();
+            onLineChange();
+
+            // 画面の表示切り替え
+            document.getElementById('home-screen').style.display = 'none';
+            document.getElementById('quiz-screen').style.display = 'block';
+            window.scrollTo(0, 0);
+        }
+
+        // ==========================================
+        // タブ切り替えロジック
+        // ==========================================
+        function switchTab(tabName) {
+            document.getElementById('tab-route').style.display = (tabName === 'route') ? 'block' : 'none';
+            document.getElementById('tab-station').style.display = (tabName === 'station') ? 'block' : 'none';
+            
+            document.getElementById('btn-route').classList.toggle('active', tabName === 'route');
+            document.getElementById('btn-station').classList.toggle('active', tabName === 'station');
+        }
+
+        // ==========================================
+        // 路線名当てクイズ ロジック
+        // ==========================================
+        function initRouteQuiz() {
+            const container = document.getElementById('route-container');
+            container.innerHTML = '';
+            
+            routeData.forEach((q, index) => {
+                const div = document.createElement('div');
+                div.className = 'quiz-item';
+                div.innerHTML = `
+                    <div class="hint">Q${index + 1}. ${q.hint}</div>
+                    <div class="input-area">
+                        <input type="text" id="route-input-${q.id}" placeholder="路線名" autocomplete="off">
+                        <span style="font-weight:bold; color:#555; margin-left:5px;">線</span>
+                    </div>
+                    <div class="correct-answer" id="route-ans-${q.id}">正解: ${q.answer}線</div>
+                `;
+                container.appendChild(div);
+            });
+        }
+
+        function checkRouteAnswers() {
+            let score = 0;
+            routeData.forEach(q => {
+                const input = document.getElementById(`route-input-${q.id}`);
+                const ans = document.getElementById(`route-ans-${q.id}`);
+                let val = input.value.trim().replace(/線$/, "");
+
+                input.classList.remove('correct', 'incorrect');
+                if (val === q.answer) {
+                    input.classList.add('correct');
+                    ans.style.display = 'none';
+                    score++;
+                } else {
+                    input.classList.add('incorrect');
+                    ans.style.display = 'block';
+                }
+            });
+
+            const res = document.getElementById('route-result');
+            res.innerHTML = `正解数: <span style="color:var(--primary-color);">${score}</span> / ${routeData.length} 問`;
+            if (score === routeData.length) res.innerHTML += "<br>🎉 全問正解！";
+        }
+
+        function resetRouteQuiz() {
+            routeData.forEach(q => {
+                const input = document.getElementById(`route-input-${q.id}`);
+                if(input) {
+                    input.value = '';
+                    input.classList.remove('correct', 'incorrect');
+                    document.getElementById(`route-ans-${q.id}`).style.display = 'none';
+                }
+            });
+            document.getElementById('route-result').innerHTML = '';
+        }
+
+        // ==========================================
+        // 駅名当てクイズ ロジック
+        // ==========================================
+        let currentStationQuiz = [];
+        let isStationQuizStarted = false;
+
+        function resetStationUI() {
+            isStationQuizStarted = false;
+            document.getElementById('station-list-container').style.display = 'none';
+            document.getElementById('st-ans-controls').style.display = 'none';
+            
+            document.getElementById('btn-reset-st').style.display = 'none';
+            document.getElementById('btn-create-st').style.display = 'flex';
+            
+            document.getElementById('station-result').innerHTML = '';
+        }
+
+        function onLineChange() {
+            const lineKey = document.getElementById('line-select').value;
+            // 路線がまだセットされていない場合は処理を抜ける
+            if(!lineKey || !stationData[lineKey]) return;
+
+            const stations = stationData[lineKey];
+            const maxStations = stations.length;
+            
+            const countInput = document.getElementById('blank-count');
+            const maxDisplay = document.getElementById('max-station-display');
+            
+            countInput.max = maxStations;
+            maxDisplay.textContent = `/ ${maxStations} 駅`;
+
+            if (parseInt(countInput.value) > maxStations) {
+                countInput.value = maxStations;
+            }
+
+            if (isStationQuizStarted) {
+                generateStationQuiz(false);
+            }
+        }
+
+        function generateStationQuiz(forceStart = false) {
+            if (forceStart && !isStationQuizStarted) {
+                isStationQuizStarted = true;
+                document.getElementById('station-list-container').style.display = 'block';
+                document.getElementById('st-ans-controls').style.display = 'flex';
+                
+                document.getElementById('btn-create-st').style.display = 'none';
+                document.getElementById('btn-reset-st').style.display = 'flex';
+            } else if (!isStationQuizStarted) {
+                return;
+            }
+
+            const lineKey = document.getElementById('line-select').value;
+            const stations = stationData[lineKey];
+            const container = document.getElementById('station-list-container');
+            
+            let blankCount = parseInt(document.getElementById('blank-count').value);
+            if (isNaN(blankCount) || blankCount < 0) blankCount = 1;
+            if (blankCount > stations.length) blankCount = stations.length;
+
+            let indices = Array.from({length: stations.length}, (_, i) => i);
+            for (let i = indices.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [indices[i], indices[j]] = [indices[j], indices[i]];
+            }
+            const blankIndices = new Set(indices.slice(0, blankCount));
+
+            container.innerHTML = '';
+            currentStationQuiz = [];
+            document.getElementById('station-result').innerHTML = '';
+
+            stations.forEach((station, index) => {
+                const isBlank = blankIndices.has(index);
+                currentStationQuiz.push({ id: index, name: station, isBlank: isBlank });
+
+                const li = document.createElement('li');
+                li.className = 'station-item';
+
+                if (isBlank) {
+                    li.innerHTML = `
+                        <div class="st-input-wrapper">
+                            <input type="text" id="st-input-${index}" placeholder="駅名を入力" autocomplete="off">
+                            <div class="correct-answer" id="st-ans-${index}">正解: ${station}</div>
+                        </div>
+                    `;
+                } else {
+                    li.innerHTML = `<span class="station-name">${station}</span>`;
+                }
+                container.appendChild(li);
+            });
+        }
+
+        function checkStationAnswers() {
+            let score = 0;
+            let blankCount = 0;
+
+            currentStationQuiz.forEach(st => {
+                if (st.isBlank) {
+                    blankCount++;
+                    const input = document.getElementById(`st-input-${st.id}`);
+                    const ans = document.getElementById(`st-ans-${st.id}`);
+                    
+                    let userVal = input.value.trim().replace(/駅$/, "");
+                    
+                    // 全社の社名接頭辞を無視して正解判定できるようにする
+                    let cleanUserVal = userVal.replace(/^(近鉄|阪神|阪急|京阪|南海|阪堺|大阪メトロ|Osaka Metro|osaka metro)/i, "");
+                    let cleanCorrect = st.name.replace(/^(近鉄|阪神|阪急|京阪|南海|阪堺|大阪メトロ|Osaka Metro|osaka metro)/i, "");
+
+                    input.classList.remove('correct', 'incorrect');
+                    
+                    if (cleanUserVal === cleanCorrect && cleanUserVal !== "") {
+                        input.classList.add('correct');
+                        ans.style.display = 'none';
+                        score++;
+                    } else {
+                        input.classList.add('incorrect');
+                        ans.style.display = 'block';
+                    }
+                }
+            });
+
+            const res = document.getElementById('station-result');
+            if (blankCount > 0) {
+                res.innerHTML = `正解数: <span style="color:var(--primary-color);">${score}</span> / ${blankCount} 問`;
+                if (score === blankCount) res.innerHTML += "<br>🎉 全問正解！素晴らしい！";
+            } else {
+                res.innerHTML = "空欄が0個です。空白の数を増やしてください。";
+            }
+        }
+        
+        // ==========================================
+        // スクロールバー表示制御 (PC Chrome向け)
+        // ==========================================
+        let scrollTimer;
+        window.addEventListener('scroll', function() {
+            // 固定画面中は発火させない
+            if(document.body.classList.contains('fixed-home')) return;
+
+            document.body.classList.add('scrolling');
+            clearTimeout(scrollTimer);
+            scrollTimer = setTimeout(function() {
+                document.body.classList.remove('scrolling');
+            }, 1500);
+        }, { passive: true });
+
+    </script>
+
+</body>
+</html>
