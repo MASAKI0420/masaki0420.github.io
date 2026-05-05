@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>テキストファイルをUTF-8に変換</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Meiryo, system-ui, -apple-system, sans-serif;
+            background-color: #f4f7f6;
+            color: #333;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            padding-top: 200px;
+            box-sizing: border-box;
+            height: 100vh;
+            margin: 0;
+            overflow: hidden;
+        }
+        .container {
+            background-color: #fff;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            width: 100%;
+            max-width: 400px;
+        }
+        h1 {
+            font-size: 1.5rem;
+            margin-top: 0;
+            text-align: center;
+            color: #2c3e50;
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: bold;
+            font-size: 0.9rem;
+        }
+        input[type="file"], select {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            box-sizing: border-box;
+            font-size: 1rem;
+        }
+        button {
+            width: 100%;
+            padding: 12px;
+            background-color: #3498db;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            font-size: 1rem;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background-color 0.3s;
+            margin-top: 10px;
+        }
+        button:hover {
+            background-color: #2980b9;
+        }
+        button:disabled {
+            background-color: #95a5a6;
+            cursor: not-allowed;
+        }
+        #message {
+            margin-top: 15px;
+            text-align: center;
+            font-size: 0.9rem;
+            font-weight: bold;
+            min-height: 20px;
+            word-break: break-all;
+        }
+        .success { color: #27ae60; }
+        .error { color: #c0392b; }
+        .info { color: #888; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>UTF-8 変換ツール</h1>
+
+    <div class="form-group">
+        <label for="fileInput">変換するファイルを選択</label>
+        <input type="file" id="fileInput">
+    </div>
+
+    <div class="form-group">
+        <label for="encoding">元の文字コード（変換前）</label>
+        <select id="encoding">
+            <option value="Shift_JIS" selected>Shift-JIS (Windowsの標準)</option>
+            <option value="EUC-JP">EUC-JP</option>
+            <option value="UTF-8">UTF-8</option>
+        </select>
+    </div>
+
+    <button id="convertBtn">変換して保存・共有</button>
+
+    <div id="message"></div>
+</div>
+
+<script>
+    document.getElementById('convertBtn').addEventListener('click', async () => {
+        const fileInput = document.getElementById('fileInput');
+        const encoding = document.getElementById('encoding').value;
+        const messageDiv = document.getElementById('message');
+
+        messageDiv.textContent = "";
+        messageDiv.className = "";
+
+        if (fileInput.files.length === 0) {
+            showMessage("ファイルを選択してください。", "error");
+            return;
+        }
+
+        const file = fileInput.files[0];
+        
+        const readFileAsText = (file, encoding) => {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = () => resolve(reader.result);
+                reader.onerror = () => reject(reader.error);
+                reader.readAsText(file, encoding);
+            });
+        };
+
+        try {
+            const text = await readFileAsText(file, encoding);
+            const blob = new Blob([text], { type: 'application/octet-stream' });
+            const fileForSharing = new File([blob], file.name, { type: blob.type });
+
+            // ★★★【ここが修正点】★★★
+            // file:// プロトコルでは共有APIが動かないため、そのチェックを追加
+            const isFileProtocol = window.location.protocol === 'file:';
+            
+            // 1. Web Share API (主にモバイル) が使えるかチェック (file:// では実行しない)
+            if (!isFileProtocol && navigator.share && navigator.canShare && navigator.canShare({ files: [fileForSharing] })) {
+                try {
+                    await navigator.share({
+                        files: [fileForSharing],
+                        title: file.name,
+                    });
+                    showMessage("共有メニューから保存先を選択しました。", "success");
+                } catch (err) {
+                    if (err.name !== 'AbortError') {
+                        console.error('Share failed:', err);
+                        showMessage("共有に失敗しました。", "error");
+                    } else {
+                        showMessage("共有がキャンセルされました。", "info");
+                    }
+                }
+            }
+            // 2. File System Access API (主に新しいPCブラウザ) が使えるかチェック
+            else if ('showSaveFilePicker' in window) {
+                try {
+                    const handle = await window.showSaveFilePicker({ suggestedName: file.name });
+                    const writable = await handle.createWritable();
+                    await writable.write(blob);
+                    await writable.close();
+                    showMessage(`「${file.name}」が保存されました。`, "success");
+                } catch (err) {
+                    if (err.name !== 'AbortError') {
+                        console.error('Save failed:', err);
+                        showMessage("ファイルの保存に失敗しました。", "error");
+                    } else {
+                        showMessage("保存がキャンセルされました。", "info");
+                    }
+                }
+            }
+            // 3. 上記が使えない場合の従来のダウンロード方法
+            else {
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = file.name;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+                showMessage(`変換完了: ${file.name} (ブラウザ設定場所に保存)`, "success");
+            }
+
+        } catch (error) {
+            showMessage("ファイルの読み込みに失敗しました。", "error");
+        }
+    });
+
+    function showMessage(text, type) {
+        const messageDiv = document.getElementById('message');
+        messageDiv.textContent = text;
+        messageDiv.className = type;
+    }
+</script>
+
+</body>
+</html>
