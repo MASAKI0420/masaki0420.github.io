@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>oszコンバーター</title>
+    <!-- ZIP圧縮を行うためのライブラリを読み込み -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <style>
+        /* 画面全体のスクロールを完全に禁止 */
+        html, body {
+            height: 100%;
+            margin: 0;
+            overflow: hidden; 
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #2b2b2b;
+            color: #ffffff;
+            padding: 20px;
+            box-sizing: border-box;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .container {
+            background-color: #383838;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.4);
+            max-width: 500px;
+            width: 100%;
+            height: 650px; /* アプリ全体の高さを固定 */
+            max-height: 100%;
+            box-sizing: border-box;
+            display: flex;
+            flex-direction: column; /* 内部を縦並びにして柔軟に配置 */
+        }
+
+        /* 縮んでほしくない要素の設定 */
+        h1, .description, .input-group, .drop-zone, button, .progress {
+            flex-shrink: 0;
+        }
+
+        h1 {
+            margin-top: 0;
+            color: #ff66aa;
+            font-size: 24px;
+            margin-bottom: 15px;
+            text-align: center;
+        }
+
+        .description {
+            font-size: 13px;
+            color: #bbbbbb;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        .input-group {
+            margin-bottom: 20px;
+            text-align: left;
+        }
+
+        .input-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-size: 14px;
+            color: #dddddd;
+        }
+
+        input[type="text"] {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #555;
+            background-color: #222;
+            color: #fff;
+            border-radius: 6px;
+            box-sizing: border-box;
+            font-size: 14px;
+        }
+
+        .drop-zone {
+            border: 2px dashed #ff66aa;
+            border-radius: 8px;
+            padding: 30px 20px;
+            background-color: #444;
+            cursor: pointer;
+            margin-bottom: 20px;
+            transition: all 0.3s ease;
+            text-align: center;
+        }
+
+        .drop-zone:hover, .drop-zone.dragover {
+            background-color: #555;
+            border-color: #ff99cc;
+        }
+
+        .drop-zone p {
+            margin: 0;
+            pointer-events: none;
+            color: #eeeeee;
+            line-height: 1.5;
+            font-size: 14px;
+        }
+
+        #fileInput {
+            display: none;
+        }
+
+        /* ファイルリストだけが柔軟に高さを取り、溢れたらスクロールする */
+        .file-list {
+            text-align: left;
+            flex-grow: 1; /* 余ったスペースを全て埋める */
+            overflow-y: auto; /* ここだけスクロール可能に */
+            margin-bottom: 20px;
+            font-size: 13px;
+            color: #ccc;
+            border: 1px solid #555;
+            padding: 10px;
+            border-radius: 6px;
+            background: #2a2a2a;
+            box-sizing: border-box;
+        }
+
+        /* ファイルが空の時のメッセージ表示 */
+        .file-list:empty::before {
+            content: "読み込まれたファイルがここに表示されます";
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100%;
+            color: #777;
+        }
+
+        .file-list div {
+            border-bottom: 1px solid #444;
+            padding: 6px 0;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .file-list div:last-child {
+            border-bottom: none;
+        }
+
+        button {
+            background-color: #ff66aa;
+            color: white;
+            border: none;
+            padding: 14px 20px;
+            font-size: 16px;
+            font-weight: bold;
+            border-radius: 6px;
+            cursor: pointer;
+            width: 100%;
+            transition: background-color 0.3s;
+        }
+
+        button:hover {
+            background-color: #ff4499;
+        }
+
+        button:disabled {
+            background-color: #666;
+            color: #aaa;
+            cursor: not-allowed;
+        }
+
+        .progress {
+            margin-top: 15px;
+            font-size: 14px;
+            color: #ffccdd;
+            height: 20px; /* テキストの有無でガタつかないように固定 */
+            line-height: 20px;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>oszコンバーター</h1>
+    <p class="description">解凍されたファイルやフォルダをまとめて .osz に変換します。<br>サーバーには送信されず、ブラウザ上で処理されます。</p>
+    
+    <div class="input-group">
+        <label for="filename">出力するファイル名</label>
+        <input type="text" id="filename" placeholder="例: beatmap" value="beatmap">
+    </div>
+    
+    <div class="drop-zone" id="dropZone">
+        <p>ここにフォルダ、または複数のファイルをドロップ<br>（クリックしてファイルを選択）</p>
+        <input type="file" id="fileInput" multiple>
+    </div>
+
+    <!-- ここだけがスクロールする -->
+    <div class="file-list" id="fileList"></div>
+
+    <button id="packBtn" disabled>oszに変換してダウンロード</button>
+    <div class="progress" id="progressText"></div>
+</div>
+
+<script>
+    const dropZone = document.getElementById('dropZone');
+    const fileInput = document.getElementById('fileInput');
+    const fileListDiv = document.getElementById('fileList');
+    const packBtn = document.getElementById('packBtn');
+    const filenameInput = document.getElementById('filename');
+    const progressText = document.getElementById('progressText');
+
+    let selectedFiles =[];
+
+    dropZone.addEventListener('click', () => fileInput.click());
+
+    dropZone.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        dropZone.classList.add('dragover');
+    });
+
+    dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
+
+    dropZone.addEventListener('drop', async (e) => {
+        e.preventDefault();
+        dropZone.classList.remove('dragover');
+        progressText.innerText = "ファイルを読み込み中...";
+        
+        let files =[];
+        if (e.dataTransfer.items) {
+            let promises =[];
+            for (let i = 0; i < e.dataTransfer.items.length; i++) {
+                let item = e.dataTransfer.items[i].webkitGetAsEntry();
+                if (item) {
+                    if (item.isDirectory) {
+                        let dirReader = item.createReader();
+                        promises.push(new Promise((resolve) => {
+                            dirReader.readEntries(async entries => {
+                                let subPromises =[];
+                                for (let j = 0; j < entries.length; j++) {
+                                    subPromises.push(traverseFileTree(entries[j], "", files));
+                                }
+                                await Promise.all(subPromises);
+                                resolve();
+                            });
+                        }));
+                    } else {
+                        promises.push(traverseFileTree(item, "", files));
+                    }
+                }
+            }
+            await Promise.all(promises);
+        } else {
+            files = Array.from(e.dataTransfer.files);
+            files.forEach(f => f.customPath = f.name);
+        }
+        
+        handleFiles(files);
+    });
+
+    fileInput.addEventListener('change', (e) => {
+        const files = Array.from(e.target.files);
+        files.forEach(f => f.customPath = f.name);
+        handleFiles(files);
+        fileInput.value = ''; 
+    });
+
+    function traverseFileTree(item, path, files) {
+        return new Promise((resolve) => {
+            if (item.isFile) {
+                item.file(file => {
+                    file.customPath = path + file.name;
+                    files.push(file);
+                    resolve();
+                });
+            } else if (item.isDirectory) {
+                let dirReader = item.createReader();
+                dirReader.readEntries(async entries => {
+                    let promises =[];
+                    for (let i = 0; i < entries.length; i++) {
+                        promises.push(traverseFileTree(entries[i], path + item.name + "/", files));
+                    }
+                    await Promise.all(promises);
+                    resolve();
+                });
+            }
+        });
+    }
+
+    function handleFiles(files) {
+        selectedFiles = files;
+        fileListDiv.innerHTML = '';
+        if (selectedFiles.length > 0) {
+            selectedFiles.forEach(file => {
+                const div = document.createElement('div');
+                div.textContent = file.customPath || file.name;
+                fileListDiv.appendChild(div);
+            });
+            packBtn.disabled = false;
+            progressText.innerText = `${selectedFiles.length}個のファイルを読み込みました。`;
+        } else {
+            packBtn.disabled = true;
+            progressText.innerText = "";
+        }
+    }
+
+    packBtn.addEventListener('click', async () => {
+        if (selectedFiles.length === 0) return;
+
+        packBtn.disabled = true;
+        progressText.innerText = "圧縮中...";
+
+        const zip = new JSZip();
+
+        selectedFiles.forEach(file => {
+            zip.file(file.customPath || file.name, file);
+        });
+
+        try {
+            let content = await zip.generateAsync({ 
+                type: "blob",
+                compression: "DEFLATE",
+                compressionOptions: { level: 5 },
+                mimeType: "application/octet-stream" 
+            }, (metadata) => {
+                progressText.innerText = `圧縮中... ${metadata.percent.toFixed(1)}%`;
+            });
+
+            content = new Blob([content], { type: 'application/octet-stream' });
+
+            let baseName = filenameInput.value.trim() || 'beatmap';
+            if (baseName.toLowerCase().endsWith('.osz')) {
+                baseName = baseName.slice(0, -4);
+            }
+            if (baseName.toLowerCase().endsWith('.zip')) {
+                baseName = baseName.slice(0, -4);
+            }
+            const finalFilename = baseName + '.osz';
+
+            const url = URL.createObjectURL(content);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = finalFilename;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+
+            progressText.innerText = "✅ ダウンロードが完了しました！";
+        } catch (error) {
+            console.error(error);
+            progressText.innerText = "❌ エラーが発生しました: " + error.message;
+        } finally {
+            packBtn.disabled = false;
+        }
+    });
+</script>
+
+</body>
+</html>
