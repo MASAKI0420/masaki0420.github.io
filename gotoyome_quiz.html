@@ -1,0 +1,556 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>五等分の花嫁 全巻クイズ（全問回答式）</title>
+<style>
+  body {
+    font-family: 'Helvetica Neue', Arial, 'Hiragino Kaku Gothic ProN', Meiryo, sans-serif;
+    line-height: 1.6;
+    background-color: #fce4ec;
+    color: #333;
+    padding: 20px;
+    max-width: 800px;
+    margin: 0 auto;
+  }
+  h1 {
+    text-align: center;
+    color: #d81b60;
+    font-size: 1.6em;
+    margin-bottom: 5px;
+  }
+  .description {
+    text-align: center;
+    margin-bottom: 30px;
+    font-size: 0.9em;
+    color: #555;
+  }
+  
+  /* 巻数選択画面（ホーム）のスタイル */
+  .volume-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+    gap: 15px;
+    margin-top: 20px;
+  }
+  .vol-select-btn {
+    background-color: #f8bbd0;
+    color: #c2185b;
+    border: none;
+    padding: 20px 10px;
+    border-radius: 8px;
+    font-size: 1.2em;
+    font-weight: bold;
+    cursor: pointer;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    transition: background-color 0.2s, transform 0.1s;
+  }
+  .vol-select-btn:hover {
+    background-color: #f48fb1;
+    transform: translateY(-2px);
+  }
+
+  /* クイズ画面のスタイル */
+  .volume-section {
+    background: #fff;
+    border-radius: 8px;
+    padding: 20px;
+    margin-bottom: 20px;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+  }
+  .volume-title {
+    color: #c2185b;
+    border-bottom: 2px solid #f8bbd0;
+    padding-bottom: 10px;
+    margin-bottom: 20px;
+    font-size: 1.4em;
+    text-align: center;
+  }
+  
+  /* スコア表示エリア */
+  .score-display {
+    background-color: #fff9c4;
+    border: 3px solid #fbc02d;
+    color: #f57f17;
+    text-align: center;
+    padding: 15px;
+    font-size: 1.6em;
+    font-weight: bold;
+    border-radius: 8px;
+    margin-bottom: 30px;
+    display: none; /* 初期は非表示 */
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+  }
+
+  .quiz-item {
+    margin-bottom: 35px;
+    border-bottom: 1px dashed #eee;
+    padding-bottom: 25px;
+  }
+  .quiz-item:last-of-type {
+    border-bottom: none;
+    margin-bottom: 0;
+  }
+  .quiz-question {
+    font-weight: bold;
+    margin-bottom: 15px;
+    color: #444;
+    font-size: 1.05em;
+  }
+  .choices {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .choice-btn {
+    display: block;
+    width: 100%;
+    text-align: left;
+    padding: 12px 15px;
+    background-color: #fff0f5;
+    border: 2px solid #f8bbd0;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 1em;
+    color: #333;
+    transition: all 0.2s;
+  }
+  .choice-btn:hover:not(:disabled) {
+    background-color: #fce4ec;
+  }
+  
+  /* 選択中のスタイル */
+  .choice-btn.selected {
+    background-color: #f48fb1;
+    color: #fff;
+    border-color: #c2185b;
+    font-weight: bold;
+  }
+
+  /* 採点後のスタイル（!important で優先） */
+  .choice-btn.correct {
+    background-color: #e8f5e9 !important;
+    border-color: #81c784 !important;
+    color: #2e7d32 !important;
+    font-weight: bold !important;
+  }
+  .choice-btn.wrong {
+    background-color: #ffebee !important;
+    border-color: #e57373 !important;
+    color: #c62828 !important;
+  }
+  .choice-btn:disabled {
+    cursor: default;
+    opacity: 0.9;
+  }
+  
+  .result {
+    margin-top: 10px;
+    font-weight: bold;
+    min-height: 1.5em;
+  }
+
+  /* 結果を見るボタン */
+  .submit-btn {
+    display: block;
+    width: 100%;
+    background-color: #d81b60;
+    color: #fff;
+    border: none;
+    padding: 15px;
+    border-radius: 8px;
+    font-size: 1.3em;
+    font-weight: bold;
+    cursor: pointer;
+    margin-top: 20px;
+    transition: background-color 0.3s;
+    box-shadow: 0 4px 6px rgba(216, 27, 96, 0.3);
+  }
+  .submit-btn:hover:not(:disabled) {
+    background-color: #ad1457;
+  }
+  .submit-btn:disabled {
+    background-color: #ccc;
+    box-shadow: none;
+    cursor: not-allowed;
+  }
+
+  /* 戻るボタン */
+  .back-btn {
+    display: inline-block;
+    background-color: #fff;
+    color: #c2185b;
+    border: 2px solid #f8bbd0;
+    padding: 10px 20px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 1em;
+    font-weight: bold;
+    margin-bottom: 20px;
+    text-align: center;
+    transition: background-color 0.2s;
+  }
+  .back-btn:hover {
+    background-color: #fce4ec;
+  }
+  .bottom-back {
+    display: block;
+    width: 100%;
+    margin-top: 20px;
+  }
+
+  /* 画面切り替え用 */
+  #quiz-screen {
+    display: none;
+  }
+</style>
+</head>
+<body>
+
+  <h1>五等分の花嫁 コミックス全巻クイズ</h1>
+  <p class="description">1巻から14巻までの4択クイズです。<br>挑戦したい巻を選んで、全問答えたら「結果を見る」を押してください。</p>
+
+  <!-- 巻数選択画面 -->
+  <div id="home-screen">
+    <div id="volume-grid" class="volume-grid"></div>
+  </div>
+
+  <!-- クイズ表示画面 -->
+  <div id="quiz-screen">
+    <button class="back-btn" onclick="goBack()">◀ 巻数選択に戻る</button>
+    <div id="quiz-container"></div>
+    <button class="back-btn bottom-back" onclick="goBack()">◀ 巻数選択に戻る</button>
+  </div>
+
+<script>
+const quizData = [
+  { volume: 1, questions: [
+    { q: "上杉風太郎が学食でいつも頼む一番安いメニューは何？", choices: ["焼肉定食焼肉抜き", "カレーライスルー抜き", "うどん汁抜き", "塩おにぎり"], ans: 0 },
+    { q: "五つ子の苗字は何？", choices: ["上杉", "中野", "武田", "前田"], ans: 1 },
+    { q: "風太郎の妹の名前は何？", choices: ["らいは", "いちか", "みく", "よつば"], ans: 0 },
+    { q: "五つ子の中で、風太郎が一番最初に出会ったのは誰？", choices: ["一花", "三玖", "五月", "四葉"], ans: 2 },
+    { q: "三玖が好きな歴史の時代は？", choices: ["幕末", "戦国時代", "平安時代", "三国時代"], ans: 1 },
+    { q: "四葉がつけているリボンの形は何をモチーフにしている？", choices: ["猫", "うさぎ", "犬", "蝶"], ans: 1 },
+    { q: "二乃が風太郎を家から追い出すために水に混ぜたものは何？", choices: ["睡眠薬", "下剤", "タバスコ", "塩"], ans: 0 },
+    { q: "風太郎が家庭教師の初日に出したテストの結果、五つ子の点数は全員合わせて何点だった？", choices: ["0点", "50点", "100点", "250点"], ans: 2 },
+    { q: "五月が風太郎の家で初めてご飯を食べた時、出されたメニューは何？", choices: ["ハンバーグ", "オムライス", "カレー", "肉じゃが"], ans: 2 },
+    { q: "一花が自分の部屋で寝ていた時、風太郎に注意されたのはなぜ？", choices: ["いびきがうるさかったから", "だらしない格好だったから", "ベッドから落ちていたから", "部屋がゴミだらけだったから"], ans: 1 }
+  ]},
+  { volume: 2, questions: [
+    { q: "花火大会で一花に連絡が来た際、風太郎は誰のふりをした？", choices: ["父親", "事務所の社長", "マネージャー", "警察"], ans: 2 },
+    { q: "風太郎が徹夜で作成した手書きの問題集の名前は？", choices: ["風太郎ノート", "上杉暗記帳", "必勝ドリル", "中野家専用問題集"], ans: 1 },
+    { q: "三玖が二乃と料理対決をした際、三玖が作った料理は何？", choices: ["カレー", "肉じゃが", "オムライス", "ハンバーグ"], ans: 2 },
+    { q: "昔の金髪の風太郎の写真を見た二乃は、その少年のことを何と呼んだ？", choices: ["ギンタロー", "ヤンキー君", "金髪くん", "キンタロー"], ans: 3 },
+    { q: "風太郎が初任給でらいはに買ってあげたものは何？", choices: ["ぬいぐるみ", "洋服", "ケーキ", "プリクラ帳"], ans: 3 },
+    { q: "一花の秘密の仕事は何？", choices: ["モデル", "女優", "アイドル", "声優"], ans: 1 },
+    { q: "花火大会で迷子になり、風太郎に助けられたのは誰？", choices: ["一花", "二乃", "四葉", "五月"], ans: 3 },
+    { q: "四葉が他の部活の助っ人を断る際についた嘘は何？", choices: ["風太郎のことが好き", "勉強が忙しい", "体調が悪い", "家族旅行に行く"], ans: 0 },
+    { q: "中間テストで一つでも赤点を取ったら、風太郎はどうなると宣告されていた？", choices: ["罰金", "土下座", "坊主になる", "家庭教師をクビになる"], ans: 3 },
+    { q: "五月が風太郎の家でお泊まりした時、寝るのに使った場所はどこ？", choices: ["らいはの布団", "ソファ", "風太郎の布団（ベッド）", "床"], ans: 2 }
+  ]},
+  { volume: 3, questions: [
+    { q: "中間テストの結果、風太郎がクビにならずに済んだ理由は？", choices: ["全員が赤点を回避した", "二乃が嘘をついて庇った", "五月が頼み込んだ", "風太郎が土下座した"], ans: 1 },
+    { q: "林間学校で一緒に踊ると一生結ばれるというイベントは何？", choices: ["フォークダンス", "肝試し", "キャンプファイヤー", "オリエンテーリング"], ans: 2 },
+    { q: "肝試しで風太郎とペアになったのは誰？", choices: ["二乃", "三玖", "五月", "四葉"], ans: 3 },
+    { q: "一花と風太郎が2人きりで閉じ込められてしまった場所はどこ？", choices: ["トイレ", "倉庫", "体育館", "保健室"], ans: 1 },
+    { q: "閉じ込められた場所で寒さをしのぐため、一花と風太郎はどうした？", choices: ["焚き火をした", "走り回った", "一つの寝袋に一緒に入った", "お互いの服を交換した"], ans: 2 },
+    { q: "風太郎が二乃を傷つけないためにかぶったものは何？", choices: ["お面", "ヘルメット", "帽子", "金髪のウィッグ"], ans: 3 },
+    { q: "肝試しの最中、三玖が怖がってしがみついた相手は誰？", choices: ["一花", "四葉", "風太郎", "五月"], ans: 2 },
+    { q: "五月が風太郎と口論になった際、五月が放った言葉は「あなたは○○○です」。何？", choices: ["バカ", "無神経", "最悪", "変態"], ans: 1 },
+    { q: "林間学校の女湯で、風太郎が間違って遭遇してしまったのは誰？", choices: ["二乃", "三玖", "一花", "五月"], ans: 3 },
+    { q: "スキー場で吹雪の中、迷子になってしまったのは誰？", choices: ["二乃", "四葉", "三玖", "五月（三玖に変装）"], ans: 3 }
+  ]},
+  { volume: 4, questions: [
+    { q: "林間学校の最終日、風太郎は体調を崩してどうなった？", choices: ["保健室で寝ていた", "早退して家に帰った", "高熱を出して倒れ、入院した", "薬を飲んで復活した"], ans: 2 },
+    { q: "キャンプファイヤーの「結びの伝説」の際、倒れていた風太郎の指を握っていたのは誰？", choices: ["一花と三玖", "五月のみ", "誰も握っていない", "五つ子全員"], ans: 3 },
+    { q: "入院中の風太郎のもとに五つ子がお見舞いに持ってきたものは何？", choices: ["フルーツ盛り合わせ", "勉強道具", "花束", "千羽鶴"], ans: 1 },
+    { q: "四葉が陸上部から助っ人を頼まれ断れずにいた時、風太郎と一緒に断りに行ったのは誰？", choices: ["一花", "二乃", "三玖", "五月"], ans: 1 },
+    { q: "二乃と五月が激しい喧嘩をして家出したエピソードの総称（編名）は何？", choices: ["五羽の鶴", "三つの願い", "姉妹の絆", "七つのさよなら"], ans: 3 },
+    { q: "家出した五月が居候した場所はどこ？", choices: ["ホテル", "漫画喫茶", "友達の家", "上杉家"], ans: 3 },
+    { q: "家出した二乃が身を寄せた場所はどこ？", choices: ["高級ホテル", "上杉家", "事務所", "カラオケ"], ans: 0 },
+    { q: "勤労感謝の日に風太郎と2人でデートをしたのは誰？", choices: ["一花", "二乃", "三玖", "四葉"], ans: 3 },
+    { q: "デートの最後で、四葉が「欲しいもの」として答えたのは何？", choices: ["ネックレス", "風太郎が笑ってくれること", "服", "ケーキ"], ans: 1 },
+    { q: "陸上部の大会直前、四葉を助けるために五つ子がとった作戦は何？", choices: ["全員で陸上部に入部した", "監督に直談判した", "全員が四葉に変装して入れ替わった", "ボイコットした"], ans: 2 }
+  ]},
+  { volume: 5, questions: [
+    { q: "過去と決別するため、二乃が変えた見た目の特徴は何？", choices: ["髪を金髪にした", "髪をバッサリ切ってショートにした", "コンタクトにした", "メイクを変えた"], ans: 1 },
+    { q: "五月が上杉家に居候していた時、らいはと一緒に入った場所はどこ？", choices: ["トイレ", "ベッド", "お風呂", "台所"], ans: 2 },
+    { q: "ホテルにいる二乃のもとに現れた風太郎は、誰の姿に変装していた？", choices: ["マネージャー", "父親", "教師", "キンタロー"], ans: 3 },
+    { q: "期末テストで、五つ子たちは全員赤点を回避できたか？", choices: ["できた", "一人だけ赤点だった", "全員赤点だった", "テストが中止になった"], ans: 0 },
+    { q: "期末テスト終了後、風太郎は中野父からどういう処分を受けた？", choices: ["ボーナスをもらった", "給料を減らされた", "家庭教師をクビになった", "怒られただけ"], ans: 2 },
+    { q: "風太郎がクビになった後、五つ子たちはどういう行動をとった？", choices: ["父親に抗議した", "泣き寝入りした", "家を出て新しいアパートで風太郎を雇った", "転校した"], ans: 2 },
+    { q: "新しいアパートに風太郎が呼ばれた日、何のイベントが行われていた？", choices: ["ハロウィン", "誕生日パーティー", "新年祝い", "クリスマスパーティー"], ans: 3 },
+    { q: "家を出た五つ子たちが生活費を稼ぐために始めたことは何？", choices: ["クラウドファンディング", "アルバイト", "節約", "お小遣い稼ぎのアプリ"], ans: 1 },
+    { q: "一花が風太郎に内緒で家賃のほとんどを払っていた理由は？", choices: ["貯金があったから", "女優業の収入があったから", "お小遣いを貯めていたから", "宝くじが当たったから"], ans: 1 },
+    { q: "二乃が新しくアルバイトを始めたお店はどこ？", choices: ["パン屋", "ファミレス", "風太郎と同じケーキ屋", "アパレルショップ"], ans: 2 }
+  ]},
+  { volume: 6, questions: [
+    { q: "お正月に五つ子と風太郎が偶然会った場所はどこ？", choices: ["デパート", "公園", "コンビニ", "神社"], ans: 3 },
+    { q: "春休みの家族旅行で、五つ子と風太郎の家族が偶然向かった先はどこ？", choices: ["ハワイ", "スキー場", "おじいちゃんがいる温泉旅館", "遊園地"], ans: 2 },
+    { q: "温泉旅館でのエピソード（編名）は何と呼ばれている？", choices: ["シスターズウォー", "スクランブルエッグ", "七つのさよなら", "最後の祭りが"], ans: 1 },
+    { q: "旅館で五つ子たちは、おじいちゃんを安心させるために誰の変装をしていた？", choices: ["一花", "三玖", "四葉", "五月"], ans: 3 },
+    { q: "旅館の露天風呂で、風太郎が偶然遭遇してしまったのは誰の姿をした五つ子？", choices: ["一花", "三玖", "五月", "らいは"], ans: 2 },
+    { q: "おじいちゃんが風太郎に教えた、五つ子を見分けるために必要なものは何？", choices: ["観察力", "勘", "記憶力", "愛"], ans: 3 },
+    { q: "温泉旅館で、風太郎が五つの五月の中から初めて自力で見分けることができたのは誰？", choices: ["一花", "二乃", "三玖", "四葉"], ans: 2 },
+    { q: "旅行の最終日、「誓いの鐘」を一緒に鳴らしたカップルはどうなると言われている？", choices: ["一生友達でいられる", "永遠に結ばれる", "お金持ちになる", "幸せになれる"], ans: 1 },
+    { q: "誓いの鐘の下で、風太郎にキスをして鐘を鳴らしたのは誰の姿だった？", choices: ["一花", "二乃", "三玖", "五月"], ans: 3 },
+    { q: "三玖がアルバイトを始めたお店は何屋？", choices: ["ケーキ屋", "本屋", "花屋", "パン屋"], ans: 3 }
+  ]},
+  { volume: 7, questions: [
+    { q: "3年生に進級した風太郎と五つ子たちは、クラス替えでどうなった？", choices: ["全員バラバラのクラスになった", "風太郎だけ別のクラスになった", "全員同じクラスになった", "2人と3人に分かれた"], ans: 2 },
+    { q: "風太郎が3年生のクラスで選ばれた役員は何？", choices: ["体育委員", "風紀委員", "飼育委員", "学級長（学級委員）"], ans: 3 },
+    { q: "風太郎と一緒に学級委員になった五つ子は誰？", choices: ["一花", "二乃", "四葉", "五月"], ans: 2 },
+    { q: "全国模試で、風太郎をライバル視して勝負を挑んできた同級生の名前は誰？", choices: ["前田", "武田", "鈴木", "佐藤"], ans: 1 },
+    { q: "全国模試の結果、風太郎の順位は全国で何位だった？", choices: ["1位", "3位", "10位", "50位"], ans: 1 },
+    { q: "五月が将来の夢として目指し始めた職業は何？", choices: ["女優", "パティシエ", "アナウンサー", "教師"], ans: 3 },
+    { q: "五月が教師を目指すきっかけとなった憧れの人物は誰？", choices: ["風太郎", "父親（マルオ）", "母親（零奈）", "おじいちゃん"], ans: 2 },
+    { q: "修学旅行の班決めで、風太郎と同じ班になったのは誰？", choices: ["武田と前田", "一花と三玖", "四葉と五月", "五つ子全員"], ans: 3 },
+    { q: "五つ子と風太郎の修学旅行の行き先はどこ？", choices: ["北海道", "沖縄", "海外", "京都"], ans: 3 },
+    { q: "修学旅行に向けて、一花が密かに企んでいたことは何？", choices: ["途中で帰ること", "三玖を出し抜いて風太郎に近づくこと", "勉強の合宿にすること", "父親に会いに行くこと"], ans: 1 }
+  ]},
+  { volume: 8, questions: [
+    { q: "修学旅行の編名は何と呼ばれている？", choices: ["スクランブルエッグ", "七つのさよなら", "シスターズウォー", "最後の祭りが"], ans: 2 },
+    { q: "修学旅行中、一花が風太郎にアピールするために変装した相手は誰？", choices: ["二乃", "四葉", "三玖", "五月"], ans: 2 },
+    { q: "一花が三玖に変装して風太郎に伝えた嘘の内容は何？", choices: ["「私は風太郎が嫌い」", "「五月が風太郎を怒っている」", "「一花が風太郎のことを好きらしい」", "「二乃が告白するらしい」"], ans: 2 },
+    { q: "三玖が修学旅行中に風太郎に伝えようと決意していたことは何？", choices: ["転校すること", "パン屋をやめること", "勉強をやめること", "告白すること"], ans: 3 },
+    { q: "修学旅行中、三玖に変装していた一花を見破ったのは誰？", choices: ["二乃", "四葉", "五月", "風太郎"], ans: 3 },
+    { q: "一花の嘘を知った三玖は、一花に対して最終的にどんな態度をとった？", choices: ["絶交した", "無視した", "許した", "殴った"], ans: 2 },
+    { q: "班別行動で、風太郎が一緒に回った相手は誰？", choices: ["一花のみ", "誰とも回らなかった", "武田と前田", "コースごとに五つ子それぞれ全員と回った"], ans: 3 },
+    { q: "映画村で三玖が風太郎を指差して言った言葉は何？", choices: ["「嫌い」", "「バカ」", "「好き」", "「さよなら」"], ans: 2 },
+    { q: "三玖は告白の後、恥ずかしくなって何が好きだとごまかした？", choices: ["パンが", "映画が", "勉強が", "「家族が」好き"], ans: 3 },
+    { q: "過去の京都で風太郎が出会った「写真の女の子（レナ）」の本当の正体は誰だった？", choices: ["一花", "二乃", "三玖", "四葉"], ans: 3 }
+  ]},
+  { volume: 9, questions: [
+    { q: "修学旅行から帰ってきた後、一花が風太郎に返済したものは何？", choices: ["借りていた本", "交通費", "修学旅行のお土産代", "立て替えてもらっていた家賃"], ans: 3 },
+    { q: "一花が本格的に女優業に専念するため、学校をどうすることに決めた？", choices: ["退学する", "転校する", "サボる", "休学する"], ans: 3 },
+    { q: "夏休みに五つ子と風太郎が遊びに行ったレジャー施設はどこ？", choices: ["遊園地", "水族館", "プール", "動物園"], ans: 2 },
+    { q: "プールで二乃が風太郎に見せるために着たものは何？", choices: ["スクール水着", "浮き輪", "新しい水着", "ゴーグル"], ans: 2 },
+    { q: "夏休みの間、四葉が真っ黒に日焼けしてしまった理由は何？", choices: ["海で遊んでいたから", "部活の助っ人で外にいたから", "日焼けサロンに行ったから", "庭で寝ていたから"], ans: 1 },
+    { q: "五月が密かに勉強していたのは、何の職業になるため？", choices: ["医者", "弁護士", "教師", "看護師"], ans: 2 },
+    { q: "夏休み中、風太郎が五つ子に出した課題は何？", choices: ["毎日運動すること", "毎日料理をすること", "毎日早く寝ること", "毎日勉強を続けること"], ans: 3 },
+    { q: "風太郎の誕生日に五つ子が贈ったプレゼントは、5つ集めると何になる？", choices: ["四葉のクローバー", "星のマーク", "パズル", "折り鶴"], ans: 3 },
+    { q: "新学期が始まり、学校で準備が始まった大きなイベントは何？", choices: ["体育祭", "修学旅行", "合唱コンクール", "学園祭（日の出祭）"], ans: 3 },
+    { q: "学園祭で風太郎が立候補した役職は何？", choices: ["実行委員長", "会計", "学園祭実行委員", "書記"], ans: 2 }
+  ]},
+  { volume: 10, questions: [
+    { q: "五つ子たちの高校の学園祭の名称は何祭？", choices: ["桜高祭", "日の出祭", "白百合祭", "朝日祭"], ans: 1 },
+    { q: "学園祭に向けて、二乃と三玖のクラスが出店することになった模擬店は何屋？", choices: ["クレープ屋", "お化け屋敷", "焼きそば屋", "たこ焼き屋"], ans: 3 },
+    { q: "学園祭初日、風太郎が五つ子たちに宣言した重大な決意とは何？", choices: ["転校すること", "家庭教師をやめること", "最終日に誰か一人を選ぶこと", "大学に行かないこと"], ans: 2 },
+    { q: "マルオ（中野父）を学園祭に呼ぶために、風太郎はどうした？", choices: ["電話をかけた", "招待状を送った", "家まで押し掛けた", "メールを送った"], ans: 1 },
+    { q: "学園祭中、四葉が倒れてしまった原因は何？", choices: ["食中毒", "階段から落ちた", "熱中症", "様々な頼まれごとを引き受けすぎた"], ans: 3 },
+    { q: "二乃が学園祭にやってきたマルオに振る舞った料理は何？", choices: ["たこ焼き", "パンケーキ", "オムライス", "カレー"], ans: 1 },
+    { q: "学園祭中、三玖がクラスの出し物で活かした特技は何？", choices: ["裁縫", "ダンス", "歌", "パン屋のアルバイト経験（料理スキル）"], ans: 3 },
+    { q: "一花が学園祭のために密かに用意していたものは何？", choices: ["新しい衣装", "有名人からのサイン", "出し物の協賛金", "高級な食材"], ans: 2 },
+    { q: "学園祭に現れた、五つ子の実の父親の名前は誰？", choices: ["マルオ", "勇也", "健太郎", "無堂"], ans: 3 },
+    { q: "実の父親・無堂が五月に放った言葉に対し、五月を守るために立ち上がったのは誰？", choices: ["一花と二乃", "三玖と四葉", "マルオと風太郎", "おじいちゃん"], ans: 2 }
+  ]},
+  { volume: 11, questions: [
+    { q: "学園祭にやってきた風太郎の幼馴染の女の子の名前は？", choices: ["松盆さん", "竹林さん", "梅木さん", "桜井さん"], ans: 1 },
+    { q: "竹林さんが現れた時、対抗して間に割って入ったのは誰と誰？", choices: ["一花と三玖", "二乃と五月", "三玖と四葉", "四葉と一花"], ans: 1 },
+    { q: "学園祭（一花の場合）、一花と風太郎が2人で話をした場所はどこ？", choices: ["屋上", "保健室", "ベンチ", "体育館"], ans: 2 },
+    { q: "一花が別れ際に風太郎に言った言葉は「全部○○だよ」。何？", choices: ["本当", "冗談", "嘘", "本気"], ans: 2 },
+    { q: "学園祭（二乃の場合）、二乃が風太郎と一緒に乗った乗り物は何？", choices: ["ジェットコースター", "観覧車", "自転車", "バイク"], ans: 3 },
+    { q: "二乃が風太郎にキスをした場所はどこ？", choices: ["屋上", "教室", "秘密の場所", "図書室"], ans: 2 },
+    { q: "学園祭（三玖の場合）、三玖が風太郎とキスをした場所はどこ？", choices: ["屋上", "中庭", "たこ焼き屋台", "保健室"], ans: 0 },
+    { q: "三玖のクラスの出し物（たこ焼き屋）の結果はどうだった？", choices: ["全く売れなかった", "食中毒を出した", "途中で火事になった", "大盛況だった"], ans: 3 },
+    { q: "三玖は学園祭を通して自分に何を持てるようになった？", choices: ["お金", "友達", "権力", "自信"], ans: 3 },
+    { q: "学園祭の2日目の終わりに、風太郎は最終日にどこで待つと伝えた？", choices: ["屋上", "体育館", "各教室", "校門前"], ans: 2 }
+  ]},
+  { volume: 12, questions: [
+    { q: "学園祭（四葉の場合）、四葉が保健室で寝ている風太郎にしたことは何？", choices: ["落書きをした", "水をかけた", "布団を剥がした", "こっそりキスをした"], ans: 3 },
+    { q: "四葉が倒れた際、四葉の代わりに様々な仕事をこなしてフォローしたのは誰？", choices: ["風太郎", "竹林さん", "先生たち", "他の四人の姉妹"], ans: 3 },
+    { q: "学園祭（五月の場合）、実の父親・無堂が五月に放った心ない言葉は何？", choices: ["「勉強をやめろ」", "「家から出て行け」", "「顔も見たくない」", "「母親の真似事はやめろ」"], ans: 3 },
+    { q: "五月は無堂の言葉を乗り越え、最終的にどんな決意を固めた？", choices: ["女優になること", "父親と一緒に暮らすこと", "自分の意志で教師になること", "学校をやめること"], ans: 2 },
+    { q: "二乃がマルオに料理を通じて伝えたかったことは何？", choices: ["料理の才能", "お店の宣伝", "自分たちの成長と感謝", "嫌がらせ"], ans: 2 },
+    { q: "一花が女優としてさらにステップアップするために決意したことは何？", choices: ["アイドルデビューすること", "事務所をやめること", "監督になること", "海外での仕事に挑むこと"], ans: 3 },
+    { q: "学園祭の最終日、風太郎が五つ子の中から一人を選ぶために向かった先は誰の部屋（教室）？", choices: ["一花", "二乃", "三玖", "四葉"], ans: 3 },
+    { q: "風太郎が四葉を選んだ最大の理由は何？", choices: ["料理が上手だから", "ずっとそばで支えてくれたから", "一番頭がいいから", "お金持ちだから"], ans: 1 },
+    { q: "選ばれた四葉の最初の行動はどうだった？", choices: ["泣いて喜んだ", "怒った", "抱きついた", "驚いて逃げ出した"], ans: 3 },
+    { q: "逃げる四葉を追いかけた風太郎が転んだ際、四葉はどうした？", choices: ["そのまま逃げた", "笑った", "先生を呼んだ", "慌てて引き返して助けた"], ans: 3 }
+  ]},
+  { volume: 13, questions: [
+    { q: "風太郎からの告白に対し、四葉が返した言葉は何？", choices: ["「ごめんなさい」", "「考えさせてください」", "「嘘でしょ」", "「私も好きです」"], ans: 3 },
+    { q: "選ばれなかった他の4人の姉妹は、風太郎の決断を知ってどうした？", choices: ["風太郎を恨んだ", "四葉と絶交した", "家出した", "涙を流しながらも二人を祝福・受け入れた"], ans: 3 },
+    { q: "四葉と風太郎が初めての正式なデートで行った場所の一つはどこ？", choices: ["遊園地", "映画館", "公園のブランコ", "高級レストラン"], ans: 2 },
+    { q: "デート中、四葉が風太郎に明かさなかった「過去の秘密」の代わりにしたことは何？", choices: ["プレゼントを渡した", "別の嘘をついた", "逃げ出した", "これからの思い出を作ること"], ans: 3 },
+    { q: "卒業が近づく中、五つ子たちは進路に向けてどう過ごした？", choices: ["毎日遊んでいた", "全員が同じ大学を受験した", "学校に行かなくなった", "各々の夢に向かって勉強・準備を進めた"], ans: 3 },
+    { q: "五月が大学判定の模試で出した結果は以前よりどうなった？", choices: ["判定が下がり落ち込んだ", "全く変わらなかった", "模試を受けなかった", "判定が上がり、努力が実を結んだ"], ans: 3 },
+    { q: "三玖が卒業後に目指した道は何？", choices: ["美容師", "モデル", "保育士", "料理の道（調理系の学校）"], ans: 3 },
+    { q: "二乃が卒業後に目指した道は何？", choices: ["一花と一緒に女優になること", "五月と同じ大学に入ること", "三玖と共に料理の道へ進むこと", "アパレル店員"], ans: 2 },
+    { q: "卒業式の日、五つ子たちは誰のおかげで無事に卒業できたと感謝の言葉を述べた？", choices: ["マルオ", "先生", "おじいちゃん", "風太郎"], ans: 3 },
+    { q: "卒業後、五つ子たちは風太郎と一緒に何の作業を手伝った？", choices: ["お店の掃除", "テストの採点", "アルバイト", "引越しの準備（新居への移動）"], ans: 3 }
+  ]},
+  { volume: 14, questions: [
+    { q: "物語から数年後、結婚式で風太郎の隣に立つ花嫁は誰？", choices: ["一花", "二乃", "三玖", "四葉"], ans: 3 },
+    { q: "結婚式の最中、五つ子たちが風太郎に仕掛けた最後のゲームは何？", choices: ["かくれんぼ", "宝探し", "ロシアンルーレット", "最後の五つ子ゲーム"], ans: 3 },
+    { q: "風太郎は最後の五つ子ゲームで全員を完璧に見分けることができたか？", choices: ["できた", "全くできなかった", "一部だけ間違えた", "途中で諦めた"], ans: 0 },
+    { q: "大人になった一花はどんな職業で活躍している？", choices: ["アナウンサー", "アイドル", "有名な女優", "デザイナー"], ans: 2 },
+    { q: "大人になった二乃と三玖は2人で何を経営している？", choices: ["美容室", "花屋", "ケーキ屋", "カフェ（飲食店）"], ans: 3 },
+    { q: "大人になった五月はどんな職業に就いている？", choices: ["小説家", "医者", "弁護士", "教師"], ans: 3 },
+    { q: "結婚式の直前、四葉の控え室に忘れられていた大切なものは何？", choices: ["ブーケ", "ベール", "誓いの言葉のメモ", "結婚指輪"], ans: 3 },
+    { q: "新婚旅行の行き先を決める際、最終的にどうなった？", choices: ["風太郎と四葉の2人で行った", "新婚旅行には行かなかった", "国内旅行に変更した", "五つ子全員が一緒についてくることになった"], ans: 3 },
+    { q: "風太郎は新婚旅行に全員がついてくることに対してどう思った？", choices: ["大喜びした", "怒って帰った", "呆れつつも受け入れた", "泣き出した"], ans: 2 },
+    { q: "漫画『五等分の花嫁』の最終話（第122話）のタイトルは何？", choices: ["最後の祭りが", "スクランブルエッグ", "おめでとう", "五等分の花嫁"], ans: 3 }
+  ]}
+];
+
+// 初期設定：巻数選択ボタンを生成
+window.onload = () => {
+  const grid = document.getElementById('volume-grid');
+  quizData.forEach(data => {
+    const btn = document.createElement('button');
+    btn.className = 'vol-select-btn';
+    btn.textContent = `第${data.volume}巻`;
+    btn.onclick = () => showQuiz(data.volume);
+    grid.appendChild(btn);
+  });
+};
+
+// クイズ画面の表示
+function showQuiz(volume) {
+  // 画面切り替え
+  document.getElementById('home-screen').style.display = 'none';
+  document.getElementById('quiz-screen').style.display = 'block';
+  window.scrollTo(0, 0);
+
+  const container = document.getElementById('quiz-container');
+  container.innerHTML = ''; // 以前のクイズをクリア
+
+  // 選ばれた巻のデータを取得
+  const volData = quizData.find(d => d.volume === volume);
+  
+  const volDiv = document.createElement('div');
+  volDiv.className = 'volume-section';
+  
+  // スコア表示用エリア
+  const scoreDiv = document.createElement('div');
+  scoreDiv.className = 'score-display';
+  scoreDiv.id = 'score-display';
+  volDiv.appendChild(scoreDiv);
+
+  const title = document.createElement('h2');
+  title.className = 'volume-title';
+  title.textContent = `第${volData.volume}巻 クイズ`;
+  volDiv.appendChild(title);
+  
+  // ユーザーの回答状況を保存する配列（nullで初期化）
+  let userAnswers = new Array(volData.questions.length).fill(null);
+  // DOMを後から操作するための配列
+  let questionDOMs = [];
+
+  volData.questions.forEach((qData, qIndex) => {
+    const qDiv = document.createElement('div');
+    qDiv.className = 'quiz-item';
+    
+    // 問題文
+    const qText = document.createElement('div');
+    qText.className = 'quiz-question';
+    qText.textContent = `Q${qIndex + 1}. ${qData.q}`;
+    qDiv.appendChild(qText);
+    
+    // 選択肢コンテナ
+    const choicesDiv = document.createElement('div');
+    choicesDiv.className = 'choices';
+    
+    // 結果表示エリア
+    const resultDiv = document.createElement('div');
+    resultDiv.className = 'result';
+    
+    let choiceBtns = [];
+    
+    qData.choices.forEach((choice, cIndex) => {
+      const btn = document.createElement('button');
+      btn.className = 'choice-btn';
+      btn.textContent = choice;
+      
+      btn.onclick = () => {
+        // すでに採点済みの場合はクリックできないようにする
+        const submitBtn = document.getElementById('submit-btn');
+        if (submitBtn && submitBtn.disabled) return;
+
+        // 同じ問題内の他の選択肢の選択状態を解除
+        choiceBtns.forEach(b => b.classList.remove('selected'));
+        // クリックした選択肢を選択状態にする
+        btn.classList.add('selected');
+        
+        // ユーザーの回答を記録
+        userAnswers[qIndex] = cIndex;
+      };
+      
+      choiceBtns.push(btn);
+      choicesDiv.appendChild(btn);
+    });
+    
+    qDiv.appendChild(choicesDiv);
+    qDiv.appendChild(resultDiv);
+    volDiv.appendChild(qDiv);
+    
+    // あとで採点する時のためにDOMと正解データを保存
+    questionDOMs.push({ choiceBtns, resultDiv, ans: qData.ans });
+  });
+  
+  // 結果を見る（採点）ボタン
+  const submitBtn = document.createElement('button');
+  submitBtn.id = 'submit-btn';
+  submitBtn.className = 'submit-btn';
+  submitBtn.textContent = '結果を見る';
+  
+  submitBtn.onclick = () => {
+    // 全問回答されているかチェック
+    if (userAnswers.includes(null)) {
+      alert("まだ回答していない問題があります！");
+      return;
+    }
+
+    // 採点処理
+    submitBtn.disabled = true; // ボタンを無効化して二重クリック防止
+    submitBtn.textContent = '採点完了';
+    
+    let score = 0;
+
+    questionDOMs.forEach((doms, idx) => {
+      const userAnswer = userAnswers[idx];
+      const correctAns = doms.ans;
+      
+      // ボタンをすべて無効化
+      doms.choiceBtns.forEach(b => b.disabled = true);
+
+      // まず正解のボタンを緑色にする
+      doms.choiceBtns[correctAns].classList.add('correct');
+
+      // 正誤判定
+      if (userAnswer === correctAns) {
+        score++;
+        doms.resultDiv.textContent = "〇 正解！";
+        doms.resultDiv.style.color = "#2e7d32";
+      } else {
+        // 間違えた場合は、選んだボタンを赤色にする
+        doms.choiceBtns[userAnswer].classList.add('wrong');
+        doms.resultDiv.textContent = `× 不正解... 正解は「${volData.questions[idx].choices[correctAns]}」`;
+        doms.resultDiv.style.color = "#c62828";
+      }
+    });
+
+    // スコアの表示
+    scoreDiv.textContent = `✨ ${volData.questions.length}問中 ${score}問正解！ ✨`;
+    scoreDiv.style.display = 'block';
+
+    // 画面の一番上（スコアの部分）へスクロール
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  volDiv.appendChild(submitBtn);
+  container.appendChild(volDiv);
+}
+
+// ホーム画面（巻数選択）に戻る
+function goBack() {
+  document.getElementById('home-screen').style.display = 'block';
+  document.getElementById('quiz-screen').style.display = 'none';
+  window.scrollTo(0, 0);
+}
+</script>
+
+</body>
+</html>
