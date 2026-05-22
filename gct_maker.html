@@ -1,0 +1,534 @@
+<!DOCTYPE html>
+<html translate="no">
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <!-- 自動翻訳によるタグ挿入バグを防ぐ -->
+        <meta name="google" content="notranslate">
+        <title>Online GCT Maker (Code Manager)</title>
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@0.9.0/css/bulma.min.css">
+        <style>
+            html {
+                min-height: 100%;
+            }
+            body {
+                background-color: hsl(254, 100%, 90%);
+                min-height: 100vh; /* height から min-height に変更して白帯を防止 */
+                margin: 0;
+            }
+            .table-wrapper {
+                height: 22.5em;
+                overflow-y: auto;
+                border: 1px solid #dbdbdb;
+                border-radius: 4px;
+            }
+            table {
+                width: 100%;
+                table-layout: fixed;
+            }
+            tr {
+                cursor: pointer;
+            }
+            td {
+                vertical-align: middle !important;
+                word-wrap: break-word;
+            }
+            #alert {
+                z-index: 1;
+                position: absolute;
+                width: max-content;
+                visibility: hidden;
+            }
+            .top-padding {
+                padding-top: 5%;
+            }
+        </style>
+        <script type="text/javascript">
+            // GLOBALS
+            var CODES = [];
+            var SELECTED_ROW = -1;
+            var ROW_DELETE = false;
+            var UNNAMED_CODES_NR = 1;
+            var BG_HUE = 43;
+
+            function click_row(table, row) {
+                var add_code_b = document.getElementById('add_code_b');
+                var code_title = document.getElementById('code_title');
+                var code = document.getElementById('code');
+                if (row.rowIndex == SELECTED_ROW) {
+                    row.style.backgroundColor = '';
+                    SELECTED_ROW = -1;
+                    add_code_b.innerHTML = 'Add Code';
+                    code_title.value = '';
+                    code.value = '';
+                } else if (!ROW_DELETE) {
+                    if (SELECTED_ROW != -1 && CODES.length != 0) table.rows[SELECTED_ROW].style.backgroundColor = '';
+                    row.style.backgroundColor = `hsl(${BG_HUE}, 100%, 85%)`;
+                    SELECTED_ROW = row.rowIndex;
+                    add_code_b.innerHTML = 'Edit Code';
+                    code_title.value = row.childNodes[1].textContent;
+                    code.value = CODES[SELECTED_ROW]['text'];
+                }
+                ROW_DELETE = false;
+            }
+
+            function delete_code(table, row) {
+                if (row.rowIndex == SELECTED_ROW) {
+                    SELECTED_ROW = -1;
+                } else if (row.rowIndex < SELECTED_ROW) {
+                    SELECTED_ROW -= 1;
+                }
+                CODES.splice(row.rowIndex, 1);
+                table.removeChild(row);
+                ROW_DELETE = true;
+                
+                // 削除後にフォームをクリア
+                if (SELECTED_ROW === -1) {
+                    document.getElementById('add_code_b').innerHTML = 'Add Code';
+                    document.getElementById('code_title').value = '';
+                    document.getElementById('code').value = '';
+                }
+            }
+
+            function get_code_title() {
+                var code_title_obj = document.getElementById('code_title');
+                var code_title = code_title_obj.value;
+                if (code_title == '') {
+                    code_title = `Unnamed Code ${UNNAMED_CODES_NR}`;
+                    UNNAMED_CODES_NR += 1;
+                }
+                code_title_obj.value = '';
+                return code_title;
+            }
+
+            function make_notification(text) {
+                var notif = document.getElementById('alert');
+                notif.childNodes[0].textContent = text;
+                notif.style.marginLeft = `${(notif.parentNode.offsetWidth / 2) - notif.offsetWidth / 2}px`;
+                notif.style.visibility = 'visible';
+                setTimeout(function() {
+                    notif.style.visibility = 'hidden';
+                }, 5000);
+            }
+
+            function code_to_hex(code) {
+                var byte_array = [];
+                for (var i = 0; i < code.length; i += 2) {
+                    var byte = parseInt(code.substring(i, i + 2), 16);
+                    byte_array.push(byte);
+                }
+                return byte_array;
+            }
+
+            function get_code() {
+                var code_obj = document.getElementById('code');
+                var code = code_obj.value;
+
+                var curated_code = code.replace(/\s+/g, ''); // remove all whitespaces
+                if (curated_code.length == 0) return false;
+                if (!/^[0-9A-Fa-f]*$/.test(curated_code)) {
+                    make_notification('Code contains invalid characters');
+                    return false;
+                }
+                else if (curated_code.length % 16 != 0) {
+                    make_notification('Code length is incorrect');
+                    return false;
+                }
+                var byte_array = code_to_hex(curated_code);
+                
+                code_obj.value = '';
+                return {'text': code, 'hex': byte_array};
+            }
+
+            function add_code() {
+                var table_ref = document.getElementById('codes_table').getElementsByTagName('tbody')[0];
+                var row_ref;
+                var code = get_code();
+                if (!code) return;
+                var code_title = get_code_title();
+
+                if (SELECTED_ROW == -1) { // new code
+                    row_ref = table_ref.insertRow();
+                    row_ref.onclick = function(e) {
+                        if (e.target.tagName !== 'INPUT' && e.target.tagName !== 'BUTTON') {
+                            click_row(table_ref, row_ref);
+                        }
+                    };
+                    
+                    // 1. チェックボックス
+                    var cell_cb = row_ref.insertCell(0);
+                    cell_cb.style.width = '15%';
+                    cell_cb.style.textAlign = 'center';
+                    var cb = document.createElement('input');
+                    cb.type = 'checkbox';
+                    cb.checked = true; // 手動追加時はデフォルトON
+                    cell_cb.appendChild(cb);
+
+                    // 2. タイトル
+                    var cell_title = row_ref.insertCell(1);
+                    cell_title.style.width = '70%';
+                    cell_title.textContent = code_title;
+                    
+                    // 3. 削除ボタン
+                    var cell_del = row_ref.insertCell(2);
+                    cell_del.style.width = '15%';
+                    cell_del.style.textAlign = 'center';
+                    var delete_button = document.createElement('BUTTON');
+                    delete_button.className = 'delete mt-1';
+                    delete_button.style.backgroundColor = 'hsl(348, 70%, 61%)';
+                    delete_button.onclick = function() {delete_code(table_ref, row_ref);};
+                    cell_del.appendChild(delete_button);
+
+                    CODES.push(code);
+                } else { // edit code
+                    row_ref =  table_ref.childNodes[SELECTED_ROW];
+                    row_ref.childNodes[1].textContent = code_title;
+                    CODES[SELECTED_ROW] = code;
+                    row_ref.click(); // 選択解除
+                }
+            }
+
+            function create_gct() {
+                var table_ref = document.getElementById('codes_table').getElementsByTagName('tbody')[0];
+                var game_id = document.getElementById('game_id').value;
+                if (game_id == '') {
+                    make_notification('Game ID not specified');
+                    return;
+                }
+
+                var gct_array = [0x00, 0xD0, 0xC0, 0xDE, 0x00, 0xD0, 0xC0, 0xDE];
+                var addedCount = 0;
+
+                // チェックされているコードのみ結合
+                for (var i = 0; i < CODES.length; i++) {
+                    var cb = table_ref.rows[i].cells[0].firstChild;
+                    if (cb && cb.checked) {
+                        gct_array = gct_array.concat(CODES[i]['hex']);
+                        addedCount++;
+                    }
+                }
+
+                if (addedCount === 0) {
+                    make_notification('No codes selected (Check boxes first)');
+                    return;
+                }
+
+                gct_array = gct_array.concat([0xF0, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]);
+
+                var byteArray = new Uint8Array(gct_array);
+                var a = window.document.createElement('a');
+                a.href = window.URL.createObjectURL(new Blob([byteArray], { type: 'application/octet-stream' }));
+                a.download = `${game_id}.gct`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+            }
+
+            function create_txt() {
+                var game_id = document.getElementById('game_id').value || "GAMEID";
+                var table_ref = document.getElementById('codes_table').getElementsByTagName('tbody')[0];
+                
+                if (CODES.length === 0) {
+                    make_notification('No codes to save');
+                    return;
+                }
+
+                var txt_content = game_id + "\n" + "Game Title" + "\n\n";
+
+                for (var i = 0; i < CODES.length; i++) {
+                    var cb = table_ref.rows[i].cells[0].firstChild;
+                    var title = table_ref.rows[i].cells[1].textContent;
+                    var code_text = CODES[i]['text'];
+                    
+                    // チェックが外れている場合はタイトルの先頭に * を付ける
+                    if (cb && !cb.checked) {
+                        txt_content += "*" + title + "\n" + code_text + "\n\n";
+                    } else {
+                        txt_content += title + "\n" + code_text + "\n\n";
+                    }
+                }
+
+                var blob = new Blob([txt_content], { type: "text/plain;charset=utf-8" });
+                var a = window.document.createElement('a');
+                a.href = window.URL.createObjectURL(blob);
+                a.download = `${game_id}.txt`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+            }
+
+            function toggle_all_checkboxes(state) {
+                var table_ref = document.getElementById('codes_table').getElementsByTagName('tbody')[0];
+                for (var i = 0; i < table_ref.rows.length; i++) {
+                    var cb = table_ref.rows[i].cells[0].firstChild;
+                    if (cb && cb.tagName === 'INPUT') {
+                        cb.checked = state;
+                    }
+                }
+            }
+
+            function parse_text_to_codes(text, fallbackGameId) {
+                var lines = text.split(/\r?\n/);
+                var parsedCodes = [];
+                var currentTitle = "";
+                var currentCodeLines = [];
+                var foundGameId = false;
+
+                for (var i = 0; i < lines.length; i++) {
+                    var line = lines[i].trim();
+                    if (line === "") {
+                        if (currentCodeLines.length > 0) {
+                            parsedCodes.push({ title: currentTitle, text: currentCodeLines.join('\n') });
+                            currentCodeLines = [];
+                            currentTitle = "";
+                        }
+                        continue;
+                    }
+
+                    var codeMatch = line.match(/^([0-9A-Fa-f]{8})\s+([0-9A-Fa-f]{8})/);
+                    if (codeMatch) {
+                        currentCodeLines.push(codeMatch[1].toUpperCase() + " " + codeMatch[2].toUpperCase());
+                    } else {
+                        if (currentCodeLines.length > 0) {
+                            parsedCodes.push({ title: currentTitle, text: currentCodeLines.join('\n') });
+                            currentCodeLines = [];
+                            currentTitle = line;
+                        } else {
+                            if (!foundGameId && /^[A-Za-z0-9-]{3,6}$/.test(line)) {
+                                if (document.getElementById('game_id').value === '') {
+                                    document.getElementById('game_id').value = line;
+                                }
+                                foundGameId = true;
+                            } else {
+                                currentTitle = line;
+                            }
+                        }
+                    }
+                }
+                if (currentCodeLines.length > 0) {
+                    parsedCodes.push({ title: currentTitle, text: currentCodeLines.join('\n') });
+                }
+                
+                // タイトルに「*」が付いていればチェックを外し、「*」を削る処理
+                for (var j = 0; j < parsedCodes.length; j++) {
+                    if (parsedCodes[j].title.startsWith('*')) {
+                        parsedCodes[j].checked = false;
+                        parsedCodes[j].title = parsedCodes[j].title.replace(/^\*\s*/, '');
+                    } else {
+                        parsedCodes[j].checked = true;
+                    }
+                }
+
+                return parsedCodes;
+            }
+
+            function add_parsed_codes_to_table(parsedCodes) {
+                if (parsedCodes.length === 0) return false;
+                var table_ref = document.getElementById('codes_table').getElementsByTagName('tbody')[0];
+
+                for (var i = 0; i < parsedCodes.length; i++) {
+                    var pCode = parsedCodes[i];
+                    var title = pCode.title;
+                    if (title === "") {
+                        title = `Unnamed Code ${UNNAMED_CODES_NR}`;
+                        UNNAMED_CODES_NR++;
+                    }
+
+                    var curated_code = pCode.text.replace(/\s+/g, '');
+                    var byte_array = code_to_hex(curated_code);
+
+                    var row_ref = table_ref.insertRow();
+                    row_ref.onclick = (function(r) { 
+                        return function(e) { 
+                            if(e.target.tagName !== 'INPUT' && e.target.tagName !== 'BUTTON') {
+                                click_row(table_ref, r); 
+                            }
+                        }; 
+                    })(row_ref);
+                    
+                    var cell_cb = row_ref.insertCell(0);
+                    cell_cb.style.width = '15%';
+                    cell_cb.style.textAlign = 'center';
+                    var cb = document.createElement('input');
+                    cb.type = 'checkbox';
+                    // パース時に取得した checked 状態を反映
+                    cb.checked = pCode.hasOwnProperty('checked') ? pCode.checked : true;
+                    cell_cb.appendChild(cb);
+
+                    var cell_title = row_ref.insertCell(1);
+                    cell_title.style.width = '70%';
+                    cell_title.textContent = title;
+                    
+                    var cell_del = row_ref.insertCell(2);
+                    cell_del.style.width = '15%';
+                    cell_del.style.textAlign = 'center';
+                    var delete_button = document.createElement('BUTTON');
+                    delete_button.className = 'delete mt-1';
+                    delete_button.style.backgroundColor = 'hsl(348, 70%, 61%)';
+                    delete_button.onclick = (function(r) { return function() { delete_code(table_ref, r); }; })(row_ref);
+                    cell_del.appendChild(delete_button);
+
+                    CODES.push({'text': pCode.text, 'hex': byte_array});
+                }
+                return true;
+            }
+
+            function load_file(event) {
+                var file = event.target.files[0];
+                if (!file) return;
+
+                var fileName = file.name;
+                var gameIdMatch = fileName.match(/(.*?)\.(gct|txt)$/i);
+                var fallbackGameId = gameIdMatch ? gameIdMatch[1] : fileName;
+                var reader = new FileReader();
+
+                if (fileName.toLowerCase().endsWith('.txt')) {
+                    reader.onload = function(e) {
+                        var parsed = parse_text_to_codes(e.target.result, fallbackGameId);
+                        if (add_parsed_codes_to_table(parsed)) {
+                            make_notification(`Loaded ${parsed.length} codes from TXT`);
+                        } else {
+                            make_notification('No valid codes found in TXT');
+                        }
+                    };
+                    reader.readAsText(file);
+                } else {
+                    reader.onload = function(e) {
+                        var buffer = e.target.result;
+                        var view = new DataView(buffer);
+                        var length = buffer.byteLength;
+
+                        if (length < 16) {
+                            make_notification('Invalid GCT file');
+                            return;
+                        }
+                        if (view.getUint32(0) !== 0x00D0C0DE || view.getUint32(4) !== 0x00D0C0DE) {
+                            make_notification('Invalid GCT file (wrong header)');
+                            return;
+                        }
+
+                        var codeEnd = length;
+                        var terminatorIndex = -1;
+                        for (var i = 8; i <= length - 8; i += 8) {
+                            if (view.getUint32(i) === 0xF0000000 && view.getUint32(i + 4) === 0x00000000) {
+                                terminatorIndex = i;
+                                break;
+                            }
+                        }
+                        if (terminatorIndex !== -1) codeEnd = terminatorIndex;
+
+                        if (terminatorIndex !== -1 && terminatorIndex + 8 < length) {
+                            var textBuffer = buffer.slice(terminatorIndex + 8);
+                            var textData = new TextDecoder('utf-8').decode(textBuffer);
+                            var parsed = parse_text_to_codes(textData, fallbackGameId);
+                            if (parsed.length > 0 && add_parsed_codes_to_table(parsed)) {
+                                make_notification(`Loaded ${parsed.length} codes with Titles from GCT`);
+                                return;
+                            }
+                        }
+
+                        var codeString = "";
+                        for (var i = 8; i < codeEnd; i++) {
+                            codeString += view.getUint8(i).toString(16).toUpperCase().padStart(2, '0');
+                            if ((i - 7) % 8 === 0 && (i - 7) % 16 !== 0) codeString += " ";
+                            else if ((i - 7) % 16 === 0) codeString += "\n";
+                        }
+                        codeString = codeString.trim();
+
+                        if (codeString.length > 0) {
+                            if (document.getElementById('game_id').value === '') {
+                                document.getElementById('game_id').value = fallbackGameId;
+                            }
+                            add_parsed_codes_to_table([{ title: `${fallbackGameId} Codes (Merged)`, text: codeString }]);
+                            make_notification('Standard GCT loaded (Merged as 1 code)');
+                        } else {
+                            make_notification('No codes found in GCT');
+                        }
+                    };
+                    reader.readAsArrayBuffer(file);
+                }
+                event.target.value = '';
+            }
+
+            window.onload = function prepare() {
+                document.getElementById('add_code_b').onclick = add_code;
+                document.getElementById('gct_b').onclick = create_gct;
+                document.getElementById('txt_b').onclick = create_txt;
+                
+                document.getElementById('select_all_b').onclick = function() { toggle_all_checkboxes(true); };
+                document.getElementById('deselect_all_b').onclick = function() { toggle_all_checkboxes(false); };
+
+                var load_b = document.getElementById('load_b');
+                var file_input = document.getElementById('file_input');
+                load_b.onclick = function() { file_input.click(); };
+                file_input.onchange = load_file;
+                
+                BG_HUE = Math.random() * 360;
+                document.body.style.backgroundColor = `hsl(${BG_HUE}, 100%, 90%)`;
+            }
+
+            document.addEventListener('DOMContentLoaded', () => {
+                (document.querySelectorAll('.notification .delete') || []).forEach(($delete) => {
+                    $notification = $delete.parentNode;
+                    $delete.addEventListener('click', () => {
+                        $notification.style.visibility = 'hidden';
+                    });
+                });
+            });
+
+        </script>
+    </head>
+  <body>
+    <section class="section">
+    <div class="container">
+        <div class="notification is-danger" id="alert">
+            <p></p>
+            <button class="delete"></button>
+        </div>
+        
+        <div class="columns top-padding">
+            <div class="column is-4 is-offset-2">
+                <div class="box" style="height:34.5em;">
+                    <input class="input is-family-code mb-2" id="game_id" type="text" placeholder="Game ID">
+                    
+                    <div class="level is-mobile mb-2">
+                        <div class="level-left">
+                            <button class="button is-small is-light" id="select_all_b">Select All</button>
+                            <button class="button is-small is-light ml-2" id="deselect_all_b">Deselect All</button>
+                        </div>
+                    </div>
+
+                    <div class="table-wrapper">
+                        <table class="table is-striped is-hoverable" id="codes_table">
+                            <tbody></tbody>
+                        </table>
+                    </div>
+                </div>
+                
+                <div class="field is-grouped">
+                    <p class="control is-expanded">
+                        <button class="button is-primary is-fullwidth" id="gct_b">Export GCT</button>
+                    </p>
+                    <p class="control is-expanded">
+                        <button class="button is-link is-fullwidth" id="txt_b">Save TXT</button>
+                    </p>
+                </div>
+
+                <input type="file" id="file_input" accept=".gct, .txt" style="display:none;">
+                <button class="button is-info is-fullwidth mt-2" id="load_b">Open TXT</button>
+            </div>
+            
+            <div class="column is-3">
+                <div class="box" style="height:34.5em;">
+                    <div class="container" style="width:100%;">
+                        <input class="input is-family-code mb-2" id="code_title" type="text" placeholder="Code Title">
+                        <textarea class="textarea has-fixed-size is-family-code mb-2" id="code" placeholder="Paste your code here" rows=18></textarea>
+                    </div>
+                </div>
+                <button class="button is-success is-fullwidth" id="add_code_b">Add Code</button>
+            </div>
+        </div>
+    </div>
+    </section>
+  </body>
+</html>
