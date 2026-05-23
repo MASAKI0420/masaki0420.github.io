@@ -2,25 +2,44 @@
 <html translate="no">
     <head>
         <meta charset="utf-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <!-- viewport-fit=cover を追加して画面全域（ノッチ部分含む）まで広げる -->
+        <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+        <!-- ステータスバーの色を変えるためのタグ（JSで上書きします） -->
+        <meta name="theme-color" id="theme_color_meta" content="#ffffff">
         <!-- 自動翻訳によるタグ挿入バグを防ぐ -->
         <meta name="google" content="notranslate">
-        <title>Online GCT Maker (Code Manager)</title>
+        <title>オンラインGCTメーカー (コードマネージャー)</title>
         <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@0.9.0/css/bulma.min.css">
+        <!-- ZIPファイル作成用のライブラリ -->
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
         <style>
-            html {
-                min-height: 100%;
+            /* html と body 両方に背景を適用し、隙間の白帯を完全に消去 */
+            html, body {
+                min-height: 100vh;
+                margin: 0;
+                padding: 0;
+                background-color: hsl(254, 100%, 90%);
             }
             body {
-                background-color: hsl(254, 100%, 90%);
-                min-height: 100vh; /* height から min-height に変更して白帯を防止 */
-                margin: 0;
+                /* ノッチ領域にボタンなどが被らないように安全な余白を設定 */
+                padding-top: env(safe-area-inset-top);
+                padding-bottom: env(safe-area-inset-bottom);
+                padding-left: env(safe-area-inset-left);
+                padding-right: env(safe-area-inset-right);
+            }
+            /* スマホ・PC共通で、上下の余白を同じ幅（1rem）に固定する */
+            /* もっと縮めたい場合は 1rem を 0.5rem などに変更してください */
+            .section {
+                padding-top: 2.2rem !important;
+                padding-bottom: 0.1rem !important;
+                width: 100%;
             }
             .table-wrapper {
                 height: 22.5em;
                 overflow-y: auto;
                 border: 1px solid #dbdbdb;
                 border-radius: 4px;
+                background-color: white; /* テーブルの背景は白に固定 */
             }
             table {
                 width: 100%;
@@ -40,7 +59,8 @@
                 visibility: hidden;
             }
             .top-padding {
-                padding-top: 5%;
+                /* 上側だけの追加余白をゼロにする */
+                padding-top: 0 !important;
             }
         </style>
         <script type="text/javascript">
@@ -58,15 +78,15 @@
                 if (row.rowIndex == SELECTED_ROW) {
                     row.style.backgroundColor = '';
                     SELECTED_ROW = -1;
-                    add_code_b.innerHTML = 'Add Code';
+                    add_code_b.innerHTML = 'コードを追加';
                     code_title.value = '';
                     code.value = '';
                 } else if (!ROW_DELETE) {
                     if (SELECTED_ROW != -1 && CODES.length != 0) table.rows[SELECTED_ROW].style.backgroundColor = '';
                     row.style.backgroundColor = `hsl(${BG_HUE}, 100%, 85%)`;
                     SELECTED_ROW = row.rowIndex;
-                    add_code_b.innerHTML = 'Edit Code';
-                    code_title.value = row.childNodes[1].textContent;
+                    add_code_b.innerHTML = 'コードを編集';
+                    code_title.value = row.cells[1].textContent;
                     code.value = CODES[SELECTED_ROW]['text'];
                 }
                 ROW_DELETE = false;
@@ -84,7 +104,7 @@
                 
                 // 削除後にフォームをクリア
                 if (SELECTED_ROW === -1) {
-                    document.getElementById('add_code_b').innerHTML = 'Add Code';
+                    document.getElementById('add_code_b').innerHTML = 'コードを追加';
                     document.getElementById('code_title').value = '';
                     document.getElementById('code').value = '';
                 }
@@ -94,7 +114,7 @@
                 var code_title_obj = document.getElementById('code_title');
                 var code_title = code_title_obj.value;
                 if (code_title == '') {
-                    code_title = `Unnamed Code ${UNNAMED_CODES_NR}`;
+                    code_title = `名称未設定コード ${UNNAMED_CODES_NR}`;
                     UNNAMED_CODES_NR += 1;
                 }
                 code_title_obj.value = '';
@@ -127,11 +147,11 @@
                 var curated_code = code.replace(/\s+/g, ''); // remove all whitespaces
                 if (curated_code.length == 0) return false;
                 if (!/^[0-9A-Fa-f]*$/.test(curated_code)) {
-                    make_notification('Code contains invalid characters');
+                    make_notification('コードに無効な文字が含まれています');
                     return false;
                 }
                 else if (curated_code.length % 16 != 0) {
-                    make_notification('Code length is incorrect');
+                    make_notification('コードの長さが正しくありません');
                     return false;
                 }
                 var byte_array = code_to_hex(curated_code);
@@ -181,43 +201,72 @@
 
                     CODES.push(code);
                 } else { // edit code
-                    row_ref =  table_ref.childNodes[SELECTED_ROW];
-                    row_ref.childNodes[1].textContent = code_title;
+                    row_ref = table_ref.rows[SELECTED_ROW];
+                    row_ref.cells[1].textContent = code_title;
                     CODES[SELECTED_ROW] = code;
                     row_ref.click(); // 選択解除
                 }
             }
 
-            function create_gct() {
-                var table_ref = document.getElementById('codes_table').getElementsByTagName('tbody')[0];
-                var game_id = document.getElementById('game_id').value;
-                if (game_id == '') {
-                    make_notification('Game ID not specified');
-                    return;
-                }
-
+            // GCTバイナリのデータ(Uint8Array)を生成する内部関数
+            function generate_gct_data(game_id, table_ref) {
                 var gct_array = [0x00, 0xD0, 0xC0, 0xDE, 0x00, 0xD0, 0xC0, 0xDE];
                 var addedCount = 0;
+                var txt_content = game_id + "\nゲームタイトル\n\n";
 
-                // チェックされているコードのみ結合
                 for (var i = 0; i < CODES.length; i++) {
-                    var cb = table_ref.rows[i].cells[0].firstChild;
+                    var cb = table_ref.rows[i].cells[0].querySelector('input[type="checkbox"]');
                     if (cb && cb.checked) {
                         gct_array = gct_array.concat(CODES[i]['hex']);
                         addedCount++;
+                        var title = table_ref.rows[i].cells[1].textContent;
+                        var code_text = CODES[i]['text'];
+                        txt_content += title + "\n" + code_text + "\n\n";
                     }
                 }
 
-                if (addedCount === 0) {
-                    make_notification('No codes selected (Check boxes first)');
-                    return;
-                }
+                if (addedCount === 0) return null;
 
                 gct_array = gct_array.concat([0xF0, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]);
 
-                var byteArray = new Uint8Array(gct_array);
+                var baseGCT = new Uint8Array(gct_array);
+                var textBytes = new TextEncoder().encode(txt_content);
+                var finalGCT = new Uint8Array(baseGCT.length + textBytes.length);
+                finalGCT.set(baseGCT, 0);
+                finalGCT.set(textBytes, baseGCT.length);
+
+                return finalGCT;
+            }
+
+            // TXTの文字列データを生成する内部関数
+            function generate_txt_data(game_id, table_ref) {
+                if (CODES.length === 0) return null;
+                var txt_content = game_id + "\n" + "ゲームタイトル" + "\n\n";
+                for (var i = 0; i < CODES.length; i++) {
+                    var cb = table_ref.rows[i].cells[0].querySelector('input[type="checkbox"]');
+                    var title = table_ref.rows[i].cells[1].textContent;
+                    var code_text = CODES[i]['text'];
+                    if (cb && !cb.checked) {
+                        txt_content += "*" + title + "\n" + code_text + "\n\n";
+                    } else {
+                        txt_content += title + "\n" + code_text + "\n\n";
+                    }
+                }
+                return txt_content;
+            }
+
+            function create_gct() {
+                var game_id = document.getElementById('game_id').value || "GAMEID";
+                var table_ref = document.getElementById('codes_table').getElementsByTagName('tbody')[0];
+                var finalGCT = generate_gct_data(game_id, table_ref);
+                
+                if (!finalGCT) {
+                    make_notification('コードが選択されていません（まずはチェックボックスをオンにしてください）');
+                    return;
+                }
+
                 var a = window.document.createElement('a');
-                a.href = window.URL.createObjectURL(new Blob([byteArray], { type: 'application/octet-stream' }));
+                a.href = window.URL.createObjectURL(new Blob([finalGCT], { type: 'application/octet-stream' }));
                 a.download = `${game_id}.gct`;
                 document.body.appendChild(a);
                 a.click();
@@ -227,25 +276,11 @@
             function create_txt() {
                 var game_id = document.getElementById('game_id').value || "GAMEID";
                 var table_ref = document.getElementById('codes_table').getElementsByTagName('tbody')[0];
+                var txt_content = generate_txt_data(game_id, table_ref);
                 
-                if (CODES.length === 0) {
-                    make_notification('No codes to save');
+                if (!txt_content) {
+                    make_notification('保存するコードがありません');
                     return;
-                }
-
-                var txt_content = game_id + "\n" + "Game Title" + "\n\n";
-
-                for (var i = 0; i < CODES.length; i++) {
-                    var cb = table_ref.rows[i].cells[0].firstChild;
-                    var title = table_ref.rows[i].cells[1].textContent;
-                    var code_text = CODES[i]['text'];
-                    
-                    // チェックが外れている場合はタイトルの先頭に * を付ける
-                    if (cb && !cb.checked) {
-                        txt_content += "*" + title + "\n" + code_text + "\n\n";
-                    } else {
-                        txt_content += title + "\n" + code_text + "\n\n";
-                    }
                 }
 
                 var blob = new Blob([txt_content], { type: "text/plain;charset=utf-8" });
@@ -257,11 +292,48 @@
                 document.body.removeChild(a);
             }
 
+            function create_zip() {
+                var game_id = document.getElementById('game_id').value || "GAMEID";
+                var table_ref = document.getElementById('codes_table').getElementsByTagName('tbody')[0];
+                
+                var gct_data = generate_gct_data(game_id, table_ref);
+                var txt_data = generate_txt_data(game_id, table_ref);
+
+                if (!txt_data) {
+                    make_notification('保存するコードがありません');
+                    return;
+                }
+                if (!gct_data) {
+                    make_notification('GCT用のコードが選択されていません（まずはチェックボックスをオンにしてください）');
+                    return;
+                }
+
+                var zipName = prompt("ZIPファイル名を入力してください:", game_id);
+                if (zipName === null) return; 
+                if (zipName.trim() === "") zipName = game_id;
+                if (!zipName.toLowerCase().endsWith('.zip')) {
+                    zipName += '.zip';
+                }
+
+                var zip = new JSZip();
+                zip.file(`${game_id}.gct`, gct_data);
+                zip.file(`${game_id}.txt`, txt_data);
+
+                zip.generateAsync({type:"blob"}).then(function(content) {
+                    var a = window.document.createElement('a');
+                    a.href = window.URL.createObjectURL(content);
+                    a.download = zipName;
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                });
+            }
+
             function toggle_all_checkboxes(state) {
                 var table_ref = document.getElementById('codes_table').getElementsByTagName('tbody')[0];
                 for (var i = 0; i < table_ref.rows.length; i++) {
-                    var cb = table_ref.rows[i].cells[0].firstChild;
-                    if (cb && cb.tagName === 'INPUT') {
+                    var cb = table_ref.rows[i].cells[0].querySelector('input[type="checkbox"]');
+                    if (cb) {
                         cb.checked = state;
                     }
                 }
@@ -309,7 +381,6 @@
                     parsedCodes.push({ title: currentTitle, text: currentCodeLines.join('\n') });
                 }
                 
-                // タイトルに「*」が付いていればチェックを外し、「*」を削る処理
                 for (var j = 0; j < parsedCodes.length; j++) {
                     if (parsedCodes[j].title.startsWith('*')) {
                         parsedCodes[j].checked = false;
@@ -330,7 +401,7 @@
                     var pCode = parsedCodes[i];
                     var title = pCode.title;
                     if (title === "") {
-                        title = `Unnamed Code ${UNNAMED_CODES_NR}`;
+                        title = `名称未設定コード ${UNNAMED_CODES_NR}`;
                         UNNAMED_CODES_NR++;
                     }
 
@@ -351,7 +422,6 @@
                     cell_cb.style.textAlign = 'center';
                     var cb = document.createElement('input');
                     cb.type = 'checkbox';
-                    // パース時に取得した checked 状態を反映
                     cb.checked = pCode.hasOwnProperty('checked') ? pCode.checked : true;
                     cell_cb.appendChild(cb);
 
@@ -386,9 +456,9 @@
                     reader.onload = function(e) {
                         var parsed = parse_text_to_codes(e.target.result, fallbackGameId);
                         if (add_parsed_codes_to_table(parsed)) {
-                            make_notification(`Loaded ${parsed.length} codes from TXT`);
+                            make_notification(`TXTから ${parsed.length} 個のコードを読み込みました`);
                         } else {
-                            make_notification('No valid codes found in TXT');
+                            make_notification('TXT内に有効なコードが見つかりませんでした');
                         }
                     };
                     reader.readAsText(file);
@@ -399,11 +469,11 @@
                         var length = buffer.byteLength;
 
                         if (length < 16) {
-                            make_notification('Invalid GCT file');
+                            make_notification('無効なGCTファイルです');
                             return;
                         }
                         if (view.getUint32(0) !== 0x00D0C0DE || view.getUint32(4) !== 0x00D0C0DE) {
-                            make_notification('Invalid GCT file (wrong header)');
+                            make_notification('無効なGCTファイルです (ヘッダーが間違っています)');
                             return;
                         }
 
@@ -422,7 +492,7 @@
                             var textData = new TextDecoder('utf-8').decode(textBuffer);
                             var parsed = parse_text_to_codes(textData, fallbackGameId);
                             if (parsed.length > 0 && add_parsed_codes_to_table(parsed)) {
-                                make_notification(`Loaded ${parsed.length} codes with Titles from GCT`);
+                                make_notification(`GCTからタイトル付きで ${parsed.length} 個のコードを読み込みました`);
                                 return;
                             }
                         }
@@ -439,10 +509,10 @@
                             if (document.getElementById('game_id').value === '') {
                                 document.getElementById('game_id').value = fallbackGameId;
                             }
-                            add_parsed_codes_to_table([{ title: `${fallbackGameId} Codes (Merged)`, text: codeString }]);
-                            make_notification('Standard GCT loaded (Merged as 1 code)');
+                            add_parsed_codes_to_table([{ title: `${fallbackGameId} コード (結合済み)`, text: codeString }]);
+                            make_notification('標準GCTを読み込みました (1つのコードとして結合)');
                         } else {
-                            make_notification('No codes found in GCT');
+                            make_notification('GCT内にコードが見つかりませんでした');
                         }
                     };
                     reader.readAsArrayBuffer(file);
@@ -454,6 +524,7 @@
                 document.getElementById('add_code_b').onclick = add_code;
                 document.getElementById('gct_b').onclick = create_gct;
                 document.getElementById('txt_b').onclick = create_txt;
+                document.getElementById('zip_b').onclick = create_zip;
                 
                 document.getElementById('select_all_b').onclick = function() { toggle_all_checkboxes(true); };
                 document.getElementById('deselect_all_b').onclick = function() { toggle_all_checkboxes(false); };
@@ -463,8 +534,16 @@
                 load_b.onclick = function() { file_input.click(); };
                 file_input.onchange = load_file;
                 
+                // 背景色をランダムに決定
                 BG_HUE = Math.random() * 360;
-                document.body.style.backgroundColor = `hsl(${BG_HUE}, 100%, 90%)`;
+                var randomBgColor = `hsl(${BG_HUE}, 100%, 90%)`;
+                
+                // html と body 両方に背景色を適用する
+                document.body.style.backgroundColor = randomBgColor;
+                document.documentElement.style.backgroundColor = randomBgColor;
+
+                // スマホのステータスバー(ノッチ領域)の色を背景色に同化させる
+                document.getElementById('theme_color_meta').content = randomBgColor;
             }
 
             document.addEventListener('DOMContentLoaded', () => {
@@ -489,12 +568,12 @@
         <div class="columns top-padding">
             <div class="column is-4 is-offset-2">
                 <div class="box" style="height:34.5em;">
-                    <input class="input is-family-code mb-2" id="game_id" type="text" placeholder="Game ID">
+                    <input class="input is-family-code mb-2" id="game_id" type="text" placeholder="ゲームID">
                     
                     <div class="level is-mobile mb-2">
                         <div class="level-left">
-                            <button class="button is-small is-light" id="select_all_b">Select All</button>
-                            <button class="button is-small is-light ml-2" id="deselect_all_b">Deselect All</button>
+                            <button class="button is-small is-light" id="select_all_b">すべて選択</button>
+                            <button class="button is-small is-light ml-2" id="deselect_all_b">すべて選択解除</button>
                         </div>
                     </div>
 
@@ -505,27 +584,29 @@
                     </div>
                 </div>
                 
-                <div class="field is-grouped">
+                <div class="field is-grouped mb-2">
                     <p class="control is-expanded">
-                        <button class="button is-primary is-fullwidth" id="gct_b">Export GCT</button>
+                        <button class="button is-primary is-fullwidth" id="gct_b">GCTを出力</button>
                     </p>
                     <p class="control is-expanded">
-                        <button class="button is-link is-fullwidth" id="txt_b">Save TXT</button>
+                        <button class="button is-link is-fullwidth" id="txt_b">TXTを保存</button>
                     </p>
                 </div>
 
+                <button class="button is-warning is-fullwidth mb-2" id="zip_b">ZIPをダウンロード (GCT + TXT)</button>
+
                 <input type="file" id="file_input" accept=".gct, .txt" style="display:none;">
-                <button class="button is-info is-fullwidth mt-2" id="load_b">Open TXT</button>
+                <button class="button is-info is-fullwidth mt-2" id="load_b">TXT / GCTを開く</button>
             </div>
             
             <div class="column is-3">
                 <div class="box" style="height:34.5em;">
                     <div class="container" style="width:100%;">
-                        <input class="input is-family-code mb-2" id="code_title" type="text" placeholder="Code Title">
-                        <textarea class="textarea has-fixed-size is-family-code mb-2" id="code" placeholder="Paste your code here" rows=18></textarea>
+                        <input class="input is-family-code mb-2" id="code_title" type="text" placeholder="コード名">
+                        <textarea class="textarea has-fixed-size is-family-code mb-2" id="code" placeholder="ここにコードを貼り付けてください" rows=18></textarea>
                     </div>
                 </div>
-                <button class="button is-success is-fullwidth" id="add_code_b">Add Code</button>
+                <button class="button is-success is-fullwidth" id="add_code_b">コードを追加</button>
             </div>
         </div>
     </div>
