@@ -28,7 +28,6 @@
                 padding-right: env(safe-area-inset-right);
             }
             /* スマホ・PC共通で、上下の余白を同じ幅（1rem）に固定する */
-            /* もっと縮めたい場合は 1rem を 0.5rem などに変更してください */
             .section {
                 padding-top: 2.2rem !important;
                 padding-bottom: 0.1rem !important;
@@ -39,7 +38,7 @@
                 overflow-y: auto;
                 border: 1px solid #dbdbdb;
                 border-radius: 4px;
-                background-color: white; /* テーブルの背景は白に固定 */
+                background-color: white;
             }
             table {
                 width: 100%;
@@ -52,14 +51,16 @@
                 vertical-align: middle !important;
                 word-wrap: break-word;
             }
+            /* エラー通知のスタイル修正 */
             #alert {
                 z-index: 1;
                 position: absolute;
                 width: max-content;
+                max-width: 90vw; /* 横幅のはみ出し防止 */
                 visibility: hidden;
+                font-size: 0.85rem !important; /* 文字を小さくする (必要なら 0.75rem などに変更) */
             }
             .top-padding {
-                /* 上側だけの追加余白をゼロにする */
                 padding-top: 0 !important;
             }
         </style>
@@ -102,7 +103,6 @@
                 table.removeChild(row);
                 ROW_DELETE = true;
                 
-                // 削除後にフォームをクリア
                 if (SELECTED_ROW === -1) {
                     document.getElementById('add_code_b').innerHTML = 'コードを追加';
                     document.getElementById('code_title').value = '';
@@ -123,7 +123,10 @@
 
             function make_notification(text) {
                 var notif = document.getElementById('alert');
-                notif.childNodes[0].textContent = text;
+                
+                // ▼ textContent を innerHTML に変更し、<br>等のHTMLタグを有効にしました
+                notif.querySelector('p').innerHTML = text; 
+                
                 notif.style.marginLeft = `${(notif.parentNode.offsetWidth / 2) - notif.offsetWidth / 2}px`;
                 notif.style.visibility = 'visible';
                 setTimeout(function() {
@@ -144,7 +147,7 @@
                 var code_obj = document.getElementById('code');
                 var code = code_obj.value;
 
-                var curated_code = code.replace(/\s+/g, ''); // remove all whitespaces
+                var curated_code = code.replace(/\s+/g, ''); 
                 if (curated_code.length == 0) return false;
                 if (!/^[0-9A-Fa-f]*$/.test(curated_code)) {
                     make_notification('コードに無効な文字が含まれています');
@@ -167,7 +170,7 @@
                 if (!code) return;
                 var code_title = get_code_title();
 
-                if (SELECTED_ROW == -1) { // new code
+                if (SELECTED_ROW == -1) { 
                     row_ref = table_ref.insertRow();
                     row_ref.onclick = function(e) {
                         if (e.target.tagName !== 'INPUT' && e.target.tagName !== 'BUTTON') {
@@ -175,21 +178,18 @@
                         }
                     };
                     
-                    // 1. チェックボックス
                     var cell_cb = row_ref.insertCell(0);
                     cell_cb.style.width = '15%';
                     cell_cb.style.textAlign = 'center';
                     var cb = document.createElement('input');
                     cb.type = 'checkbox';
-                    cb.checked = true; // 手動追加時はデフォルトON
+                    cb.checked = true; 
                     cell_cb.appendChild(cb);
 
-                    // 2. タイトル
                     var cell_title = row_ref.insertCell(1);
                     cell_title.style.width = '70%';
                     cell_title.textContent = code_title;
                     
-                    // 3. 削除ボタン
                     var cell_del = row_ref.insertCell(2);
                     cell_del.style.width = '15%';
                     cell_del.style.textAlign = 'center';
@@ -200,15 +200,14 @@
                     cell_del.appendChild(delete_button);
 
                     CODES.push(code);
-                } else { // edit code
+                } else { 
                     row_ref = table_ref.rows[SELECTED_ROW];
                     row_ref.cells[1].textContent = code_title;
                     CODES[SELECTED_ROW] = code;
-                    row_ref.click(); // 選択解除
+                    row_ref.click(); 
                 }
             }
 
-            // GCTバイナリのデータ(Uint8Array)を生成する内部関数
             function generate_gct_data(game_id, table_ref) {
                 var gct_array = [0x00, 0xD0, 0xC0, 0xDE, 0x00, 0xD0, 0xC0, 0xDE];
                 var addedCount = 0;
@@ -238,7 +237,6 @@
                 return finalGCT;
             }
 
-            // TXTの文字列データを生成する内部関数
             function generate_txt_data(game_id, table_ref) {
                 if (CODES.length === 0) return null;
                 var txt_content = game_id + "\n" + "ゲームタイトル" + "\n\n";
@@ -259,9 +257,10 @@
                 var game_id = document.getElementById('game_id').value || "GAMEID";
                 var table_ref = document.getElementById('codes_table').getElementsByTagName('tbody')[0];
                 var finalGCT = generate_gct_data(game_id, table_ref);
-                
+                //aaaa
                 if (!finalGCT) {
-                    make_notification('コードが選択されていません（まずはチェックボックスをオンにしてください）');
+                    // ▼ ここに <br> を追加しました
+                    make_notification('ㅤ⠀　　　　コードが選択されていません<br>（まずはチェックボックスをオンにしてください）');
                     return;
                 }
 
@@ -304,7 +303,8 @@
                     return;
                 }
                 if (!gct_data) {
-                    make_notification('GCT用のコードが選択されていません（まずはチェックボックスをオンにしてください）');
+                    // ▼ ここにも <br> を追加しました
+                    make_notification('GCT用のコードが選択されていません<br>（まずはチェックボックスをオンにしてください）');
                     return;
                 }
 
@@ -534,15 +534,12 @@
                 load_b.onclick = function() { file_input.click(); };
                 file_input.onchange = load_file;
                 
-                // 背景色をランダムに決定
                 BG_HUE = Math.random() * 360;
                 var randomBgColor = `hsl(${BG_HUE}, 100%, 90%)`;
                 
-                // html と body 両方に背景色を適用する
                 document.body.style.backgroundColor = randomBgColor;
                 document.documentElement.style.backgroundColor = randomBgColor;
 
-                // スマホのステータスバー(ノッチ領域)の色を背景色に同化させる
                 document.getElementById('theme_color_meta').content = randomBgColor;
             }
 
