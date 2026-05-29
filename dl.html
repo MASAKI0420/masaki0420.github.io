@@ -1,0 +1,456 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>統合 動画保存ハブ (X / YouTube / ニコニコ)</title>
+    <style>
+        /* 🎨 CSS（デザイン部分） */
+        :root {
+            --x-color: #000000;
+            --yt-color: #FF0000;
+            --nico-color: #252525;
+            --bg-color: #F5F8FA;
+            --box-bg: #FFFFFF;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background-color: var(--bg-color);
+            color: #333;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        header {
+            width: 100%;
+            background: linear-gradient(90deg, var(--x-color) 0%, var(--nico-color) 50%, var(--yt-color) 100%);
+            color: white;
+            padding: 20px 0;
+            text-align: center;
+            font-size: 22px;
+            font-weight: bold;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .container {
+            width: 100%;
+            max-width: 800px;
+            margin: 40px auto;
+            padding: 0 20px;
+            box-sizing: border-box;
+        }
+
+        .download-box {
+            background: var(--box-bg);
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+            text-align: center;
+        }
+
+        .download-box h2 {
+            margin-top: 0;
+            font-size: 18px;
+            color: #555;
+        }
+
+        .badges {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        .badge {
+            padding: 5px 10px;
+            border-radius: 4px;
+            color: white;
+            font-size: 12px;
+            font-weight: bold;
+        }
+        .badge.x { background: var(--x-color); }
+        .badge.yt { background: var(--yt-color); }
+        .badge.nico { background: var(--nico-color); border: 1px solid #ccc;}
+
+        .input-group {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+        }
+
+        .input-group input {
+            flex: 1;
+            padding: 15px;
+            font-size: 16px;
+            border: 2px solid #E1E8ED;
+            border-radius: 8px;
+            outline: none;
+            transition: border 0.3s;
+        }
+
+        .input-group input:focus {
+            border-color: #666;
+        }
+
+        .input-group button {
+            padding: 0 25px;
+            font-size: 16px;
+            font-weight: bold;
+            color: white;
+            background-color: #17BF63;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background 0.3s;
+            white-space: nowrap;
+        }
+
+        .input-group button:hover { background-color: #14a656; }
+        .input-group button:disabled { background-color: #a5d6a7; cursor: not-allowed; }
+
+        #errorMessage {
+            display: none;
+            margin-top: 20px;
+            font-weight: bold;
+            color: #E0245E;
+        }
+
+        /* 結果表示エリア */
+        #resultArea {
+            display: none;
+            margin-top: 30px;
+            background: var(--box-bg);
+            border: 1px solid #E1E8ED;
+            border-radius: 12px;
+            overflow: hidden;
+            text-align: left;
+        }
+
+        .result-content {
+            display: flex;
+            padding: 20px;
+            gap: 20px;
+        }
+
+        .thumb {
+            width: 180px;
+            height: 120px;
+            object-fit: cover;
+            border-radius: 8px;
+            background-color: #E1E8ED;
+        }
+
+        .info { flex: 1; }
+
+        .video-title {
+            font-size: 15px;
+            color: #333;
+            font-weight: bold;
+            margin-bottom: 15px;
+            display: -webkit-box;
+            -webkit-line-clamp: 3;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+
+        .btn-container {
+            margin-top: 10px;
+        }
+
+        .action-btn {
+            display: inline-block;
+            padding: 12px 20px;
+            color: white;
+            text-decoration: none;
+            font-weight: bold;
+            border-radius: 6px;
+            cursor: pointer;
+            border: none;
+            font-size: 14px;
+            transition: opacity 0.3s;
+        }
+        .action-btn:hover { opacity: 0.8; }
+
+        .instructions {
+            margin-top: 15px;
+            font-size: 13px;
+            color: #666;
+            line-height: 1.5;
+            background: #f8f9fa;
+            padding: 10px;
+            border-radius: 6px;
+            border-left: 4px solid #ccc;
+        }
+
+        @media (max-width: 600px) {
+            .input-group { flex-direction: column; }
+            .input-group button { padding: 15px; }
+            .result-content { flex-direction: column; align-items: center; }
+            .thumb { width: 100%; height: auto; aspect-ratio: 16/9; }
+            .info { width: 100%; }
+        }
+    </style>
+</head>
+<body>
+
+    <header>統合 動画保存ハブ</header>
+
+    <div class="container">
+        <div class="download-box">
+            <div class="badges">
+                <span class="badge x">X (Twitter)</span>
+                <span class="badge yt">YouTube</span>
+                <span class="badge nico">ニコニコ動画</span>
+            </div>
+            <h2>保存したい動画のURLを貼り付けてください</h2>
+            <div class="input-group">
+                <input type="text" id="videoUrl" placeholder="例: https://youtube.com/watch?v=...">
+                <button id="submitBtn" onclick="processUrl()">抜き出す</button>
+            </div>
+            
+            <div id="errorMessage"></div>
+        </div>
+
+        <!-- 結果表示エリア -->
+        <div id="resultArea">
+            <div class="result-content">
+                <img id="videoThumb" class="thumb" src="" alt="Thumbnail">
+                <div class="info">
+                    <div id="videoTitle" class="video-title"></div>
+                    <div class="btn-container" id="buttonContainer">
+                        <!-- 動的にボタンが生成されます -->
+                    </div>
+                    <div class="instructions" id="instructionText"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        /* ⚙️ JavaScript（動作ロジック） */
+        async function processUrl() {
+            const urlInput = document.getElementById('videoUrl').value.trim();
+            const errorMsg = document.getElementById('errorMessage');
+            const resultArea = document.getElementById('resultArea');
+            const btnContainer = document.getElementById('buttonContainer');
+            const submitBtn = document.getElementById('submitBtn');
+            
+            // 初期化
+            errorMsg.style.display = 'none';
+            resultArea.style.display = 'none';
+            btnContainer.innerHTML = '';
+            document.getElementById('videoThumb').src = '';
+            document.getElementById('videoTitle').textContent = '';
+
+            if (!urlInput) {
+                showError('URLを入力してください。');
+                return;
+            }
+
+            submitBtn.disabled = true;
+            submitBtn.textContent = '暗号化を解除・解析中...';
+
+            try {
+                if (urlInput.includes('twitter.com') || urlInput.includes('x.com')) {
+                    await handleTwitter(urlInput);
+                } else if (urlInput.includes('youtube.com') || urlInput.includes('youtu.be')) {
+                    await handleYouTube(urlInput);
+                } else if (urlInput.includes('nicovideo.jp')) {
+                    await handleNiconico(urlInput);
+                } else {
+                    showError('対応していないURLです。X、YouTube、ニコニコ動画のURLを入力してください。');
+                }
+            } catch (error) {
+                showError(error.message);
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.textContent = '抜き出す';
+            }
+        }
+
+        // 🟢 X (Twitter) の処理
+        async function handleTwitter(url) {
+            const regex = /(?:twitter\.com|x\.com)\/(?:.*?)\/status\/(\d+)/;
+            const match = url.match(regex);
+            if (!match) throw new Error('正しいX(Twitter)のURLを入力してください。');
+            
+            const tweetId = match[1];
+            const response = await fetch(`https://api.vxtwitter.com/i/status/${tweetId}`);
+            if (!response.ok) throw new Error('ツイートが見つかりませんでした。');
+            
+            const data = await response.json();
+            if (data.media_extended && data.media_extended.length > 0) {
+                const media = data.media_extended[0];
+                if (media.type === 'video' || media.type === 'gif') {
+                    showResult(
+                        data.text,
+                        media.thumbnail_url,
+                        () => window.open(media.url, '_blank'),
+                        '📥 動画をダウンロードする (生URL)',
+                        '#17BF63',
+                        'クリックすると動画データが直接別タブで開きます。再生画面の右下の「︙」から保存してください。'
+                    );
+                } else {
+                    throw new Error('このツイートには動画が含まれていません。');
+                }
+            } else {
+                throw new Error('このツイートにはメディアが含まれていません。');
+            }
+        }
+
+        // 🔴 YouTube の処理 (Invidious APIを用いて暗号化を解除し、googlevideo.com を直接抽出)
+        async function handleYouTube(url) {
+            const ytRegex = /(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/;
+            const match = url.match(ytRegex);
+            if (!match) throw new Error('有効なYouTube URLが見つかりませんでした。');
+            const videoId = match[1];
+
+            let title = "YouTube動画";
+            let thumbUrl = `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`;
+            let resolvedDownloadUrl = "";
+
+            // 暗号化解除を行ってくれるオープンソースサーバー（複数）に順次アクセス
+            const instances = [
+                'https://invidious.jing.rocks',
+                'https://vid.puffyan.us',
+                'https://inv.tux.pizza',
+                'https://invidious.flokinet.to'
+            ];
+
+            for (const instance of instances) {
+                try {
+                    const res = await fetch(`${instance}/api/v1/videos/${videoId}`);
+                    if (!res.ok) continue;
+                    
+                    const data = await res.json();
+                    if (data.title) title = data.title;
+
+                    // 映像と音声がくっついている(formatStreams)中から、googlevideoサーバーのものを探す
+                    if (data.formatStreams && data.formatStreams.length > 0) {
+                        // 720p(itag: 22) を優先的に検索、なければ 360p(itag: 18)
+                        const format22 = data.formatStreams.find(f => f.itag === 22 && f.url && f.url.includes('googlevideo.com'));
+                        const format18 = data.formatStreams.find(f => f.itag === 18 && f.url && f.url.includes('googlevideo.com'));
+                        const fallback = data.formatStreams.find(f => f.url && f.url.includes('googlevideo.com'));
+
+                        const targetFormat = format22 || format18 || fallback;
+                        
+                        if (targetFormat) {
+                            resolvedDownloadUrl = targetFormat.url;
+                            break; // 取得成功したらループを抜ける
+                        }
+                    }
+                } catch (err) {
+                    console.warn(`API ${instance} への接続に失敗しました。次を試します。`);
+                }
+            }
+
+            if (!resolvedDownloadUrl) {
+                throw new Error('解析エラー: 動画配信サーバーのストリームURLを抽出できませんでした。暗号化が強固か、動画に制限がかかっています。');
+            }
+
+            showResult(
+                title,
+                thumbUrl,
+                () => window.open(resolvedDownloadUrl, '_blank'),
+                '📥 動画をダウンロードする (*.googlevideo.com)',
+                '#FF0000',
+                'クリックすると、解析された直接の動画ストリームURL（googlevideo.com）が別タブで開きます。開いた動画画面で、右クリックまたは右下の「︙」メニューから「動画を保存」を選択してください。'
+            );
+        }
+
+        // 🔵 ニコニコ動画 の処理 (複数のCobalt API経由で生ストリーミングURLを抽出)
+        async function handleNiconico(url) {
+            const nicoRegex = /sm\d+/;
+            const match = url.match(nicoRegex);
+            const videoId = match ? match[0] : '';
+            
+            if (!videoId) {
+                throw new Error('有効なニコニコ動画のURL（smから始まる番号を含むもの）を入力してください。');
+            }
+
+            const title = `ニコニコ動画 (${videoId})`;
+            let resolvedDownloadUrl = "";
+
+            // 動画解析用のAPIインスタンスを複数用意
+            const cobaltInstances = [
+                'https://api.cobalt.tools',
+                'https://co.wuk.sh',
+                'https://cobalt-api.kwiatekit.com'
+            ];
+
+            for (const instance of cobaltInstances) {
+                try {
+                    const response = await fetch(instance, {
+                        method: 'POST',
+                        headers: {
+                            'Accept': 'application/json',
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({ url: url })
+                    });
+                    
+                    if (!response.ok) continue;
+                    
+                    const data = await response.json();
+                    if (data && data.url) {
+                        resolvedDownloadUrl = data.url;
+                        break; // 取得成功したらループを抜ける
+                    }
+                } catch (err) {
+                    console.warn(`API ${instance} での解析に失敗しました。次を試します。`);
+                }
+            }
+
+            if (!resolvedDownloadUrl) {
+                throw new Error('解析エラー: ニコニコ動画の配信サーバーから直接のURLを抽出できませんでした。');
+            }
+
+            showResult(
+                title,
+                '',
+                () => window.open(resolvedDownloadUrl, '_blank'),
+                '📥 動画をダウンロードする (生URL)',
+                '#252525',
+                'クリックするとニコニコ独自の動画配信サーバーの直リンクが開きます（YouTubeのgooglevideoと同じ仕組みです）。開いた画面で右クリックから保存してください。'
+            );
+        }
+
+        // 結果を組み立てて表示する関数
+        function showResult(title, thumbUrl, onClickAction, btnText, btnColor, instructions) {
+            document.getElementById('videoTitle').textContent = title;
+            
+            const thumbImg = document.getElementById('videoThumb');
+            if (thumbUrl) {
+                thumbImg.src = thumbUrl;
+                thumbImg.style.display = 'block';
+            } else {
+                thumbImg.style.display = 'none';
+            }
+
+            const btnContainer = document.getElementById('buttonContainer');
+            btnContainer.innerHTML = ''; // クリア
+
+            const btn = document.createElement('button');
+            btn.className = 'action-btn';
+            btn.style.backgroundColor = btnColor;
+            btn.textContent = btnText;
+            btn.onclick = onClickAction;
+
+            btnContainer.appendChild(btn);
+
+            document.getElementById('instructionText').innerHTML = `<strong>💡 使い方：</strong><br>${instructions}`;
+            document.getElementById('resultArea').style.display = 'block';
+        }
+
+        function showError(message) {
+            const errorMsg = document.getElementById('errorMessage');
+            errorMsg.textContent = message;
+            errorMsg.style.display = 'block';
+        }
+    </script>
+</body>
+</html>
