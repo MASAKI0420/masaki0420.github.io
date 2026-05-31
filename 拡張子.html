@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ブラウザ完結！音楽ファイル変換ツール</title>
+    <style>
+        :root {
+            --primary: #4CAF50;
+            --primary-hover: #45a049;
+            --bg: #f4f7f6;
+            --card-bg: #ffffff;
+            --text: #333333;
+        }
+        body {
+            font-family: 'Helvetica Neue', Arial, sans-serif;
+            background-color: var(--bg);
+            color: var(--text);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+        .container {
+            background-color: var(--card-bg);
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 8px 16px rgba(0,0,0,0.1);
+            max-width: 500px;
+            width: 100%;
+            text-align: center;
+        }
+        h1 {
+            font-size: 1.5rem;
+            margin-bottom: 20px;
+            color: var(--text);
+        }
+        .form-group {
+            margin-bottom: 20px;
+            text-align: left;
+        }
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: bold;
+        }
+        input[type="file"], select {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 6px;
+            box-sizing: border-box;
+            font-size: 1rem;
+        }
+        button {
+            background-color: var(--primary);
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            font-size: 1rem;
+            border-radius: 6px;
+            cursor: pointer;
+            width: 100%;
+            transition: background-color 0.3s;
+            font-weight: bold;
+        }
+        button:hover {
+            background-color: var(--primary-hover);
+        }
+        button:disabled {
+            background-color: #cccccc;
+            cursor: not-allowed;
+        }
+        .progress-container {
+            margin-top: 20px;
+            display: none;
+        }
+        .progress-bar {
+            width: 100%;
+            background-color: #e0e0e0;
+            border-radius: 6px;
+            overflow: hidden;
+            height: 10px;
+            margin-bottom: 10px;
+        }
+        .progress-fill {
+            height: 100%;
+            background-color: var(--primary);
+            width: 0%;
+            transition: width 0.2s;
+        }
+        #status {
+            font-size: 0.9rem;
+            color: #666;
+        }
+        #downloadBtn {
+            display: none;
+            background-color: #2196F3;
+            margin-top: 15px;
+            text-decoration: none;
+            box-sizing: border-box;
+            color: white;
+            padding: 12px 20px;
+            border-radius: 6px;
+            font-weight: bold;
+        }
+        #downloadBtn:hover {
+            background-color: #1e88e5;
+        }
+        .note {
+            font-size: 0.8rem;
+            color: #888;
+            margin-top: 20px;
+            text-align: left;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>🎵 音楽ファイル変換ツール</h1>
+    
+    <div class="form-group">
+        <label for="inputFile">変換したいファイルを選択</label>
+        <input type="file" id="inputFile" accept="audio/*,video/*">
+    </div>
+
+    <div class="form-group">
+        <label for="outputFormat">変換先の形式</label>
+        <select id="outputFormat">
+            <option value="mp3">MP3 (.mp3)</option>
+            <option value="wav">WAV (.wav)</option>
+            <option value="flac">FLAC (.flac)</option>
+            <option value="aac">AAC (.aac)</option>
+            <option value="m4a">M4A (.m4a)</option>
+            <option value="ogg">OGG (.ogg)</option>
+            <option value="wma">WMA (.wma)</option>
+        </select>
+    </div>
+
+    <button id="convertBtn">変換を開始する</button>
+
+    <div class="progress-container" id="progressContainer">
+        <div class="progress-bar">
+            <div class="progress-fill" id="progressFill"></div>
+        </div>
+        <div id="status">システムの準備中...</div>
+    </div>
+
+    <a id="downloadBtn" download>変換したファイルをダウンロード</a>
+
+    <div class="note">
+        ※通信を行わず、すべてお使いのブラウザ上で安全に処理されます。<br>
+        ※初回のみ変換エンジンの読み込みに数秒〜数十秒かかります。<br>
+        ※極端に大きいファイルはブラウザのメモリ制限でエラーになる場合があります。
+    </div>
+</div>
+
+<!-- ローカル(file://)でも動くように、モジュール版ではなくUMD版を読み込む -->
+<script src="https://unpkg.com/@ffmpeg/ffmpeg@0.12.10/dist/umd/ffmpeg.js"></script>
+<script src="https://unpkg.com/@ffmpeg/util@0.12.1/dist/umd/index.js"></script>
+
+<!-- type="module" を外し、通常のスクリプトとして記述 -->
+<script>
+    // 読み込んだライブラリをグローバル変数から取り出す
+    const { FFmpeg } = FFmpegWASM;
+    const { fetchFile, toBlobURL } = FFmpegUtil;
+
+    const ffmpeg = new FFmpeg();
+    let isFfmpegLoaded = false;
+
+    const inputFile = document.getElementById('inputFile');
+    const outputFormat = document.getElementById('outputFormat');
+    const convertBtn = document.getElementById('convertBtn');
+    const progressContainer = document.getElementById('progressContainer');
+    const progressFill = document.getElementById('progressFill');
+    const statusText = document.getElementById('status');
+    const downloadBtn = document.getElementById('downloadBtn');
+
+    // 進行状況のイベントリスナー
+    ffmpeg.on('progress', ({ progress, time }) => {
+        const percent = Math.min(Math.round(progress * 100), 100);
+        progressFill.style.width = `${percent}%`;
+        statusText.textContent = `変換中... ${percent}%`;
+    });
+
+    // エラー調査用のログ出力（開発者ツールのコンソールに表示されます）
+    ffmpeg.on('log', ({ message }) => {
+        console.log("FFmpeg Log:", message);
+    });
+
+    // 変換ボタンが押された時の処理
+    convertBtn.addEventListener('click', async () => {
+        const file = inputFile.files[0];
+        if (!file) {
+            alert('ファイルを選択してください。');
+            return;
+        }
+
+        const targetFormat = outputFormat.value;
+        const originalName = file.name;
+        const baseName = originalName.substring(0, originalName.lastIndexOf('.')) || originalName;
+        const outputFileName = `${baseName}_converted.${targetFormat}`;
+
+        convertBtn.disabled = true;
+        downloadBtn.style.display = 'none';
+        progressContainer.style.display = 'block';
+        progressFill.style.width = '0%';
+        statusText.textContent = '変換エンジンを準備しています（初回は少し時間がかかります）...';
+
+        try {
+            // FFmpegのロード（初回のみ）
+            if (!isFfmpegLoaded) {
+                const baseURL = 'https://unpkg.com/@ffmpeg/core@0.12.6/dist/umd';
+                await ffmpeg.load({
+                    coreURL: await toBlobURL(`${baseURL}/ffmpeg-core.js`, 'text/javascript'),
+                    wasmURL: await toBlobURL(`${baseURL}/ffmpeg-core.wasm`, 'application/wasm'),
+                });
+                isFfmpegLoaded = true;
+            }
+
+            statusText.textContent = 'ファイルを読み込み中...';
+            
+            // ファイルを仮想ファイルシステムに書き込む
+            const fileData = await fetchFile(file);
+            await ffmpeg.writeFile(originalName, fileData);
+
+            statusText.textContent = '変換を開始します...';
+
+            // FFmpegのコマンドを実行
+            await ffmpeg.exec(['-i', originalName, outputFileName]);
+
+            statusText.textContent = 'ファイルの書き出し中...';
+
+            // 変換されたファイルを仮想ファイルシステムから読み出す
+            const data = await ffmpeg.readFile(outputFileName);
+            
+            // Blobを作成してダウンロードリンクを生成
+            const blob = new Blob([data.buffer], { type: `audio/${targetFormat}` });
+            const url = URL.createObjectURL(blob);
+
+            downloadBtn.href = url;
+            downloadBtn.download = outputFileName;
+            downloadBtn.style.display = 'inline-block';
+            
+            statusText.textContent = '変換完了！';
+            progressFill.style.width = '100%';
+
+            // メモリ解放のため仮想ファイルを削除
+            await ffmpeg.deleteFile(originalName);
+            await ffmpeg.deleteFile(outputFileName);
+
+        } catch (error) {
+            console.error("変換エラー:", error);
+            statusText.textContent = 'エラーが発生しました。ファイル形式またはブラウザの制限の可能性があります。';
+        } finally {
+            convertBtn.disabled = false;
+        }
+    });
+</script>
+
+</body>
+</html>
