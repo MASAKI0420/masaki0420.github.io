@@ -122,6 +122,7 @@
             margin-bottom: 0;
             cursor: pointer;
         }
+        /* 初期状態（tja単体の時）はZIP名入力欄を隠す */
         #zipGroup {
             display: none; 
             border-top: 2px dashed #eee;
@@ -144,53 +145,18 @@
         button:hover {
             background-color: #2980b9;
         }
-
-        /* 案内用の目立つメッセージ表示エリア */
         #message {
             margin-top: 15px;
             font-size: 0.9em;
             text-align: center;
             font-weight: bold;
             min-height: 1.2em;
-            padding: 10px;
-            border-radius: 5px;
-            transition: all 0.3s;
-        }
-
-        /* アプリ警告エリア用 */
-        .app-warning {
-            background-color: #fff3cd;
-            color: #856404;
-            padding: 12px;
-            border-radius: 5px;
-            margin-bottom: 15px;
-            font-size: 0.8em;
-            border: 1px solid #ffeeba;
-            display: flex;
-            flex-direction: column;
-            gap: 5px;
-        }
-        .chrome-btn {
-            background-color: #ffc107 !important;
-            color: #212529 !important;
-            padding: 6px 12px !important;
-            font-size: 0.85em !important;
-            border-radius: 3px !important;
-            width: auto !important;
-            margin-top: 0 !important;
-            align-self: flex-start;
         }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <!-- アプリ落ち対策の救済ボタン -->
-    <div class="app-warning" id="appWarning">
-        <span>⚠️ 保存時にアプリが落ちる場合は、通常のブラウザ（Google Chrome）で開き直してください。</span>
-        <button class="chrome-btn" onclick="openInChrome()">Chromeで開く</button>
-    </div>
-
     <h1>文字コード変換 ツール</h1>
     
     <div class="form-group">
@@ -223,6 +189,7 @@
         </div>
     </div>
 
+    <!-- 音源ファイルを選択した時だけ表示される項目 -->
     <div class="form-group" id="zipGroup">
         <label for="zipFilenameInput">5. ダウンロードするZIP名</label>
         <input type="text" id="zipFilenameInput" placeholder="例: 譜面データ.zip">
@@ -247,21 +214,7 @@
 
     let isZipMode = false;
 
-    // ローカルファイル（file:///）ではなくネット上で開かれている場合のみChrome起動ボタンを有効化
-    if (!window.location.href.startsWith('http')) {
-        document.getElementById('appWarning').style.display = 'none';
-    }
-
-    // AndroidのGoogle Chromeを強制起動して現在のページを開くインテント関数
-    function openInChrome() {
-        const currentUrl = window.location.href;
-        if (currentUrl.startsWith('http')) {
-            const cleanUrl = currentUrl.replace(/^https?:\/\//, '');
-            const chromeIntent = "intent://" + cleanUrl + "#Intent;scheme=https;package=com.android.chrome;end";
-            window.location.href = chromeIntent;
-        }
-    }
-
+    // 譜面ファイルが選択された時の処理
     fileInput.addEventListener('change', function(e) {
         const file = e.target.files[0];
         if (file) {
@@ -269,10 +222,10 @@
             const nameWithoutExt = file.name.substring(0, file.name.lastIndexOf('.')) || file.name;
             zipFilenameInput.value = nameWithoutExt + ".zip";
             messageDiv.textContent = ""; 
-            messageDiv.style.background = "transparent";
         }
     });
 
+    // 追加ファイルが選択されたらZIPモードにする
     extraFileInput.addEventListener('change', function() {
         if (this.files.length > 0) {
             isZipMode = true;
@@ -285,12 +238,14 @@
         }
     });
 
+    // 文字コード選択時
     encodingSelect.addEventListener('change', function() {
         const prefixStr = this.value === 'SJIS' ? 'ANSI_' : 'UTF8_';
         prefixDisplay.textContent = prefixStr;
         removePrefixLabel.textContent = prefixStr + " を付けない（上書き用）";
     });
 
+    // 接頭辞チェック時
     removePrefixCheck.addEventListener('change', function() {
         if (this.checked) {
             prefixDisplay.style.display = 'none';
@@ -299,6 +254,7 @@
         }
     });
 
+    // 保存ボタンクリック時
     convertBtn.addEventListener('click', async function() {
         const tjaFile = fileInput.files[0];
         const extraFiles = extraFileInput.files;
@@ -318,7 +274,6 @@
         try {
             messageDiv.textContent = isZipMode ? "ZIPを作成中..." : "変換中...";
             messageDiv.style.color = "#3498db";
-            messageDiv.style.background = "transparent";
 
             // 文字コード変換
             const arrayBuffer = await tjaFile.arrayBuffer();
@@ -330,7 +285,7 @@
             const finalTjaName = finalPrefix + outFileName;
 
             if (isZipMode) {
-                // === ZIP保存モード ===
+                // 音源などがある場合はZIP化してダウンロード
                 let zipFilename = zipFilenameInput.value.trim();
                 if (!zipFilename) zipFilename = "download.zip";
                 if (!zipFilename.toLowerCase().endsWith('.zip')) zipFilename += ".zip";
@@ -340,59 +295,37 @@
                 for (let i = 0; i < extraFiles.length; i++) {
                     zip.file(extraFiles[i].name, extraFiles[i]);
                 }
-                
-                // WebViewのクラッシュバグを避けるため、MIMEをimage/png(画像)に偽装してBase64を生成
-                const base64Data = await zip.generateAsync({ type: "base64" });
-                const safeFilename = encodeURIComponent(zipFilename);
-                const dataUrl = "data:image/png;name=" + safeFilename + ";filename=" + safeFilename + ";base64," + base64Data + "#" + safeFilename;
-                
-                triggerDownload(dataUrl, zipFilename);
-                showSuccessMessage();
+                const zipBlob = await zip.generateAsync({ type: "blob" });
+                downloadFile(zipBlob, zipFilename);
+                messageDiv.textContent = "ZIPのダウンロードが完了しました！";
                 
             } else {
-                // === .tja単体保存モード ===
-                const base64Data = arrayBufferToBase64(convertedUint8Array);
-                const safeFilename = encodeURIComponent(finalTjaName);
-                const dataUrl = "data:image/png;name=" + safeFilename + ";filename=" + safeFilename + ";base64," + base64Data + "#" + safeFilename;
-                
-                triggerDownload(dataUrl, finalTjaName);
-                showSuccessMessage();
+                // 譜面のみの場合は.tjaファイルをそのまま直接ダウンロード
+                const blob = new Blob([convertedUint8Array], { type: 'application/octet-stream' });
+                downloadFile(blob, finalTjaName);
+                messageDiv.textContent = "変換が完了しました！";
             }
+            
+            messageDiv.style.color = "#27ae60";
 
         } catch (error) {
             console.error(error);
             messageDiv.textContent = "処理中にエラーが発生しました。";
             messageDiv.style.color = "#e74c3c";
-            messageDiv.style.background = "#f8d7da";
         }
     });
 
-    // 保存成功時のメッセージを目立たせる処理
-    function showSuccessMessage() {
-        messageDiv.innerHTML = "🎉 保存が完了しました！<br><span style='font-size:0.8em;font-weight:normal;color:#444;'>Chromeメニューの「ダウンロード」画面、またはスマホの「ファイル」アプリをご確認ください。</span>";
-        messageDiv.style.color = "#155724";
-        messageDiv.style.background = "#d4edda";
-        messageDiv.style.border = "1px solid #c3e6cb";
-    }
-
-    function triggerDownload(dataUrl, filename) {
+    // 共通ダウンロード処理 (共有メニューを出さず直接保存する)
+    function downloadFile(blob, filename) {
+        const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
-        a.href = dataUrl;
+        a.href = url;
         a.download = filename;
-        a.target = '_blank';
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
-    }
-
-    function arrayBufferToBase64(buffer) {
-        let binary = '';
-        const bytes = new Uint8Array(buffer);
-        const len = bytes.byteLength;
-        for (let i = 0; i < len; i++) {
-            binary += String.fromCharCode(bytes[i]);
-        }
-        return window.btoa(binary);
+        
+        setTimeout(() => URL.revokeObjectURL(url), 2000);
     }
 </script>
 
