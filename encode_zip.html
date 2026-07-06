@@ -268,6 +268,7 @@
             messageDiv.textContent = isZipMode ? "ZIPを作成中..." : "変換中...";
             messageDiv.style.color = "#3498db";
 
+            // 文字コード変換
             const arrayBuffer = await tjaFile.arrayBuffer();
             const uint8Array = new Uint8Array(arrayBuffer);
             const convertedArray = Encoding.convert(uint8Array, { to: encoding, from: 'AUTO' });
@@ -277,6 +278,7 @@
             const finalTjaName = finalPrefix + outFileName;
 
             if (isZipMode) {
+                // === ZIP保存モード ===
                 let zipFilename = zipFilenameInput.value.trim();
                 if (!zipFilename) zipFilename = "download.zip";
                 if (!zipFilename.toLowerCase().endsWith('.zip')) zipFilename += ".zip";
@@ -287,18 +289,20 @@
                     zip.file(extraFiles[i].name, extraFiles[i]);
                 }
                 
-                // AndroidのMIMEエラー対策としてoctet-streamを指定
-                const zipBlob = await zip.generateAsync({ 
-                    type: "blob",
-                    mimeType: "application/octet-stream" 
-                });
+                // WebViewのダウンロードバグを避けるため、Base64データURLを直接生成して保存
+                const base64Data = await zip.generateAsync({ type: "base64" });
+                const dataUrl = "data:application/octet-stream;base64," + base64Data;
                 
-                await downloadFile(zipBlob, zipFilename);
-                messageDiv.textContent = "保存処理を実行しました。";
+                triggerDownload(dataUrl, zipFilename);
+                messageDiv.textContent = "ZIPの保存処理を実行しました。";
                 
             } else {
-                const blob = new Blob([convertedUint8Array], { type: 'application/octet-stream' });
-                await downloadFile(blob, finalTjaName);
+                // === .tja単体保存モード ===
+                // こちらもBase64データURLに変換して直接保存
+                const base64Data = arrayBufferToBase64(convertedUint8Array);
+                const dataUrl = "data:application/octet-stream;base64," + base64Data;
+                
+                triggerDownload(dataUrl, finalTjaName);
                 messageDiv.textContent = "変換が完了しました！";
             }
             
@@ -311,38 +315,27 @@
         }
     });
 
-    // ▼ アプリ環境(WebView)でエラーを起こさないための特殊保存処理 ▼
-    async function downloadFile(blob, filename) {
-        // 全て汎用ファイル形式に統一してMIMEエラーを回避する
-        const safeBlob = new Blob([blob], { type: 'application/octet-stream' });
-        const fileObj = new File([safeBlob], filename, { type: 'application/octet-stream' });
-
-        // 1. まずはスマホアプリ環境で最も正常に動きやすい「共有（シェア）メニュー」を試す
-        if (navigator.share) {
-            try {
-                // canShare判定がバグるアプリもあるため、緩めの条件で発火を試みる
-                if (!navigator.canShare || navigator.canShare({ files: [fileObj] })) {
-                    await navigator.share({
-                        files: [fileObj],
-                        title: filename
-                    });
-                    return; // 共有メニュー起動に成功すればここで終了
-                }
-            } catch (error) {
-                console.log("共有に失敗したため直接保存に切り替えます", error);
-            }
-        }
-
-        // 2. 共有が使えなかった場合は、直接ダウンロード処理を実行
-        const url = URL.createObjectURL(safeBlob);
+    // 確実に直接ダウンロードを走らせるための関数（data:プロトコル対応）
+    function triggerDownload(dataUrl, filename) {
         const a = document.createElement('a');
-        a.href = url;
+        a.href = dataUrl;
         a.download = filename;
+        // WebView内での強制開閉を防ぐために別ターゲットを指定
+        a.target = '_blank';
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
-        
-        setTimeout(() => URL.revokeObjectURL(url), 2000);
+    }
+
+    // ArrayBufferを安全にBase64に変換するヘルパー関数
+    function arrayBufferToBase64(buffer) {
+        let binary = '';
+        const bytes = new Uint8Array(buffer);
+        const len = bytes.byteLength;
+        for (let i = 0; i < len; i++) {
+            binary += String.fromCharCode(bytes[i]);
+        }
+        return window.btoa(binary);
     }
 </script>
 
