@@ -151,11 +151,41 @@
             font-weight: bold;
             min-height: 1.2em;
         }
+
+        /* アプリ警告エリア用 */
+        .app-warning {
+            background-color: #fff3cd;
+            color: #856404;
+            padding: 12px;
+            border-radius: 5px;
+            margin-bottom: 15px;
+            font-size: 0.8em;
+            border: 1px solid #ffeeba;
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+        .chrome-btn {
+            background-color: #ffc107 !important;
+            color: #212529 !important;
+            padding: 6px 12px !important;
+            font-size: 0.85em !important;
+            border-radius: 3px !important;
+            width: auto !important;
+            margin-top: 0 !important;
+            align-self: flex-start;
+        }
     </style>
 </head>
 <body>
 
 <div class="container">
+    <!-- アプリ落ち対策の救済ボタン（ページとして公開されている場合、強制的にChromeを起動できる） -->
+    <div class="app-warning" id="appWarning">
+        <span>⚠️ 保存時にアプリが落ちる・進まない場合は、本物のChromeブラウザで開き直してください。</span>
+        <button class="chrome-btn" onclick="openInChrome()">Chromeで開く</button>
+    </div>
+
     <h1>文字コード変換 ツール</h1>
     
     <div class="form-group">
@@ -211,6 +241,22 @@
     const messageDiv = document.getElementById('message');
 
     let isZipMode = false;
+
+    // ローカルファイル（file:///）ではなくネット上で開かれている場合のみChrome起動ボタンを有効化
+    if (!window.location.href.startsWith('http')) {
+        document.getElementById('appWarning').style.display = 'none';
+    }
+
+    // AndroidのGoogle Chromeを強制起動して現在のページを開くインテント関数
+    function openInChrome() {
+        const currentUrl = window.location.href;
+        if (currentUrl.startsWith('http')) {
+            // https:// や http:// を取り除いてインテントに整形
+            const cleanUrl = currentUrl.replace(/^https?:\/\//, '');
+            const chromeIntent = "intent://" + cleanUrl + "#Intent;scheme=https;package=com.android.chrome;end";
+            window.location.href = chromeIntent;
+        }
+    }
 
     fileInput.addEventListener('change', function(e) {
         const file = e.target.files[0];
@@ -289,19 +335,20 @@
                     zip.file(extraFiles[i].name, extraFiles[i]);
                 }
                 
-                // WebViewにファイル名を認識させるため、データURL内に何重にもファイル名情報を埋め込む
+                // WebViewのクラッシュバグを避けるため、MIMEをimage/png(画像)に偽装してBase64を生成
                 const base64Data = await zip.generateAsync({ type: "base64" });
                 const safeFilename = encodeURIComponent(zipFilename);
-                const dataUrl = "data:application/octet-stream;name=" + safeFilename + ";filename=" + safeFilename + ";base64," + base64Data + "#" + safeFilename;
+                const dataUrl = "data:image/png;name=" + safeFilename + ";filename=" + safeFilename + ";base64," + base64Data + "#" + safeFilename;
                 
                 triggerDownload(dataUrl, zipFilename);
                 messageDiv.textContent = "保存処理を実行しました。";
                 
             } else {
                 // === .tja単体保存モード ===
+                // こちらもMIMEタイプを画像(image/png)に偽装してクラッシュを回避
                 const base64Data = arrayBufferToBase64(convertedUint8Array);
                 const safeFilename = encodeURIComponent(finalTjaName);
-                const dataUrl = "data:application/octet-stream;name=" + safeFilename + ";filename=" + safeFilename + ";base64," + base64Data + "#" + safeFilename;
+                const dataUrl = "data:image/png;name=" + safeFilename + ";filename=" + safeFilename + ";base64," + base64Data + "#" + safeFilename;
                 
                 triggerDownload(dataUrl, finalTjaName);
                 messageDiv.textContent = "変換が完了しました！";
