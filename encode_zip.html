@@ -122,6 +122,7 @@
             margin-bottom: 0;
             cursor: pointer;
         }
+        /* 初期状態（tja単体の時）はZIP名入力欄を隠す */
         #zipGroup {
             display: none; 
             border-top: 2px dashed #eee;
@@ -188,12 +189,13 @@
         </div>
     </div>
 
+    <!-- 音源ファイルを選択した時だけ表示される項目 -->
     <div class="form-group" id="zipGroup">
         <label for="zipFilenameInput">5. ダウンロードするZIP名</label>
         <input type="text" id="zipFilenameInput" placeholder="例: 譜面データ.zip">
     </div>
 
-    <button id="convertBtn">変換して保存</button>
+    <button id="convertBtn">変換してダウンロード</button>
     <div id="message"></div>
 </div>
 
@@ -212,6 +214,7 @@
 
     let isZipMode = false;
 
+    // 譜面ファイルが選択された時の処理
     fileInput.addEventListener('change', function(e) {
         const file = e.target.files[0];
         if (file) {
@@ -222,24 +225,27 @@
         }
     });
 
+    // 追加ファイルが選択されたらZIPモードにする
     extraFileInput.addEventListener('change', function() {
         if (this.files.length > 0) {
             isZipMode = true;
             zipGroup.style.display = 'block';
-            convertBtn.textContent = '変換してZIP保存';
+            convertBtn.textContent = '変換してZIPをダウンロード';
         } else {
             isZipMode = false;
             zipGroup.style.display = 'none';
-            convertBtn.textContent = '変換して保存';
+            convertBtn.textContent = '変換してダウンロード';
         }
     });
 
+    // 文字コード選択時
     encodingSelect.addEventListener('change', function() {
         const prefixStr = this.value === 'SJIS' ? 'ANSI_' : 'UTF8_';
         prefixDisplay.textContent = prefixStr;
         removePrefixLabel.textContent = prefixStr + " を付けない（上書き用）";
     });
 
+    // 接頭辞チェック時
     removePrefixCheck.addEventListener('change', function() {
         if (this.checked) {
             prefixDisplay.style.display = 'none';
@@ -248,6 +254,7 @@
         }
     });
 
+    // 保存ボタンクリック時
     convertBtn.addEventListener('click', async function() {
         const tjaFile = fileInput.files[0];
         const extraFiles = extraFileInput.files;
@@ -268,6 +275,7 @@
             messageDiv.textContent = isZipMode ? "ZIPを作成中..." : "変換中...";
             messageDiv.style.color = "#3498db";
 
+            // 文字コード変換
             const arrayBuffer = await tjaFile.arrayBuffer();
             const uint8Array = new Uint8Array(arrayBuffer);
             const convertedArray = Encoding.convert(uint8Array, { to: encoding, from: 'AUTO' });
@@ -277,6 +285,7 @@
             const finalTjaName = finalPrefix + outFileName;
 
             if (isZipMode) {
+                // 音源などがある場合はZIP化してダウンロード
                 let zipFilename = zipFilenameInput.value.trim();
                 if (!zipFilename) zipFilename = "download.zip";
                 if (!zipFilename.toLowerCase().endsWith('.zip')) zipFilename += ".zip";
@@ -287,14 +296,16 @@
                     zip.file(extraFiles[i].name, extraFiles[i]);
                 }
                 const zipBlob = await zip.generateAsync({ type: "blob" });
-                await downloadFile(zipBlob, zipFilename);
+                downloadFile(zipBlob, zipFilename);
+                messageDiv.textContent = "ZIPのダウンロードが完了しました！";
                 
             } else {
+                // 譜面のみの場合は.tjaファイルをそのまま直接ダウンロード
                 const blob = new Blob([convertedUint8Array], { type: 'application/octet-stream' });
-                await downloadFile(blob, finalTjaName);
+                downloadFile(blob, finalTjaName);
+                messageDiv.textContent = "変換が完了しました！";
             }
             
-            messageDiv.textContent = "端末のダウンロードフォルダ（ファイル）に保存しました！";
             messageDiv.style.color = "#27ae60";
 
         } catch (error) {
@@ -304,28 +315,8 @@
         }
     });
 
-    // ▼ iOSとAndroid/PCでダウンロード処理を切り替える ▼
-    async function downloadFile(blob, filename) {
-        // iPhoneかiPadかどうかを判定
-        const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
-
-        // iPhone/iPad の場合のみ共有メニュー(Share API)を使う
-        if (isIOS && navigator.canShare) {
-            const fileObj = new File([blob], filename, { type: blob.type || 'application/octet-stream' });
-            if (navigator.canShare({ files: [fileObj] })) {
-                try {
-                    await navigator.share({
-                        files: [fileObj],
-                        title: filename
-                    });
-                    return; 
-                } catch (error) {
-                    console.log("共有がキャンセルされました", error);
-                }
-            }
-        }
-
-        // Android や PC の場合は、ブラウザの通常のダウンロード機能で強制保存
+    // 共通ダウンロード処理 (共有メニューを出さず直接保存する)
+    function downloadFile(blob, filename) {
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
