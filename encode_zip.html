@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>文字コード変換＆ZIP化ツール</title>
+    <!-- 文字コード変換用 (encoding.js) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/encoding-japanese/2.0.0/encoding.min.js"></script>
+    <!-- ZIP作成用 (JSZip) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <style>
+        html, body {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            touch-action: none;
+            background-color: #fff;
+            font-family: 'Segoe UI', Meiryo, system-ui, -apple-system, sans-serif;
+            color: #333;
+        }
+
+        .container {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            
+            background: #fff;
+            padding: 25px 30px;
+            border-radius: 10px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0);
+            
+            width: 90%;
+            max-width: 450px;
+            max-height: 90vh;
+            overflow-y: auto;
+            box-sizing: border-box;
+        }
+
+        .container::-webkit-scrollbar {
+            width: 8px;
+        }
+        .container::-webkit-scrollbar-thumb {
+            background-color: #ccc;
+            border-radius: 4px;
+        }
+
+        h1 {
+            font-size: 1.4em;
+            margin-top: 0;
+            margin-bottom: 20px;
+            color: #2c3e50;
+            text-align: center;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 6px;
+            font-size: 0.9em;
+            font-weight: bold;
+            color: #555;
+        }
+        input[type="file"], select, input[type="text"] {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            box-sizing: border-box;
+            font-size: 0.95em;
+            background-color: #fafafa;
+        }
+        .filename-wrapper {
+            display: flex;
+            align-items: center;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            background-color: #fafafa;
+            overflow: hidden;
+            margin-bottom: 8px;
+        }
+        .filename-prefix {
+            background-color: #e9ecef;
+            padding: 10px;
+            color: #555;
+            font-size: 0.95em;
+            font-weight: bold;
+            border-right: 1px solid #ccc;
+            user-select: none;
+            transition: all 0.2s;
+        }
+        .filename-wrapper input[type="text"] {
+            border: none;
+            flex: 1;
+            margin-bottom: 0;
+        }
+        .filename-wrapper input[type="text"]:focus {
+            background-color: #fff;
+            outline: none;
+        }
+        .checkbox-group {
+            display: flex;
+            align-items: center;
+            font-size: 0.85em;
+            color: #e74c3c;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        .checkbox-group input[type="checkbox"] {
+            margin-right: 8px;
+            width: 16px;
+            height: 16px;
+            cursor: pointer;
+        }
+        .checkbox-group label {
+            margin-bottom: 0;
+            cursor: pointer;
+        }
+        /* ZIP入力枠は初期状態で非表示にする */
+        #zipGroup {
+            display: none; 
+            border-top: 2px dashed #eee;
+            padding-top: 15px;
+            margin-top: 15px;
+        }
+        button {
+            background-color: #3498db;
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            font-size: 1em;
+            font-weight: bold;
+            border-radius: 5px;
+            cursor: pointer;
+            width: 100%;
+            transition: background 0.3s;
+            margin-top: 10px;
+        }
+        button:hover {
+            background-color: #2980b9;
+        }
+        #message {
+            margin-top: 15px;
+            font-size: 0.9em;
+            text-align: center;
+            font-weight: bold;
+            min-height: 1.2em;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>文字コード変換 ツール</h1>
+    
+    <div class="form-group">
+        <label for="fileInput">1. 譜面ファイルを選択 (.txt, .tja)</label>
+        <input type="file" id="fileInput" accept=".txt,.tja">
+    </div>
+
+    <div class="form-group">
+        <label for="extraFileInput">2. 一緒にZIPに入れるファイル (任意・音源等)</label>
+        <input type="file" id="extraFileInput" multiple accept=".ogg,.mp3,.wav,.png,.jpg,.jpeg">
+    </div>
+
+    <div class="form-group">
+        <label for="encodingSelect">3. 譜面の変換後文字コード</label>
+        <select id="encodingSelect">
+            <option value="UTF8">UTF-8</option>
+            <option value="SJIS">ANSI (Shift-JIS)</option>
+        </select>
+    </div>
+
+    <div class="form-group">
+        <label for="filenameInput">4. 保存する譜面ファイル名</label>
+        <div class="filename-wrapper">
+            <div class="filename-prefix" id="prefixDisplay">UTF8_</div>
+            <input type="text" id="filenameInput" placeholder="例: song.tja">
+        </div>
+        <div class="checkbox-group">
+            <input type="checkbox" id="removePrefixCheck">
+            <label for="removePrefixCheck" id="removePrefixLabel">UTF8_ を付けない（上書き用）</label>
+        </div>
+    </div>
+
+    <!-- 追加ファイルが選択された時だけ表示される項目 -->
+    <div class="form-group" id="zipGroup">
+        <label for="zipFilenameInput">5. ダウンロードするZIP名</label>
+        <input type="text" id="zipFilenameInput" placeholder="例: 譜面データ.zip">
+    </div>
+
+    <button id="convertBtn">変換してダウンロード</button>
+    <div id="message"></div>
+</div>
+
+<script>
+    const fileInput = document.getElementById('fileInput');
+    const extraFileInput = document.getElementById('extraFileInput');
+    const encodingSelect = document.getElementById('encodingSelect');
+    const prefixDisplay = document.getElementById('prefixDisplay');
+    const filenameInput = document.getElementById('filenameInput');
+    const removePrefixCheck = document.getElementById('removePrefixCheck');
+    const removePrefixLabel = document.getElementById('removePrefixLabel');
+    const zipGroup = document.getElementById('zipGroup');
+    const zipFilenameInput = document.getElementById('zipFilenameInput');
+    const convertBtn = document.getElementById('convertBtn');
+    const messageDiv = document.getElementById('message');
+
+    // ZIPモードかどうかの判定フラグ
+    let isZipMode = false;
+
+    // 譜面ファイルが選択された時の処理
+    fileInput.addEventListener('change', function(e) {
+        const file = e.target.files[0];
+        if (file) {
+            filenameInput.value = file.name;
+            const nameWithoutExt = file.name.substring(0, file.name.lastIndexOf('.')) || file.name;
+            zipFilenameInput.value = nameWithoutExt + ".zip";
+            messageDiv.textContent = ""; 
+        }
+    });
+
+    // 追加ファイルが選択されたら、ZIP入力枠の表示/非表示を切り替える
+    extraFileInput.addEventListener('change', function() {
+        if (this.files.length > 0) {
+            isZipMode = true;
+            zipGroup.style.display = 'block'; // ZIP名入力枠を表示
+            convertBtn.textContent = '変換してZIPダウンロード';
+        } else {
+            isZipMode = false;
+            zipGroup.style.display = 'none'; // ZIP名入力枠を非表示
+            convertBtn.textContent = '変換してダウンロード';
+        }
+    });
+
+    // 文字コードが変更された時の処理
+    encodingSelect.addEventListener('change', function() {
+        const prefixStr = this.value === 'SJIS' ? 'ANSI_' : 'UTF8_';
+        prefixDisplay.textContent = prefixStr;
+        removePrefixLabel.textContent = prefixStr + " を付けない（上書き用）";
+    });
+
+    // チェックボックス切り替え処理
+    removePrefixCheck.addEventListener('change', function() {
+        if (this.checked) {
+            prefixDisplay.style.display = 'none';
+        } else {
+            prefixDisplay.style.display = 'block';
+        }
+    });
+
+    // ダウンロード実行
+    convertBtn.addEventListener('click', async function() {
+        const tjaFile = fileInput.files[0];
+        const extraFiles = extraFileInput.files;
+        const outFileName = filenameInput.value.trim();
+        const encoding = encodingSelect.value;
+        const removePrefix = removePrefixCheck.checked;
+
+        if (!tjaFile) {
+            alert("1. 譜面ファイルを選択してください。");
+            return;
+        }
+        if (!outFileName) {
+            alert("4. 保存する譜面ファイル名を入力してください。");
+            return;
+        }
+
+        try {
+            messageDiv.textContent = isZipMode ? "ZIPを作成中..." : "変換中...";
+            messageDiv.style.color = "#3498db";
+
+            // 1. 譜面の文字コード変換（共通処理）
+            const arrayBuffer = await tjaFile.arrayBuffer();
+            const uint8Array = new Uint8Array(arrayBuffer);
+
+            const convertedArray = Encoding.convert(uint8Array, {
+                to: encoding,
+                from: 'AUTO'
+            });
+            const convertedUint8Array = new Uint8Array(convertedArray);
+
+            // ファイル名の決定
+            let finalPrefix = removePrefix ? "" : (encoding === 'SJIS' ? 'ANSI_' : 'UTF8_');
+            const finalTjaName = finalPrefix + outFileName;
+
+            // 2. モードによる分岐
+            if (isZipMode) {
+                // ▼ ZIPとしてダウンロードする処理 ▼
+                let zipFilename = zipFilenameInput.value.trim();
+                if (!zipFilename) zipFilename = "download.zip";
+                if (!zipFilename.toLowerCase().endsWith('.zip')) zipFilename += ".zip";
+
+                const zip = new JSZip();
+                zip.file(finalTjaName, convertedUint8Array); // 譜面追加
+                
+                for (let i = 0; i < extraFiles.length; i++) {
+                    zip.file(extraFiles[i].name, extraFiles[i]); // 音楽・画像追加
+                }
+
+                const zipBlob = await zip.generateAsync({ type: "blob" });
+                downloadFile(zipBlob, zipFilename);
+                messageDiv.textContent = "ZIPのダウンロードが完了しました！";
+                
+            } else {
+                // ▼ テキストファイル単体でダウンロードする処理 ▼
+                const blob = new Blob([convertedUint8Array], { type: 'application/octet-stream' });
+                downloadFile(blob, finalTjaName);
+                messageDiv.textContent = "変換が完了しました！";
+            }
+            
+            messageDiv.style.color = "#27ae60";
+
+        } catch (error) {
+            console.error(error);
+            messageDiv.textContent = "処理中にエラーが発生しました。";
+            messageDiv.style.color = "#e74c3c";
+        }
+    });
+
+    // 共通のダウンロード実行関数
+    function downloadFile(blob, filename) {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+    }
+</script>
+
+</body>
+</html>
