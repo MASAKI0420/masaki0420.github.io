@@ -289,18 +289,19 @@
                     zip.file(extraFiles[i].name, extraFiles[i]);
                 }
                 
-                // WebViewのダウンロードバグを避けるため、Base64データURLを直接生成して保存
+                // WebViewにファイル名を認識させるため、データURL内に何重にもファイル名情報を埋め込む
                 const base64Data = await zip.generateAsync({ type: "base64" });
-                const dataUrl = "data:application/octet-stream;base64," + base64Data;
+                const safeFilename = encodeURIComponent(zipFilename);
+                const dataUrl = "data:application/octet-stream;name=" + safeFilename + ";filename=" + safeFilename + ";base64," + base64Data + "#" + safeFilename;
                 
                 triggerDownload(dataUrl, zipFilename);
-                messageDiv.textContent = "ZIPの保存処理を実行しました。";
+                messageDiv.textContent = "保存処理を実行しました。";
                 
             } else {
                 // === .tja単体保存モード ===
-                // こちらもBase64データURLに変換して直接保存
                 const base64Data = arrayBufferToBase64(convertedUint8Array);
-                const dataUrl = "data:application/octet-stream;base64," + base64Data;
+                const safeFilename = encodeURIComponent(finalTjaName);
+                const dataUrl = "data:application/octet-stream;name=" + safeFilename + ";filename=" + safeFilename + ";base64," + base64Data + "#" + safeFilename;
                 
                 triggerDownload(dataUrl, finalTjaName);
                 messageDiv.textContent = "変換が完了しました！";
@@ -315,19 +316,16 @@
         }
     });
 
-    // 確実に直接ダウンロードを走らせるための関数（data:プロトコル対応）
     function triggerDownload(dataUrl, filename) {
         const a = document.createElement('a');
         a.href = dataUrl;
         a.download = filename;
-        // WebView内での強制開閉を防ぐために別ターゲットを指定
         a.target = '_blank';
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
     }
 
-    // ArrayBufferを安全にBase64に変換するヘルパー関数
     function arrayBufferToBase64(buffer) {
         let binary = '';
         const bytes = new Uint8Array(buffer);
