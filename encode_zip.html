@@ -193,7 +193,7 @@
         <input type="text" id="zipFilenameInput" placeholder="例: 譜面データ.zip">
     </div>
 
-    <button id="convertBtn">変換してダウンロード</button>
+    <button id="convertBtn">変換して保存</button>
     <div id="message"></div>
 </div>
 
@@ -294,7 +294,7 @@
                 await downloadFile(blob, finalTjaName);
             }
             
-            messageDiv.textContent = "完了しました！（共有メニューが出た場合は「ファイルに保存」を選んでください）";
+            messageDiv.textContent = "端末のダウンロードフォルダ（ファイル）に保存しました！";
             messageDiv.style.color = "#27ae60";
 
         } catch (error) {
@@ -304,35 +304,36 @@
         }
     });
 
-    // ▼ アプリ化(PWA)対応のダウンロード処理 ▼
+    // ▼ iOSとAndroid/PCでダウンロード処理を切り替える ▼
     async function downloadFile(blob, filename) {
-        // 1. スマホ(iOS/Android)の共有機能が使える場合はそれを利用する
-        const fileObj = new File([blob], filename, { type: blob.type || 'application/octet-stream' });
-        
-        if (navigator.canShare && navigator.canShare({ files: [fileObj] })) {
-            try {
-                await navigator.share({
-                    files: [fileObj],
-                    title: filename
-                });
-                return; // 共有メニューが開いたらここで処理終了
-            } catch (error) {
-                console.log("共有がキャンセルされたか、失敗しました", error);
-                // エラーになった場合は通常のダウンロード処理（下）へ進む
+        // iPhoneかiPadかどうかを判定
+        const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+
+        // iPhone/iPad の場合のみ共有メニュー(Share API)を使う
+        if (isIOS && navigator.canShare) {
+            const fileObj = new File([blob], filename, { type: blob.type || 'application/octet-stream' });
+            if (navigator.canShare({ files: [fileObj] })) {
+                try {
+                    await navigator.share({
+                        files: [fileObj],
+                        title: filename
+                    });
+                    return; 
+                } catch (error) {
+                    console.log("共有がキャンセルされました", error);
+                }
             }
         }
 
-        // 2. PCや、共有機能が使えない場合の従来のダウンロード処理
+        // Android や PC の場合は、ブラウザの通常のダウンロード機能で強制保存
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
         a.download = filename;
-        a.target = '_blank'; // アプリ内ブラウザ対策
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
         
-        // 処理が速すぎて途切れるのを防ぐため、少し待ってからメモリ解放
         setTimeout(() => URL.revokeObjectURL(url), 2000);
     }
 </script>
