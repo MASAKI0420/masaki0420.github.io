@@ -1,0 +1,765 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>箱入り娘 (Hakoiri Musume) - シンプル版</title>
+    <style>
+        :root {
+            --cell-size: 80px;
+            --bg-color: #f4efe6;
+            --board-border-color: #5c3d24;
+            --board-bg-color: #dfd3c3;
+        }
+
+        /* 全ての要素でテキスト選択、長押しメニュー、タップ時のハイライト色を無効化 */
+        * {
+            box-sizing: border-box;
+            -webkit-user-select: none;
+            -moz-user-select: none;
+            -ms-user-select: none;
+            user-select: none;
+            -webkit-touch-callout: none;
+            -webkit-tap-highlight-color: transparent;
+            outline: none;
+        }
+
+        html, body {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            position: fixed;
+            top: 1000;
+            left: 0;
+            background-color: var(--bg-color);
+            touch-action: none;
+        }
+
+        body {
+            position: relative;
+            background-color: var(--bg-color);
+        }
+
+        /* ゲーム盤を含む本体ラッパー（画面中央に完全固定） */
+        #game-wrapper {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 360px;
+            height: 610px;
+            transform: translate(-50%, -50%) scale(1);
+            transform-origin: center center;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 10px;
+            box-sizing: border-box;
+        }
+
+        h1 {
+            margin: 5px 0;
+            font-size: 22px;
+            color: #4a3423;
+            letter-spacing: 0.1em;
+            text-align: center;
+        }
+
+        .description {
+            font-size: 11px;
+            color: #666;
+            margin-bottom: 10px;
+            text-align: center;
+            line-height: 1.3;
+        }
+
+        .status-container {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            width: calc(var(--cell-size) * 4 + 16px);
+            margin-bottom: 10px;
+        }
+
+        .moves {
+            font-size: 15px;
+            font-weight: bold;
+            color: #4a3423;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 6px;
+        }
+
+        .btn {
+            background-color: #8e7a5f;
+            color: white;
+            border: none;
+            padding: 6px 10px;
+            font-size: 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: background-color 0.2s, opacity 0.2s;
+        }
+
+        .btn:hover:not(:disabled) {
+            background-color: #726049;
+        }
+
+        .btn:disabled {
+            background-color: #d2c9bc;
+            color: #8c8275;
+            cursor: not-allowed;
+            opacity: 0.6;
+        }
+
+        /* 盤面のスタイル */
+        .board-wrapper {
+            position: relative;
+            padding: 10px;
+            background-color: #a08060;
+            border-radius: 12px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+            margin-bottom: 25px; /* 下部脱出口の表示スペース確保 */
+        }
+
+        .board {
+            position: relative;
+            width: calc(var(--cell-size) * 4);
+            height: calc(var(--cell-size) * 5);
+            background-color: var(--board-bg-color);
+            background-image: 
+                linear-gradient(rgba(0,0,0,0.04) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0,0,0,0.04) 1px, transparent 1px);
+            background-size: var(--cell-size) var(--cell-size);
+            border: 4px solid var(--board-border-color);
+            border-radius: 4px;
+            box-sizing: content-box;
+            overflow: visible;
+        }
+
+        /* 脱出口の目印 */
+        .exit-gate {
+            position: absolute;
+            bottom: -24px;
+            left: calc(var(--cell-size) * 1 + 4px);
+            width: calc(var(--cell-size) * 2);
+            height: 20px;
+            background-color: #e05a47;
+            border: 2px solid var(--board-border-color);
+            border-top: none;
+            border-radius: 0 0 8px 8px;
+            text-align: center;
+            font-size: 11px;
+            font-weight: bold;
+            color: white;
+            line-height: 18px;
+            letter-spacing: 0.1em;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+
+        /* 駒の基本スタイル */
+        .block {
+            position: absolute;
+            box-sizing: border-box;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 15px;
+            cursor: grab;
+            touch-action: none;
+            box-shadow: 
+                inset 1px 1px 0 rgba(255,255,255,0.4),
+                inset -1px -1px 0 rgba(0,0,0,0.2),
+                2px 4px 8px rgba(0,0,0,0.15);
+            transition: left 0.12s ease-out, top 0.12s ease-out, transform 0.12s ease-out;
+        }
+
+        .block:active {
+            cursor: grabbing;
+            box-shadow: 
+                inset 1px 1px 0 rgba(255,255,255,0.4),
+                inset -1px -1px 0 rgba(0,0,0,0.2),
+                1px 2px 4px rgba(0,0,0,0.2);
+        }
+
+        .block span {
+            pointer-events: none;
+        }
+
+        /* 駒の種類ごとの色分け */
+        .musume {
+            background: linear-gradient(135deg, #f58f83, #e05a47);
+            color: white;
+            font-size: 18px;
+            border: 2px solid #b83221;
+            z-index: 2;
+        }
+
+        .parent {
+            background: linear-gradient(135deg, #a89f91, #7a7063);
+            color: white;
+            border: 2px solid #544b41;
+        }
+
+        .sibling {
+            background: linear-gradient(135deg, #9bb2c0, #698495);
+            color: white;
+            border: 2px solid #485c6a;
+        }
+
+        .grandparent {
+            background: linear-gradient(135deg, #a3b899, #728a68);
+            color: white;
+            border: 2px solid #4e6146;
+        }
+
+        .child {
+            background: linear-gradient(135deg, #eaddc3, #c5b497);
+            color: #4a3c28;
+            border: 2px solid #918064;
+            font-size: 13px;
+        }
+
+        /* クリア時モーダル */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.6);
+            align-items: center;
+            justify-content: center;
+            z-index: 100;
+        }
+
+        .modal-content {
+            background-color: white;
+            padding: 30px;
+            border-radius: 12px;
+            text-align: center;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            max-width: 300px;
+            width: 80%;
+        }
+
+        .modal-title {
+            font-size: 22px;
+            color: #e05a47;
+            margin-bottom: 10px;
+            font-weight: bold;
+        }
+
+        .modal-text {
+            font-size: 16px;
+            margin-bottom: 20px;
+            color: #555;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="game-wrapper">
+        <h1>箱入り娘</h1>
+        <div class="description">
+            「娘」をスライドさせて、一番下の脱出口から外へ送り出してください。
+            自動解決ボタンを押すと、最短手順で自動クリアを実行します。
+        </div>
+
+        <div class="status-container">
+            <div class="moves">手数: <span id="move-count">0</span></div>
+            <div class="button-group">
+                <button class="btn" id="auto-btn">自動解決</button>
+                <button class="btn" id="undo-btn" disabled>一つ戻る</button>
+                <button class="btn" id="reset-btn">やり直す</button>
+            </div>
+        </div>
+
+        <div class="board-wrapper">
+            <div class="board" id="board">
+                <!-- 駒はJavaScriptで動的に生成されます -->
+            </div>
+            <div class="exit-gate">脱出口</div>
+        </div>
+    </div>
+
+    <div class="modal" id="win-modal">
+        <div class="modal-content">
+            <div class="modal-title">祝・脱出成功！</div>
+            <div class="modal-text">あなたの記録: <span id="final-moves">0</span> 手</div>
+            <button class="btn" id="replay-btn">もう一度遊ぶ</button>
+        </div>
+    </div>
+
+    <script>
+        const CELL_SIZE = 80;
+
+        const initialBlocks = [
+            { id: 1, x: 1, y: 0, w: 2, h: 2, label: "娘", class: "musume" },
+            { id: 2, x: 0, y: 0, w: 1, h: 2, label: "父親", class: "parent" },
+            { id: 3, x: 3, y: 0, w: 1, h: 2, label: "母親", class: "parent" },
+            { id: 4, x: 0, y: 2, w: 1, h: 2, label: "兄", class: "sibling" },
+            { id: 5, x: 3, y: 2, w: 1, h: 2, label: "弟", class: "sibling" },
+            { id: 6, x: 1, y: 2, w: 2, h: 1, label: "祖父", class: "grandparent" },
+            { id: 7, x: 1, y: 3, w: 1, h: 1, label: "小僧", class: "child" },
+            { id: 8, x: 2, y: 3, w: 1, h: 1, label: "小僧", class: "child" },
+            { id: 9, x: 0, y: 4, w: 1, h: 1, label: "小僧", class: "child" },
+            { id: 10, x: 3, y: 4, w: 1, h: 1, label: "小僧", class: "child" }
+        ];
+
+        let blocks = [];
+        let movesCount = 0;
+        let isGameCleared = false;
+        let historyStack = [];
+
+        // ドラッグ状態管理
+        let activeBlock = null;
+        let activeEl = null;
+        let anchorX = 0;
+        let anchorY = 0;
+        let hasMovedInSession = false;
+
+        let startGridX = 0;
+        let startGridY = 0;
+        let snapshotState = null;
+
+        // 自動解決管理
+        let isAutoPlaying = false;
+        let autoPlayTimer = null;
+        let autoPlaySteps = [];
+        let autoPlayIndex = 0;
+
+        const boardEl = document.getElementById('board');
+        const moveCountEl = document.getElementById('move-count');
+        const autoBtn = document.getElementById('auto-btn');
+        const undoBtn = document.getElementById('undo-btn');
+        const resetBtn = document.getElementById('reset-btn');
+        const winModal = document.getElementById('win-modal');
+        const finalMovesEl = document.getElementById('final-moves');
+        const replayBtn = document.getElementById('replay-btn');
+        const gameWrapper = document.getElementById('game-wrapper');
+
+        function getBlockW(id) {
+            return (id === 1 || id === 6) ? 2 : 1;
+        }
+        function getBlockH(id) {
+            if (id === 1 || (id >= 2 && id <= 5)) return 2;
+            return 1;
+        }
+
+        // どのような画面サイズでも完全に中心に配置するアルゴリズム
+        function adjustScale() {
+            const vh = window.innerHeight;
+            const vw = window.innerWidth;
+            const designWidth = 360; 
+            const designHeight = 610; // 解説パネル分を差し引いた設計高さ
+
+            const scaleX = vw / designWidth;
+            const scaleY = vh / designHeight;
+            const scale = Math.min(scaleX, scaleY, 1); 
+
+            gameWrapper.style.transform = `translate(-50%, -50%) scale(${scale})`;
+        }
+
+        function initGame() {
+            stopAutoPlay();
+            boardEl.innerHTML = '';
+            movesCount = 0;
+            isGameCleared = false;
+            historyStack = [];
+            updateMovesDisplay();
+            updateUndoButtonState();
+            winModal.style.display = 'none';
+            
+            blocks = JSON.parse(JSON.stringify(initialBlocks));
+
+            blocks.forEach(block => {
+                const el = document.createElement('div');
+                el.className = `block ${block.class}`;
+                
+                el.style.width = `${block.w * CELL_SIZE - 4}px`;
+                el.style.height = `${block.h * CELL_SIZE - 4}px`;
+                el.style.left = `${block.x * CELL_SIZE + 2}px`;
+                el.style.top = `${block.y * CELL_SIZE + 2}px`;
+
+                const labelSpan = document.createElement('span');
+                labelSpan.textContent = block.label;
+                el.appendChild(labelSpan);
+
+                el.addEventListener('pointerdown', (e) => onPointerDown(e, block, el));
+                el.addEventListener('pointermove', (e) => onPointerMove(e, block, el));
+                el.addEventListener('pointerup', (e) => onPointerUp(e, block, el));
+                el.addEventListener('pointercancel', (e) => onPointerUp(e, block, el));
+
+                boardEl.appendChild(el);
+                block.el = el;
+            });
+            adjustScale();
+        }
+
+        function updateMovesDisplay() {
+            moveCountEl.textContent = movesCount;
+        }
+
+        function updateUndoButtonState() {
+            if (historyStack.length > 0 && !isGameCleared && !isAutoPlaying) {
+                undoBtn.removeAttribute('disabled');
+            } else {
+                undoBtn.setAttribute('disabled', 'true');
+            }
+        }
+
+        function canMoveTo(currentBlock, targetX, targetY) {
+            if (targetX < 0 || targetY < 0 || targetX + currentBlock.w > 4 || targetY + currentBlock.h > 5) {
+                return false;
+            }
+            for (let b of blocks) {
+                if (b.id === currentBlock.id) continue;
+                const overlapX = (targetX < b.x + b.w) && (targetX + currentBlock.w > b.x);
+                const overlapY = (targetY < b.y + b.h) && (targetY + currentBlock.h > b.y);
+                if (overlapX && overlapY) {
+                    return false;
+                }
+            }
+            return true;
+        }
+
+        function onPointerDown(e, block, el) {
+            if (isGameCleared || isAutoPlaying) return;
+            e.preventDefault();
+            
+            activeBlock = block;
+            activeEl = el;
+            anchorX = e.clientX;
+            anchorY = e.clientY;
+            hasMovedInSession = false;
+
+            startGridX = block.x;
+            startGridY = block.y;
+            snapshotState = blocks.map(b => ({ id: b.id, x: b.x, y: b.y }));
+
+            el.style.transition = 'none';
+            el.style.zIndex = '10';
+
+            el.setPointerCapture(e.pointerId);
+        }
+
+        function onPointerMove(e, block, el) {
+            if (activeBlock !== block || activeEl !== el) return;
+            e.preventDefault();
+
+            let dx = e.clientX - anchorX;
+            let dy = e.clientY - anchorY;
+
+            let movedThisStep = true;
+            const threshold = CELL_SIZE / 2;
+            let safetyCounter = 0;
+
+            while (movedThisStep && safetyCounter < 10) {
+                safetyCounter++;
+                movedThisStep = false;
+                const absDx = Math.abs(dx);
+                const absDy = Math.abs(dy);
+
+                if (absDx >= absDy && absDx >= threshold) {
+                    const stepX = Math.sign(dx);
+                    if (canMoveTo(block, block.x + stepX, block.y)) {
+                        block.x += stepX;
+                        anchorX += stepX * CELL_SIZE;
+                        dx -= stepX * CELL_SIZE;
+                        movedThisStep = true;
+                        hasMovedInSession = true;
+                    }
+                } else if (absDy > absDx && absDy >= threshold) {
+                    const stepY = Math.sign(dy);
+                    if (canMoveTo(block, block.x, block.y + stepY)) {
+                        block.y += stepY;
+                        anchorY += stepY * CELL_SIZE;
+                        dy -= stepY * CELL_SIZE;
+                        movedThisStep = true;
+                        hasMovedInSession = true;
+                    }
+                }
+            }
+
+            if (dx < 0 && !canMoveTo(block, block.x - 1, block.y)) {
+                anchorX = e.clientX;
+                dx = 0;
+            }
+            if (dx > 0 && !canMoveTo(block, block.x + 1, block.y)) {
+                anchorX = e.clientX;
+                dx = 0;
+            }
+            if (dy < 0 && !canMoveTo(block, block.x, block.y - 1)) {
+                anchorY = e.clientY;
+                dy = 0;
+            }
+            if (dy > 0 && !canMoveTo(block, block.x, block.y + 1)) {
+                anchorY = e.clientY;
+                dy = 0;
+            }
+
+            el.style.left = `${block.x * CELL_SIZE + 2}px`;
+            el.style.top = `${block.y * CELL_SIZE + 2}px`;
+            el.style.transform = `translate(${dx}px, ${dy}px)`;
+        }
+
+        function onPointerUp(e, block, el) {
+            if (activeBlock !== block || activeEl !== el) return;
+            e.preventDefault();
+
+            try {
+                el.releasePointerCapture(e.pointerId);
+            } catch(err) {}
+
+            el.style.transition = 'left 0.12s ease-out, top 0.12s ease-out, transform 0.12s ease-out';
+            el.style.left = `${block.x * CELL_SIZE + 2}px`;
+            el.style.top = `${block.y * CELL_SIZE + 2}px`;
+            el.style.transform = 'translate(0px, 0px)';
+            el.style.zIndex = '1';
+
+            const actuallyMoved = (block.x !== startGridX || block.y !== startGridY);
+
+            if (actuallyMoved) {
+                historyStack.push(snapshotState);
+                movesCount++;
+                updateMovesDisplay();
+                updateUndoButtonState();
+                checkWinCondition();
+            }
+
+            activeBlock = null;
+            activeEl = null;
+        }
+
+        function undo() {
+            if (historyStack.length === 0 || isGameCleared || isAutoPlaying) return;
+
+            const prevState = historyStack.pop();
+            
+            prevState.forEach(saved => {
+                const block = blocks.find(b => b.id === saved.id);
+                if (block) {
+                    block.x = saved.x;
+                    block.y = saved.y;
+                    
+                    const el = block.el;
+                    el.style.transition = 'left 0.15s ease-out, top 0.15s ease-out, transform 0.15s ease-out';
+                    el.style.left = `${block.x * CELL_SIZE + 2}px`;
+                    el.style.top = `${block.y * CELL_SIZE + 2}px`;
+                    el.style.transform = 'translate(0px, 0px)';
+                }
+            });
+
+            movesCount--;
+            updateMovesDisplay();
+            updateUndoButtonState();
+        }
+
+        function checkWinCondition() {
+            const musume = blocks.find(b => b.id === 1);
+            if (musume && musume.x === 1 && musume.y === 3) {
+                isGameCleared = true;
+                setTimeout(() => {
+                    finalMovesEl.textContent = movesCount;
+                    winModal.style.display = 'flex';
+                    updateUndoButtonState();
+                }, 200);
+            }
+        }
+
+        // --- AI自動解決ソルバー ---
+
+        function getNormalizedKey(state) {
+            const grid = Array(20).fill('.');
+            state.forEach(b => {
+                const w = getBlockW(b.id);
+                const h = getBlockH(b.id);
+                let char = 'S'; 
+                if (b.id === 1) char = 'D'; 
+                else if (b.id === 6) char = 'H'; 
+                else if (b.id >= 2 && b.id <= 5) char = 'V'; 
+                
+                for (let r = b.y; r < b.y + h; r++) {
+                    for (let c = b.x; c < b.x + w; c++) {
+                        grid[r * 4 + c] = char;
+                    }
+                }
+            });
+            return grid.join('');
+        }
+
+        function getNextStates(state) {
+            const nextStates = [];
+            const dirs = [
+                {dx: -1, dy: 0}, {dx: 1, dy: 0},
+                {dx: 0, dy: -1}, {dx: 0, dy: 1}
+            ];
+            
+            for (let i = 0; i < state.length; i++) {
+                const block = state[i];
+                const w = getBlockW(block.id);
+                const h = getBlockH(block.id);
+                
+                for (let dir of dirs) {
+                    const nx = block.x + dir.dx;
+                    const ny = block.y + dir.dy;
+                    
+                    if (nx < 0 || ny < 0 || nx + w > 4 || ny + h > 5) continue;
+                    
+                    let collision = false;
+                    for (let j = 0; j < state.length; j++) {
+                        if (i === j) continue;
+                        const b = state[j];
+                        const bw = getBlockW(b.id);
+                        const bh = getBlockH(b.id);
+                        
+                        const overlapX = (nx < b.x + bw) && (nx + w > b.x);
+                        const overlapY = (ny < b.y + bh) && (ny + h > b.y);
+                        if (overlapX && overlapY) {
+                            collision = true;
+                            break;
+                        }
+                    }
+                    
+                    if (!collision) {
+                        const nextState = state.map((b, idx) => {
+                            if (idx === i) return { id: b.id, x: nx, y: ny };
+                            return { id: b.id, x: b.x, y: b.y };
+                        });
+                        nextStates.push(nextState);
+                    }
+                }
+            }
+            return nextStates;
+        }
+
+        function solvePuzzle(startBlocks) {
+            const startState = startBlocks.map(b => ({ id: b.id, x: b.x, y: b.y }));
+            const queue = [];
+            const visited = new Set();
+            
+            const startKey = getNormalizedKey(startState);
+            visited.add(startKey);
+            queue.push({ state: startState, path: [] });
+            
+            let iterations = 0;
+            const maxIterations = 25000; 
+
+            while (queue.length > 0 && iterations < maxIterations) {
+                iterations++;
+                const current = queue.shift();
+                
+                const musume = current.state.find(b => b.id === 1);
+                if (musume.x === 1 && musume.y === 3) {
+                    return current.path.concat([current.state]);
+                }
+                
+                const nexts = getNextStates(current.state);
+                for (let nextState of nexts) {
+                    const key = getNormalizedKey(nextState);
+                    if (!visited.has(key)) {
+                        visited.add(key);
+                        queue.push({
+                            state: nextState,
+                            path: current.path.concat([current.state])
+                        });
+                    }
+                }
+            }
+            return null; 
+        }
+
+        function toggleAutoPlay() {
+            if (isAutoPlaying) {
+                stopAutoPlay();
+                return;
+            }
+
+            const path = solvePuzzle(blocks);
+            if (!path || path.length <= 1) {
+                alert("この状態からクリアする解法が見つかりませんでした。");
+                return;
+            }
+
+            isAutoPlaying = true;
+            autoPlaySteps = path;
+            autoPlayIndex = 1; 
+            
+            autoBtn.textContent = "停止";
+            undoBtn.setAttribute('disabled', 'true');
+            resetBtn.setAttribute('disabled', 'true');
+            
+            playNextStep();
+        }
+
+        function playNextStep() {
+            if (!isAutoPlaying || autoPlayIndex >= autoPlaySteps.length) {
+                stopAutoPlay();
+                return;
+            }
+
+            const nextState = autoPlaySteps[autoPlayIndex];
+            const currentStateSnapshot = blocks.map(b => ({ id: b.id, x: b.x, y: b.y }));
+            historyStack.push(currentStateSnapshot);
+
+            nextState.forEach(saved => {
+                const b = blocks.find(x => x.id === saved.id);
+                if (b) {
+                    b.x = saved.x;
+                    b.y = saved.y;
+                    
+                    const el = b.el;
+                    el.style.transition = 'left 0.16s ease-out, top 0.16s ease-out';
+                    el.style.left = `${b.x * CELL_SIZE + 2}px`;
+                    el.style.top = `${b.y * CELL_SIZE + 2}px`;
+                }
+            });
+
+            movesCount++;
+            updateMovesDisplay();
+            autoPlayIndex++;
+
+            const musume = nextState.find(b => b.id === 1);
+            if (musume.x === 1 && musume.y === 3) {
+                isAutoPlaying = false;
+                setTimeout(() => {
+                    checkWinCondition();
+                    stopAutoPlay();
+                }, 180);
+                return;
+            }
+
+            autoPlayTimer = setTimeout(playNextStep, 260); 
+        }
+
+        function stopAutoPlay() {
+            isAutoPlaying = false;
+            if (autoPlayTimer) {
+                clearTimeout(autoPlayTimer);
+                autoPlayTimer = null;
+            }
+            autoBtn.textContent = "自動解決";
+            resetBtn.removeAttribute('disabled');
+            updateUndoButtonState();
+        }
+
+        autoBtn.addEventListener('click', toggleAutoPlay);
+        undoBtn.addEventListener('click', undo);
+        resetBtn.addEventListener('click', initGame);
+        replayBtn.addEventListener('click', initGame);
+
+        window.addEventListener('resize', adjustScale);
+        window.addEventListener('orientationchange', adjustScale);
+        window.addEventListener('DOMContentLoaded', initGame);
+    </script>
+</body>
+</html>
