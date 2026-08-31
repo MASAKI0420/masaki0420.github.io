@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Google Drive 直リンク＆QRコード作成ツール</title>
+    <!-- QRコード生成ライブラリ -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <style>
+        html, body {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100dvh;
+            background-color: #ffffff;
+            overflow: hidden;
+            touch-action: pan-y;
+        }
+        body {
+            font-family: 'Helvetica Neue', Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            box-sizing: border-box;
+            padding-top: env(safe-area-inset-top);
+            padding-bottom: env(safe-area-inset-bottom);
+            padding-left: env(safe-area-inset-left);
+            padding-right: env(safe-area-inset-right);
+        }
+        .container {
+            background-color: #ffffff;
+            padding: 25px;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0);
+            max-width: 500px;
+            width: 90%;
+            max-height: 90dvh;
+            overflow-y: auto;
+            box-sizing: border-box;
+        }
+        h1 {
+            font-size: 18px;
+            color: #333;
+            margin-top: 0;
+            margin-bottom: 15px;
+            text-align: center;
+        }
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: bold;
+            color: #555;
+            font-size: 13px;
+        }
+        input[type="text"] {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 15px;
+            border: 1px solid #ccc;
+            border-radius: 6px;
+            box-sizing: border-box;
+            font-size: 14px;
+        }
+        button {
+            width: 100%;
+            padding: 12px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-size: 15px;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        .result-area {
+            margin-top: 20px;
+            padding-top: 15px;
+            border-top: 1px solid #eee;
+            display: none;
+        }
+        .result-area.active {
+            display: block;
+        }
+        .output-link {
+            background-color: #ffffff;
+            padding: 10px;
+            border-radius: 6px;
+            word-break: break-all;
+            font-size: 13px;
+            margin-bottom: 10px;
+            border: 1px solid #ddd;
+        }
+        .copy-btn {
+            background-color: #28a745;
+            margin-bottom: 15px;
+        }
+        .copy-btn:hover {
+            background-color: #218838;
+        }
+        .qr-area {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin-top: 15px;
+            padding: 12px;
+            background-color: #ffffff;
+            border-radius: 6px;
+            border: 1px dashed #ccc;
+        }
+        .qr-title {
+            font-size: 13px;
+            font-weight: bold;
+            color: #555;
+            margin-bottom: 8px;
+        }
+        .qr-display-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 148px;
+        }
+        /* 表示用のJPEG画像（余白が画像内に含まれるようになったため、外枠の白線は削除しています） */
+        #qrImage {
+            display: none;
+            width: 140px;
+            height: 140px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0);
+            user-select: auto !important;
+            -webkit-user-select: auto !important;
+            -webkit-touch-callout: default !important;
+            pointer-events: auto !important;
+        }
+        #qrcode-hidden {
+            display: none !important;
+        }
+        .error-message {
+            color: #dc3545;
+            font-size: 13px;
+            margin-top: -10px;
+            margin-bottom: 12px;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>Google Drive 直リンク＆QR作成</h1>
+    
+    <label for="inputUrl">共有リンクを入力してください:</label>
+    <input type="text" id="inputUrl" placeholder="https://drive.google.com/file/d/.../view?usp=sharing">
+    <div id="errorMessage" class="error-message">有効なGoogle Driveのリンクを入力してください。</div>
+    
+    <button onclick="convertLink()">変換してQRコード生成</button>
+
+    <div id="resultArea" class="result-area">
+        <label>変換後の直リンク:</label>
+        <div id="outputLink" class="output-link"></div>
+        <button class="copy-btn" onclick="copyToClipboard()">リンクをコピーする</button>
+
+        <div class="qr-area">
+            <div class="qr-title">ダウンロード用QRコード</div>
+            <div class="qr-display-container">
+                <img id="qrImage" alt="QR Code">
+                <div id="qrcode-hidden"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('touchstart', function (event) {
+    if (event.touches.length > 1) {
+        event.preventDefault();
+    }
+}, { passive: false });
+
+let lastTouchEnd = 0;
+document.addEventListener('touchend', function (event) {
+    const now = (new Date()).getTime();
+    if (now - lastTouchEnd <= 300) {
+        if (event.target.tagName !== 'IMG') {
+            event.preventDefault();
+        }
+    }
+    lastTouchEnd = now;
+}, false);
+
+document.addEventListener('gesturestart', function (event) {
+    event.preventDefault();
+});
+
+function convertLink() {
+    const inputUrl = document.getElementById('inputUrl').value.trim();
+    const errorMessage = document.getElementById('errorMessage');
+    const resultArea = document.getElementById('resultArea');
+    const outputLink = document.getElementById('outputLink');
+    const qrHidden = document.getElementById('qrcode-hidden');
+    const qrImage = document.getElementById('qrImage');
+
+    const regExp = /\/file\/d\/([a-zA-Z0-9-_]+)/;
+    const match = inputUrl.match(regExp);
+
+    if (match && match[1]) {
+        errorMessage.style.display = 'none';
+        const fileId = match[1];
+        const directLink = `https://docs.google.com/uc?export=download&id=${fileId}`;
+        
+        outputLink.textContent = directLink;
+        resultArea.classList.add('active');
+
+        qrImage.style.display = 'none';
+        qrImage.src = '';
+        qrHidden.innerHTML = '';
+        
+        // 1. まずは480pxサイズでQRコード自体を裏側で生成します
+        new QRCode(qrHidden, {
+            text: directLink,
+            width: 480,
+            height: 480,
+            colorDark : "#000000",
+            colorLight : "#ffffff",
+            correctLevel : QRCode.CorrectLevel.H
+        });
+
+        setTimeout(() => {
+            try {
+                const canvas = qrHidden.querySelector('canvas');
+                if (canvas) {
+                    // 2. 余白を含めた新しい一時キャンバス（560px）を作成します（片側40pxずつの余白）
+                    const marginCanvas = document.createElement('canvas');
+                    marginCanvas.width = 560;  // 480 + 40*2
+                    marginCanvas.height = 560; // 480 + 40*2
+                    const ctx = marginCanvas.getContext('2d');
+
+                    // 全体を白で塗りつぶす（これが白い余白になります）
+                    ctx.fillStyle = '#ffffff';
+                    ctx.fillRect(0, 0, marginCanvas.width, marginCanvas.height);
+
+                    // 中央部分に生成したQRコードを描画
+                    ctx.drawImage(canvas, 40, 40);
+
+                    // 3. 余白が合成された最終データを高精細JPEGとして出力
+                    const jpegDataUrl = marginCanvas.toDataURL('image/jpeg', 1.0);
+                    qrImage.src = jpegDataUrl;
+                    qrImage.style.display = 'block';
+                }
+            } catch (error) {
+                console.error("余白の合成、またはJPEG変換に失敗しました:", error);
+                const fallbackImg = qrHidden.querySelector('img');
+                if (fallbackImg) {
+                    qrImage.src = fallbackImg.src;
+                    qrImage.style.display = 'block';
+                }
+            }
+        }, 50);
+
+    } else {
+        errorMessage.style.display = 'block';
+        resultArea.classList.remove('active');
+    }
+}
+
+function copyToClipboard() {
+    const linkText = document.getElementById('outputLink').textContent;
+    navigator.clipboard.writeText(linkText).then(() => {
+        alert('リンクをクリップボードにコピーしました。');
+    }).catch(err => {
+        alert('コピーに失敗しました。');
+    });
+}
+</script>
+
+</body>
+</html>
