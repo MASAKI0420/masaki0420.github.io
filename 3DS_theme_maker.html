@@ -1,0 +1,1281 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>3DS Theme Editor — Web</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<style>
+  :root{
+    --bg:#12151a;
+    --panel:#1a1e26;
+    --panel-2:#20252f;
+    --line:#2b303c;
+    --ink:#e9ecf1;
+    --ink-dim:#8b93a7;
+    --top:#3fb6f0;      /* 3DS top-screen blue */
+    --bottom:#f0553f;   /* 3DS bottom-screen coral/red */
+    --ok:#4fce85;
+    --warn:#f0b23f;
+    --mono: "IBM Plex Mono", "SFMono-Regular", Menlo, Consolas, monospace;
+    --sans: "Inter", "Hiragino Kaku Gothic ProN", "Segoe UI", sans-serif;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--ink);font-family:var(--sans);}
+  body{min-height:100vh;}
+  a{color:var(--top);}
+
+  .wrap{max-width:1180px;margin:0 auto;padding:28px 20px 80px;}
+
+  header.top{display:flex;align-items:baseline;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:6px;}
+  header.top h1{font-size:22px;margin:0;font-weight:700;letter-spacing:-0.01em;}
+  header.top h1 .accent-top{color:var(--top);}
+  header.top h1 .accent-bottom{color:var(--bottom);}
+  header.top p.tag{margin:2px 0 0;color:var(--ink-dim);font-size:13px;}
+  .src-link{font-size:12px;color:var(--ink-dim);text-decoration:none;border:1px solid var(--line);padding:5px 10px;border-radius:6px;white-space:nowrap;}
+  .src-link:hover{border-color:var(--top);color:var(--top);}
+
+  .scope-note{margin:18px 0 26px;padding:12px 14px;border:1px solid var(--line);border-left:3px solid var(--warn);border-radius:6px;background:var(--panel);font-size:13px;line-height:1.6;color:var(--ink-dim);}
+  .scope-note b{color:var(--ink);}
+
+  .dropzone{
+    margin-top:6px;
+    border:1.5px dashed var(--line);
+    border-radius:12px;
+    padding:40px 20px;
+    text-align:center;
+    background:var(--panel);
+    cursor:pointer;
+    transition:border-color .15s ease, background .15s ease;
+  }
+  .dropzone.drag{border-color:var(--top); background:var(--panel-2);}
+  .dropzone h3{margin:0 0 6px;font-size:16px;font-weight:600;}
+  .dropzone p{margin:0;color:var(--ink-dim);font-size:13px;}
+  .dropzone input{display:none;}
+
+  .or-row{display:flex;align-items:center;gap:10px;margin:16px 0;color:var(--ink-dim);font-size:12px;}
+  .or-row::before,.or-row::after{content:"";flex:1;height:1px;background:var(--line);}
+  .newtheme-row{display:flex;align-items:center;gap:16px;flex-wrap:wrap;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:16px 18px;}
+  .newtheme-row .hint-inline{margin:0;color:var(--ink-dim);font-size:12.5px;flex:1;min-width:220px;}
+
+  .status{margin-top:12px;font-size:13px;font-family:var(--mono);color:var(--ink-dim);min-height:18px;}
+  .status.err{color:#ff7a7a;}
+  .status.ok{color:var(--ok);}
+
+  .editor{display:none;margin-top:28px;}
+  .editor.show{display:block;}
+
+  .grid{display:grid;grid-template-columns: 1fr 1fr;gap:20px;}
+  @media (max-width:820px){ .grid{grid-template-columns:1fr;} }
+
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:18px;}
+  .card h2{margin:0 0 4px;font-size:14px;text-transform:uppercase;letter-spacing:.06em;font-weight:700;}
+  .card h2.t-top{color:var(--top);}
+  .card h2.t-bottom{color:var(--bottom);}
+  .card .sub{margin:0 0 14px;color:var(--ink-dim);font-size:12px;}
+
+  canvas.screen{width:100%;height:auto;display:block;border-radius:8px;background:#000;image-rendering:pixelated;border:1px solid var(--line);}
+  .screen-wrap{position:relative;}
+  .screen-wrap .disabled-msg{
+    position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+    background:rgba(10,12,16,.82);border-radius:8px;color:var(--ink-dim);font-size:12.5px;text-align:center;padding:20px;
+  }
+
+  .row-btns{display:flex;gap:10px;margin-top:12px;flex-wrap:wrap;}
+  button{
+    font-family:var(--sans);font-size:13px;font-weight:600;cursor:pointer;
+    border-radius:7px;border:1px solid var(--line);background:var(--panel-2);color:var(--ink);
+    padding:9px 14px;transition:.12s ease;
+  }
+  button:hover{border-color:#454c5c;}
+  button:disabled{opacity:.4;cursor:not-allowed;}
+  button.primary{background:var(--top);border-color:var(--top);color:#04202e;}
+  button.primary:hover{filter:brightness(1.08);}
+  button.primary.bottom{background:var(--bottom);border-color:var(--bottom);color:#2c0800;}
+  button.ghost{background:transparent;}
+  button.big{padding:13px 20px;font-size:14px;}
+
+  .icon-row{display:flex;gap:18px;align-items:center;}
+  canvas.icon{background:#000;border-radius:8px;border:1px solid var(--line);image-rendering:pixelated;}
+  .icon-64{width:64px;height:64px;}
+  .icon-32{width:32px;height:32px;}
+
+  label.field{display:block;font-size:12px;color:var(--ink-dim);margin:12px 0 5px;}
+  input[type=text]{
+    width:100%;background:var(--panel-2);border:1px solid var(--line);border-radius:6px;
+    color:var(--ink);padding:9px 10px;font-size:13px;font-family:var(--sans);
+  }
+  input[type=text]:focus{outline:none;border-color:var(--top);}
+
+  .info-card .grid2{display:grid;grid-template-columns:1fr 1fr;gap:0 16px;}
+
+  .export-bar{
+    margin-top:24px;display:flex;gap:12px;align-items:center;flex-wrap:wrap;
+    background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:18px;
+  }
+  .export-bar .name-field{flex:1;min-width:220px;}
+  .export-bar .name-field input{width:100%;}
+  .export-bar .hint{font-size:12px;color:var(--ink-dim);width:100%;}
+
+  .meta-strip{display:flex;gap:18px;flex-wrap:wrap;margin-top:16px;font-size:12px;color:var(--ink-dim);font-family:var(--mono);}
+  .meta-strip span b{color:var(--ink);font-family:var(--sans);}
+
+  .bgm-option{border:1px solid var(--line);border-radius:10px;padding:14px 16px;margin-bottom:12px;background:var(--panel-2);}
+  .bgm-option-head{display:flex;align-items:center;gap:10px;margin-bottom:4px;}
+  .bgm-option-head b{font-size:13.5px;}
+  .bgm-option-desc{margin:0 0 4px;font-size:12.5px;color:var(--ink-dim);line-height:1.6;}
+  .badge{font-size:10.5px;font-weight:700;letter-spacing:.02em;padding:2px 8px;border-radius:20px;}
+  .ok-badge{background:rgba(79,206,133,.15);color:var(--ok);border:1px solid rgba(79,206,133,.35);}
+  .warn-badge{background:rgba(240,178,63,.15);color:var(--warn);border:1px solid rgba(240,178,63,.35);}
+  .bgm-status{margin-top:14px;font-size:12.5px;font-family:var(--mono);color:var(--ink-dim);padding:10px 12px;background:var(--panel-2);border-radius:8px;border:1px solid var(--line);}
+  .bgm-status.set{color:var(--ok);}
+  .bgm-status.err{color:#ff7a7a;}
+
+  footer{margin-top:50px;padding-top:18px;border-top:1px solid var(--line);color:var(--ink-dim);font-size:12px;line-height:1.7;}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="top">
+    <div>
+      <h1><span class="accent-top">3DS</span> Theme Editor <span style="color:var(--ink-dim);font-weight:400;">— Web</span></h1>
+      <p class="tag">ブラウザだけで動く <span class="accent-top">Usagi 3DS Theme Editor</span> の移植版（背景・アイコン・タイトル編集）</p>
+    </div>
+    <a class="src-link" href="https://github.com/usagirei/3DS-Theme-Editor" target="_blank" rel="noopener">元プロジェクト ↗</a>
+  </header>
+
+  <div class="scope-note">
+    <b>移植範囲について：</b> 元の C# / WPF 版はカラーパレット全種の個別編集やアニメーションプレビューなど非常に広範な機能を持つデスクトップアプリです。
+    ブラウザだけで完結させるため、この移植版は <b>トップ/ボトム画面の背景画像・アプリアイコン・タイトル情報・BGM の編集</b> に絞っています。
+    既存テーマを開いた場合、それ以外のバイト列（個別カラー設定など）はファイルからそのまま保持されるので、見た目を壊さずに画像だけ差し替えられます。
+    圧縮は簡易的な無圧縮 LZ11 ストリームで書き出すため（3DS 本体は問題なく読み込めます）、出力ファイルは元よりやや大きくなります。
+    BGM の自動変換（方法B）は独自実装のため実機での動作を完全には保証できません — 詳しくは BGM セクションの説明をご覧ください。
+  </div>
+
+  <div class="dropzone" id="dropzone">
+    <input type="file" id="fileInput" accept=".zip,.bin">
+    <h3>テーマファイルをドロップ、またはクリックして選択</h3>
+    <p><span style="font-family:var(--mono)">.zip</span>（body_LZ.bin / info.smdh / preview.png を含む）または <span style="font-family:var(--mono)">body_LZ.bin</span> 単体に対応</p>
+  </div>
+  <div class="or-row"><span>または</span></div>
+  <div class="newtheme-row">
+    <button class="big" id="newThemeBtn">＋ 新規にテーマを作成</button>
+    <p class="hint-inline">画像を選ぶだけで、トップ/ボトム画面が単色背景・カーソルやフォルダは標準配色の新規テーマを作成します</p>
+  </div>
+  <div class="status" id="status"></div>
+
+  <div class="editor" id="editor">
+
+    <div class="grid">
+      <div class="card">
+        <h2 class="t-top">Top Screen</h2>
+        <p class="sub" id="topSub">—</p>
+        <div class="screen-wrap">
+          <canvas class="screen" id="topCanvas" width="400" height="240"></canvas>
+          <div class="disabled-msg" id="topDisabled" style="display:none;"></div>
+        </div>
+        <div class="row-btns">
+          <button class="primary" id="topPickBtn">画像を差し替え</button>
+          <input type="file" id="topFile" accept="image/*" style="display:none;">
+          <button class="ghost" id="topResetBtn">元に戻す</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2 class="t-bottom">Bottom Screen</h2>
+        <p class="sub" id="bottomSub">—</p>
+        <div class="screen-wrap">
+          <canvas class="screen" id="bottomCanvas" width="320" height="240"></canvas>
+          <div class="disabled-msg" id="bottomDisabled" style="display:none;"></div>
+        </div>
+        <div class="row-btns">
+          <button class="primary bottom" id="bottomPickBtn">画像を差し替え</button>
+          <input type="file" id="bottomFile" accept="image/*" style="display:none;">
+          <button class="ghost" id="bottomResetBtn">元に戻す</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="grid" style="margin-top:20px;">
+      <div class="card">
+        <h2 style="color:var(--ink);">App Icon</h2>
+        <p class="sub">HOME メニューに表示されるアイコン（info.smdh）</p>
+        <div class="icon-row">
+          <canvas class="icon icon-64" id="iconLarge" width="48" height="48"></canvas>
+          <canvas class="icon icon-32" id="iconSmall" width="24" height="24"></canvas>
+          <div class="row-btns" style="margin-top:0;">
+            <button id="iconPickBtn">画像を差し替え</button>
+            <input type="file" id="iconFile" accept="image/*" style="display:none;">
+            <button class="ghost" id="iconResetBtn">元に戻す</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="card info-card">
+        <h2 style="color:var(--ink);">Title Info</h2>
+        <p class="sub">info.smdh に書き込むタイトル情報（全16言語に同じ内容を適用します）</p>
+        <label class="field">短い説明（Short Description）</label>
+        <input type="text" id="titleShort" maxlength="63" placeholder="My Custom Theme">
+        <label class="field">長い説明（Long Description）</label>
+        <input type="text" id="titleLong" maxlength="127" placeholder="A custom theme made with the web editor">
+        <label class="field">制作者（Publisher）</label>
+        <input type="text" id="titlePub" maxlength="63" placeholder="Your Name">
+      </div>
+    </div>
+
+    <div class="card" style="margin-top:20px;">
+      <h2 style="color:var(--ink);">Background Music (BGM)</h2>
+      <p class="sub">HOME メニュー表示中に流れる音楽（BGM.BCSTM）。3DS はこの独自フォーマットの音声ファイルしか再生できません。</p>
+
+      <div class="bgm-option">
+        <div class="bgm-option-head">
+          <b>方法A（推奨）：.bcstm ファイルをそのまま使う</b>
+          <span class="badge ok-badge">確実</span>
+        </div>
+        <p class="bgm-option-desc">すでにお持ちの <span style="font-family:var(--mono)">.bcstm</span> ファイルをアップロードします。中身は一切変更せずそのまま同梱するので、再生の確実性が最も高い方法です。</p>
+        <div class="row-btns">
+          <button id="bgmBcstmPickBtn">.bcstm を選択</button>
+          <input type="file" id="bgmBcstmFile" accept=".bcstm" style="display:none;">
+        </div>
+      </div>
+
+      <div class="bgm-option">
+        <div class="bgm-option-head">
+          <b>方法B（実験的）：音声ファイルから自動変換</b>
+          <span class="badge warn-badge">実験的</span>
+        </div>
+        <p class="bgm-option-desc">wav / mp3 などをブラウザ内で PCM16 の BCSTM に変換します（ループなし、独自実装のため 3DS 実機での動作を完全には保証できません）。可能であれば方法Aを優先してください。</p>
+        <div class="row-btns">
+          <button id="bgmAudioPickBtn">音声ファイルを選択して変換</button>
+          <input type="file" id="bgmAudioFile" accept="audio/*" style="display:none;">
+        </div>
+      </div>
+
+      <div class="bgm-status" id="bgmStatus">BGM は設定されていません</div>
+      <div class="row-btns">
+        <button class="ghost" id="bgmClearBtn" style="display:none;">BGM を削除</button>
+      </div>
+    </div>
+
+    <div class="meta-strip" id="metaStrip"></div>
+
+    <div class="export-bar">
+      <div class="name-field">
+        <label class="field" style="margin-top:0;">出力するテーマ名（フォルダ名）</label>
+        <input type="text" id="exportName" placeholder="CustomTheme">
+      </div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;">
+        <button class="primary big" id="exportZipBtn">.zip をダウンロード</button>
+        <button class="big" id="exportBinBtn">body_LZ.bin のみ</button>
+      </div>
+      <div class="hint" id="exportHint"></div>
+    </div>
+
+  </div>
+
+  <footer>
+    元プロジェクト: <a href="https://github.com/usagirei/3DS-Theme-Editor" target="_blank" rel="noopener">usagirei/3DS-Theme-Editor</a>（GPL-3.0）。
+    このページはそのバイナリフォーマット（LZ11 圧縮・タイル配置テクスチャ・SMDH）を JavaScript に再実装した独立クライアントで、公式ツールではありません。
+    書き出したテーマは Anemone3DS などのテーマインストーラーで通常どおり導入できます。
+  </footer>
+</div>
+
+<script>
+/* =========================================================================
+   LZ11 (de)compression
+   Ported from ThemeEditor.Common/Compression/LZ11.cs
+   Compression side is intentionally "store-only" (all literal blocks) to
+   stay fast and dependency-free in the browser; decompression is a full,
+   faithful port since we need to read arbitrary real-world theme files.
+   ========================================================================= */
+const LZ11 = {
+  decompress(bytes){
+    let pos = 0;
+    const readByte = () => bytes[pos++];
+    const type = readByte();
+    if (type !== 0x11) throw new Error('LZ11: invalid magic byte (0x' + type.toString(16) + ') — not an LZ11 stream');
+    let decompressedSize = bytes[pos] | (bytes[pos+1]<<8) | (bytes[pos+2]<<16);
+    pos += 3;
+    if (decompressedSize === 0){
+      decompressedSize = (bytes[pos] | (bytes[pos+1]<<8) | (bytes[pos+2]<<16) | (bytes[pos+3]<<24)) >>> 0;
+      pos += 4;
+    }
+    const out = new Uint8Array(decompressedSize);
+    let outPos = 0;
+    let flags = 0, mask = 1;
+    while (outPos < decompressedSize){
+      if (mask === 1){
+        flags = bytes[pos++];
+        mask = 0x80;
+      } else {
+        mask >>= 1;
+      }
+      if (flags & mask){
+        const byte1 = bytes[pos++];
+        let length = byte1 >> 4;
+        let disp;
+        if (length === 0){
+          const byte2 = bytes[pos++], byte3 = bytes[pos++];
+          length = (((byte1 & 0x0F) << 4) | (byte2 >> 4)) + 0x11;
+          disp = (((byte2 & 0x0F) << 8) | byte3) + 1;
+        } else if (length === 1){
+          const byte2 = bytes[pos++], byte3 = bytes[pos++], byte4 = bytes[pos++];
+          length = (((byte1 & 0x0F) << 12) | (byte2 << 4) | (byte3 >> 4)) + 0x111;
+          disp = (((byte3 & 0x0F) << 8) | byte4) + 1;
+        } else {
+          const byte2 = bytes[pos++];
+          length = ((byte1 & 0xF0) >> 4) + 1;
+          disp = (((byte1 & 0x0F) << 8) | byte2) + 1;
+        }
+        if (disp > outPos) throw new Error('LZ11: corrupt stream (back-reference out of range)');
+        let srcIdx = outPos - disp;
+        for (let i=0;i<length;i++){
+          out[outPos++] = out[srcIdx++];
+        }
+      } else {
+        out[outPos++] = bytes[pos++];
+      }
+    }
+    return out;
+  },
+
+  // Valid LZ11 stream, all blocks stored as literals. Larger than a
+  // properly-compressed file, but decompresses identically on real hardware.
+  compressStore(bytes){
+    const inLength = bytes.length;
+    const chunks = [];
+    chunks.push(new Uint8Array([0x11, inLength & 0xFF, (inLength>>8)&0xFF, (inLength>>16)&0xFF]));
+    let i = 0;
+    while (i < inLength){
+      const groupLen = Math.min(8, inLength - i);
+      const buf = new Uint8Array(1 + groupLen);
+      buf[0] = 0x00; // all 8 blocks in this group are literal bytes
+      for (let k=0;k<groupLen;k++) buf[1+k] = bytes[i+k];
+      chunks.push(buf);
+      i += groupLen;
+    }
+    let total = 0;
+    for (const c of chunks) total += c.length;
+    const out = new Uint8Array(total);
+    let o = 0;
+    for (const c of chunks){ out.set(c, o); o += c.length; }
+    return out;
+  }
+};
+
+/* =========================================================================
+   Tiled texture codec (RawTexture / GraphicUtils port)
+   3DS home-menu textures are stored in 8x8 Morton-order tiles.
+   Formats: A8 (1bpp mask), Bgr565 (2bpp), Bgr888 (3bpp)
+   ========================================================================= */
+const BPP = { A8:1, Bgr565:2, Bgr888:3 };
+
+function decToCoord(dec){
+  let x = dec, y = dec >>> 1;
+  x &= 0x55555555; y &= 0x55555555;
+  x |= x >>> 1;  y |= y >>> 1;  x &= 0x33333333; y &= 0x33333333;
+  x |= x >>> 2;  y |= y >>> 2;  x &= 0x0f0f0f0f; y &= 0x0f0f0f0f;
+  x |= x >>> 4;  y |= y >>> 4;  x &= 0x00ff00ff; y &= 0x00ff00ff;
+  x |= x >>> 8;  y |= y >>> 8;  x &= 0x0000ffff; y &= 0x0000ffff;
+  return [x, y];
+}
+
+const Bayer8x8 = [
+   1,49,13,61, 4,52,16,64,
+  33,17,45,29,36,20,48,32,
+   9,57, 5,53,12,60, 8,56,
+  41,25,37,21,44,28,40,24,
+   3,51,15,63, 2,50,14,62,
+  35,19,47,31,34,18,46,30,
+  11,59, 7,55,10,58, 6,54,
+  43,27,39,23,42,26,38,22
+];
+function clamp255(v){ return v<0?0:(v>255?255:v); }
+function closest(channel, depth){ const inv=8-depth; return (channel>>inv)<<inv; }
+
+function bayer565Dither(bgr, stride){
+  const width = stride/3, height = bgr.length/stride;
+  for (let y=0;y<height;y++){
+    for (let x=0;x<width;x++){
+      const p = 3*(y*width+x);
+      const t = Bayer8x8[((y&7)<<3)+(x&7)];
+      const b = clamp255(bgr[p+0] + t*8/65);
+      const g = clamp255(bgr[p+1] + t*4/65);
+      const r = clamp255(bgr[p+2] + t*8/65);
+      bgr[p+0] = closest(b,5);
+      bgr[p+1] = closest(g,6);
+      bgr[p+2] = closest(r,5);
+    }
+  }
+}
+function bgrToGrayscale(bgr){
+  for (let i=0;i<bgr.length;i+=3){
+    const r = bgr[i+0]*76/255, g = bgr[i+1]*150/255, b = bgr[i+2]*29/255;
+    const v = (r+g+b)&0xFF;
+    bgr[i]=bgr[i+1]=bgr[i+2]=v;
+  }
+}
+function rotateSquareBgr(bgr, stride, clockwise){
+  const width = stride/3, height = bgr.length/stride;
+  const out = new Uint8Array(bgr.length);
+  for (let i=0;i<width;i++){
+    for (let j=0;j<height;j++){
+      let srcIdx, tgtIdx;
+      if (clockwise){
+        srcIdx = 3*(j*width+i);
+        tgtIdx = 3*((width-1-i)*width+j);
+      } else {
+        srcIdx = 3*((width-1-i)*width+j);
+        tgtIdx = 3*(j*width+i);
+      }
+      out[tgtIdx]=bgr[srcIdx]; out[tgtIdx+1]=bgr[srcIdx+1]; out[tgtIdx+2]=bgr[srcIdx+2];
+    }
+  }
+  bgr.set(out);
+}
+
+class RawTexture{
+  constructor(width, height, format, data){
+    this.width = width; this.height = height; this.format = format;
+    const size = width*height*BPP[format];
+    if (data){
+      if (data.length !== size) throw new Error('RawTexture: data size mismatch');
+      this.data = data;
+    } else {
+      this.data = new Uint8Array(size);
+    }
+  }
+  static tileCols(width){ const p = Math.ceil(width/8); return p===0?1:p; }
+
+  decode(){
+    switch(this.format){
+      case 'Bgr565': return this._decode565();
+      case 'Bgr888': return this._decode888();
+      case 'A8': return this._decodeA8();
+    }
+  }
+  _decode565(){
+    const {width,height,data} = this;
+    const bgr = new Uint8Array(width*height*3);
+    const p = RawTexture.tileCols(width);
+    for (let i=0,j=0;i<data.length;i+=2,j+=1){
+      const px = (data[i+1]<<8) | data[i];
+      const r = ((px>>11)&0x1f)<<3, g=((px>>5)&0x3f)<<2, b=(px&0x1f)<<3;
+      const [tx,ty] = decToCoord(j%64);
+      const tile = Math.floor(j/64);
+      const x = tx + (tile%p)*8, y = ty + Math.floor(tile/p)*8;
+      const idx = 3*(y*width+x);
+      bgr[idx]=b; bgr[idx+1]=g; bgr[idx+2]=r;
+    }
+    return bgr;
+  }
+  _decode888(){
+    const {width,height,data} = this;
+    const bgr = new Uint8Array(width*height*3);
+    const p = RawTexture.tileCols(width);
+    for (let i=0,j=0;i<data.length;i+=3,j+=1){
+      const b=data[i], g=data[i+1], r=data[i+2];
+      const [tx,ty] = decToCoord(j%64);
+      const tile = Math.floor(j/64);
+      const x = tx + (tile%p)*8, y = ty + Math.floor(tile/p)*8;
+      const idx = 3*(y*width+x);
+      bgr[idx]=b; bgr[idx+1]=g; bgr[idx+2]=r;
+    }
+    return bgr;
+  }
+  _decodeA8(){
+    const {width,height,data} = this;
+    const bgr = new Uint8Array(width*height*3);
+    const p = RawTexture.tileCols(width);
+    for (let i=0;i<data.length;i+=1){
+      const a = data[i];
+      const [tx,ty] = decToCoord(i%64);
+      const tile = Math.floor(i/64);
+      const x = tx + (tile%p)*8, y = ty + Math.floor(tile/p)*8;
+      const idx = 3*(y*width+x);
+      bgr[idx]=a; bgr[idx+1]=a; bgr[idx+2]=a;
+    }
+    rotateSquareBgr(bgr, 3*width, true);
+    return bgr;
+  }
+
+  encode(bgrSource){
+    switch(this.format){
+      case 'Bgr565': this._encode565(bgrSource); break;
+      case 'Bgr888': this._encode888(bgrSource); break;
+      case 'A8': this._encodeA8(bgrSource); break;
+    }
+  }
+  _encode565(bgrSource){
+    const {width,height,data} = this;
+    const bay = bgrSource.slice();
+    bayer565Dither(bay, 3*width);
+    const p = RawTexture.tileCols(width);
+    for (let i=0,j=0,k=0;k<data.length;i+=3,j+=1,k+=2){
+      const [tx,ty] = decToCoord(j%64);
+      const tile = Math.floor(j/64);
+      const x = tx + (tile%p)*8, y = ty + Math.floor(tile/p)*8;
+      const idx = 3*(y*width+x);
+      const b = (bay[idx]>>3)&0x1f, g=(bay[idx+1]>>2)&0x3f, r=(bay[idx+2]>>3)&0x1f;
+      const px = (r<<11 | g<<5 | b) & 0xffff;
+      data[k]=px&0xFF; data[k+1]=(px>>8)&0xFF;
+    }
+  }
+  _encode888(bgrSource){
+    const {width,height,data} = this;
+    const p = RawTexture.tileCols(width);
+    for (let i=0,j=0;i<data.length;i+=3,j+=1){
+      const [tx,ty] = decToCoord(j%64);
+      const tile = Math.floor(j/64);
+      const x = tx + (tile%p)*8, y = ty + Math.floor(tile/p)*8;
+      const idx = 3*(y*width+x);
+      data[i]=bgrSource[idx]; data[i+1]=bgrSource[idx+1]; data[i+2]=bgrSource[idx+2];
+    }
+  }
+  _encodeA8(bgrSource){
+    const {width,height,data} = this;
+    const gsc = bgrSource.slice();
+    bgrToGrayscale(gsc);
+    rotateSquareBgr(gsc, 3*width, false);
+    const p = RawTexture.tileCols(width);
+    for (let i=0;i<data.length;i+=1){
+      const [tx,ty] = decToCoord(i%64);
+      const tile = Math.floor(i/64);
+      const x = tx + (tile%p)*8, y = ty + Math.floor(tile/p)*8;
+      const idx = 3*(y*width+x);
+      data[i] = gsc[idx];
+    }
+  }
+}
+
+/* =========================================================================
+   Theme body.bin header parsing (offsets ported from Theme.cs)
+   We only need enough of the header to locate texture blocks; every other
+   byte in the buffer (colors, flags, CWAV audio, ...) is left untouched.
+   ========================================================================= */
+function parseThemeHeader(buf){
+  if (buf.length < 0xD0) throw new Error('ファイルが小さすぎます（テーマ本体ではない可能性があります）');
+  const dv = new DataView(buf.buffer, buf.byteOffset, buf.byteLength);
+  const version = dv.getUint32(0x00, true);
+  if (version !== 1) throw new Error('テーマ本体として認識できませんでした（先頭のバージョンマーカーが不正）');
+
+  const topDrawType    = dv.getUint32(0x0C, true);
+  const topFrameType   = dv.getUint32(0x10, true);
+  const topTexOff      = dv.getUint32(0x18, true);
+  const topExtTexOff   = dv.getUint32(0x1C, true);
+  const bottomDrawType = dv.getUint32(0x20, true);
+  const bottomFrameType= dv.getUint32(0x24, true);
+  const bottomTexOff   = dv.getUint32(0x28, true);
+  const soundEffect    = dv.getUint32(0xB8, true) > 0;
+
+  const h = { topDrawType, topFrameType, bottomDrawType, bottomFrameType, soundEffect };
+
+  h.top = null; h.topExt = null;
+  if (topDrawType === 3){ // Texture
+    const w = (topFrameType === 1) ? 512 : 1024;
+    h.top = { offset: topTexOff, width: w, height: 256, format: 'Bgr565' };
+  } else if (topDrawType === 2){ // SolidColorTexture (gradient mask)
+    h.top = { offset: topTexOff, width: 64, height: 64, format: 'A8' };
+    if (topExtTexOff !== 0) h.topExt = { offset: topExtTexOff, width: 64, height: 64, format: 'A8' };
+  }
+
+  h.bottom = null;
+  if (bottomDrawType === 3){
+    const w = (bottomFrameType === 1) ? 512 : 1024;
+    h.bottom = { offset: bottomTexOff, width: w, height: 256, format: 'Bgr565' };
+  }
+
+  return h;
+}
+
+function readTextureRegion(buf, spec){
+  if (!spec) return null;
+  const size = spec.width*spec.height*BPP[spec.format];
+  const slice = buf.slice(spec.offset, spec.offset+size);
+  return new RawTexture(spec.width, spec.height, spec.format, slice);
+}
+function writeTextureRegion(buf, spec, tex){
+  buf.set(tex.data, spec.offset);
+}
+
+/* =========================================================================
+   SMDH (icon + title metadata)
+   ========================================================================= */
+const SMDH_SIZE = 0x36C0;
+const SMDH_TITLES_OFF = 0x08;
+const SMDH_TITLE_STRIDE = 0x200; // 0x80 short + 0x100 long + 0x80 publisher
+const SMDH_SMALL_ICON_OFF = 0x2040;
+const SMDH_LARGE_ICON_OFF = 0x24C0;
+
+function readUtf16Fixed(buf, off, byteLen){
+  let s = '';
+  for (let i=0;i<byteLen;i+=2){
+    const cu = buf[off+i] | (buf[off+i+1]<<8);
+    if (cu === 0) break;
+    s += String.fromCharCode(cu);
+  }
+  return s;
+}
+function writeUtf16Fixed(buf, off, byteLen, str){
+  for (let i=0;i<byteLen;i++) buf[off+i] = 0;
+  const maxChars = Math.floor(byteLen/2) - 1;
+  const n = Math.min(str.length, Math.max(0,maxChars));
+  for (let i=0;i<n;i++){
+    const cu = str.charCodeAt(i);
+    buf[off+i*2] = cu & 0xFF;
+    buf[off+i*2+1] = (cu>>8) & 0xFF;
+  }
+}
+
+function parseSMDH(buf){
+  if (buf.length < SMDH_SIZE || buf[0]!==0x53||buf[1]!==0x4D||buf[2]!==0x44||buf[3]!==0x48){
+    return null;
+  }
+  const shortDesc = readUtf16Fixed(buf, SMDH_TITLES_OFF + 1*SMDH_TITLE_STRIDE, 0x80);
+  const longDesc  = readUtf16Fixed(buf, SMDH_TITLES_OFF + 1*SMDH_TITLE_STRIDE + 0x80, 0x100);
+  const publisher = readUtf16Fixed(buf, SMDH_TITLES_OFF + 1*SMDH_TITLE_STRIDE + 0x80 + 0x100, 0x80);
+  const smallIcon = new RawTexture(24,24,'Bgr565', buf.slice(SMDH_SMALL_ICON_OFF, SMDH_SMALL_ICON_OFF+24*24*2));
+  const largeIcon = new RawTexture(48,48,'Bgr565', buf.slice(SMDH_LARGE_ICON_OFF, SMDH_LARGE_ICON_OFF+48*48*2));
+  return { buf, shortDesc, longDesc, publisher, smallIcon, largeIcon };
+}
+
+function createDefaultSMDH(){
+  const buf = new Uint8Array(SMDH_SIZE);
+  buf[0]=0x53; buf[1]=0x4D; buf[2]=0x44; buf[3]=0x48; // "SMDH"
+  // version/reserved left 0; region lock etc default to 0 (region free)
+  const smallIcon = new RawTexture(24,24,'Bgr565');
+  const largeIcon = new RawTexture(48,48,'Bgr565');
+  // fill icons with a neutral dark gray so it isn't pure black/garbage
+  const grayBgr = new Uint8Array(48*48*3).fill(0x30);
+  largeIcon.encode(grayBgr);
+  const grayBgrSmall = new Uint8Array(24*24*3).fill(0x30);
+  smallIcon.encode(grayBgrSmall);
+  buf.set(largeIcon.data, SMDH_LARGE_ICON_OFF);
+  buf.set(smallIcon.data, SMDH_SMALL_ICON_OFF);
+  return { buf, shortDesc:'', longDesc:'', publisher:'', smallIcon, largeIcon };
+}
+
+function serializeSMDH(smdh, shortDesc, longDesc, publisher, largeIconTex, smallIconTex){
+  const out = smdh.buf.slice();
+  for (let lang=0; lang<16; lang++){
+    const base = SMDH_TITLES_OFF + lang*SMDH_TITLE_STRIDE;
+    writeUtf16Fixed(out, base, 0x80, shortDesc);
+    writeUtf16Fixed(out, base+0x80, 0x100, longDesc);
+    writeUtf16Fixed(out, base+0x80+0x100, 0x80, publisher);
+  }
+  out.set(largeIconTex.data, SMDH_LARGE_ICON_OFF);
+  out.set(smallIconTex.data, SMDH_SMALL_ICON_OFF);
+  return out;
+}
+
+/* =========================================================================
+   Blank theme template
+   A 153-byte LZ11-compressed "empty" theme body, bundled as a resource in
+   the original C# app (used there for its own "New Theme" command). It
+   contains valid default flags/colors with no background textures. We
+   decompress it and append fresh Top/Bottom texture regions to build a
+   complete, valid theme body from scratch without having to reimplement
+   the full color-table writer.
+   ========================================================================= */
+const EMPTY_TEMPLATE_B64 = 'EcsBABsBAADAATAP0AAgE3AmWtVgL+HgNzBG7QAgE/qqYF8HYGgQIHAwYHRQqmB8XWCEamCMc2CUgKpgnKBgpLVgrMGgtMeE8MAAAEoYUNP//2j/ACCkcO+SkPgrTmSRoQWgv8AZpubq0SIhgD+wOa6c5+sAAQqOABCTAAB/AECLIBWwbwAiAGQAcLUnIzGwCPQw4vWAEWHC';
+function base64ToBytes(b64){
+  const bin = atob(b64);
+  const out = new Uint8Array(bin.length);
+  for (let i=0;i<bin.length;i++) out[i] = bin.charCodeAt(i);
+  return out;
+}
+
+function createBlankThemeBody(){
+  const compressed = base64ToBytes(EMPTY_TEMPLATE_B64);
+  const base = LZ11.decompress(compressed);
+
+  const TOP_W = 512, TOP_H = 256;
+  const BOTTOM_W = 512, BOTTOM_H = 256;
+  const topSize = TOP_W*TOP_H*2;
+  const bottomSize = BOTTOM_W*BOTTOM_H*2;
+
+  const buf = new Uint8Array(base.length + topSize + bottomSize);
+  buf.set(base, 0);
+  const topOffset = base.length;
+  const bottomOffset = base.length + topSize;
+
+  const dv = new DataView(buf.buffer);
+  dv.setUint32(0x0C, 3, true);         // TopDrawType.Texture
+  dv.setUint32(0x10, 1, true);         // TopFrameType.Single (512 wide)
+  dv.setUint32(0x18, topOffset, true);
+  dv.setUint32(0x1C, 0, true);         // no TopExt
+  dv.setUint32(0x20, 3, true);         // BottomDrawType.Texture
+  dv.setUint32(0x24, 1, true);         // BottomFrameType.Single (512 wide)
+  dv.setUint32(0x28, bottomOffset, true);
+
+  // placeholder mid-dark gray so the canvases render something sane before upload
+  const placeholder = new Uint8Array(TOP_W*TOP_H*3).fill(0x1c);
+  const topTex = new RawTexture(TOP_W, TOP_H, 'Bgr565'); topTex.encode(placeholder);
+  buf.set(topTex.data, topOffset);
+  const bottomPlaceholder = new Uint8Array(BOTTOM_W*BOTTOM_H*3).fill(0x1c);
+  const bottomTex = new RawTexture(BOTTOM_W, BOTTOM_H, 'Bgr565'); bottomTex.encode(bottomPlaceholder);
+  buf.set(bottomTex.data, bottomOffset);
+
+  return buf;
+}
+
+/* =========================================================================
+   BCSTM (BGM) writer — PCM16, no loop, single sample block.
+   Ported from the public 3dbrew.org "BCSTM" specification (CSTM container:
+   header + INFO/SEEK/DATA blocks). This is an independent, from-scratch
+   implementation (the original app instead shells out to a native
+   vgmstream-based converter, which isn't available in a browser).
+   A matching reader is included purely for an internal self-check after
+   encoding; see runBcstmSelfCheck().
+   ========================================================================= */
+function align32(x){ return Math.ceil(x/32)*32; }
+
+function encodeBcstmPcm16(channelsFloat, sampleRate){
+  const N = channelsFloat.length;
+  const totalSamples = channelsFloat[0].length;
+  const INFO_OFF = 0x40;
+
+  const channelRefTableRelInfo = 0x058;
+  const channelInfoEntriesRelInfo = channelRefTableRelInfo + 4 + N*8;
+  const infoContentEnd = channelInfoEntriesRelInfo + N*8;
+  const infoBlockSize = align32(infoContentEnd);
+
+  const lastBlockSize = totalSamples*2;
+  const lastBlockPaddedSize = align32(lastBlockSize);
+  const dataFieldRelBlock = 0x20;
+  const dataContentSize = dataFieldRelBlock + N*lastBlockPaddedSize;
+  const dataBlockSize = align32(dataContentSize);
+  const SEEK_BLOCK_SIZE = 0x20;
+
+  const infoOff = INFO_OFF;
+  const seekOff = infoOff + infoBlockSize;
+  const dataOff = seekOff + SEEK_BLOCK_SIZE;
+  const fileSize = dataOff + dataBlockSize;
+
+  const buf = new Uint8Array(fileSize);
+  const dv = new DataView(buf.buffer);
+  const asciiAt = (off, str) => { for (let i=0;i<str.length;i++) buf[off+i] = str.charCodeAt(i); };
+  const writeRef = (off, typeId, offsetVal) => {
+    dv.setUint16(off, typeId, true);
+    dv.setUint16(off+2, 0, true);
+    dv.setUint32(off+4, offsetVal>>>0, true);
+  };
+
+  asciiAt(0x00, 'CSTM');
+  dv.setUint16(0x04, 0xFEFF, true);
+  dv.setUint16(0x06, 0x40, true);
+  dv.setUint32(0x08, 0x02000000, true);
+  dv.setUint32(0x0C, fileSize, true);
+  dv.setUint16(0x10, 3, true);
+  dv.setUint16(0x12, 0, true);
+  const writeSizedRef = (off, typeId, refOffsetAbs, size) => { writeRef(off, typeId, refOffsetAbs); dv.setUint32(off+8, size, true); };
+  writeSizedRef(0x14, 0x4000, infoOff, infoBlockSize);
+  writeSizedRef(0x20, 0x4001, seekOff, SEEK_BLOCK_SIZE);
+  writeSizedRef(0x2C, 0x4002, dataOff, dataBlockSize);
+
+  asciiAt(infoOff, 'INFO');
+  dv.setUint32(infoOff+0x04, infoBlockSize, true);
+  writeRef(infoOff+0x008, 0x4100, 0x020 - 0x008);
+  writeRef(infoOff+0x010, 0x0101, 0xFFFFFFFF); // no track table
+  writeRef(infoOff+0x018, 0x0101, channelRefTableRelInfo - 0x008);
+
+  const SI = infoOff + 0x020;
+  buf[SI+0x000] = 1; buf[SI+0x001] = 0; buf[SI+0x002] = N; buf[SI+0x003] = 0;
+  dv.setUint32(SI+0x004, sampleRate, true);
+  dv.setUint32(SI+0x008, 0, true);
+  dv.setUint32(SI+0x00C, totalSamples, true);
+  dv.setUint32(SI+0x010, 1, true);
+  dv.setUint32(SI+0x014, lastBlockPaddedSize, true);
+  dv.setUint32(SI+0x018, totalSamples, true);
+  dv.setUint32(SI+0x01C, lastBlockSize, true);
+  dv.setUint32(SI+0x020, totalSamples, true);
+  dv.setUint32(SI+0x024, lastBlockPaddedSize, true);
+  dv.setUint32(SI+0x028, 0, true);
+  dv.setUint32(SI+0x02C, 0, true);
+  writeRef(SI+0x030, 0x1F00, dataFieldRelBlock - 0x008);
+
+  const CRT = infoOff + channelRefTableRelInfo;
+  dv.setUint32(CRT, N, true);
+  for (let i=0;i<N;i++) writeRef(CRT+4+i*8, 0x4102, (channelInfoEntriesRelInfo - channelRefTableRelInfo) + i*8);
+  const CIE = infoOff + channelInfoEntriesRelInfo;
+  for (let i=0;i<N;i++) writeRef(CIE+i*8, 0x0000, 0xFFFFFFFF);
+
+  asciiAt(seekOff, 'SEEK');
+  dv.setUint32(seekOff+0x04, SEEK_BLOCK_SIZE, true);
+
+  asciiAt(dataOff, 'DATA');
+  dv.setUint32(dataOff+0x04, dataBlockSize, true);
+  let chOff = dataOff + dataFieldRelBlock;
+  for (let ch=0; ch<N; ch++){
+    const src = channelsFloat[ch];
+    for (let i=0;i<totalSamples;i++){
+      const s = Math.max(-1, Math.min(1, src[i]));
+      dv.setInt16(chOff+i*2, Math.round(s < 0 ? s*0x8000 : s*0x7FFF), true);
+    }
+    chOff += lastBlockPaddedSize;
+  }
+  return buf;
+}
+
+// Reads back our own BCSTM output to confirm internal consistency before we
+// ever offer it for download (structure only — not a guarantee of
+// hardware/vgmstream compatibility).
+function runBcstmSelfCheck(buf, expectedChannels, expectedSampleRate, expectedSamples){
+  const dv = new DataView(buf.buffer, buf.byteOffset, buf.byteLength);
+  const magic = String.fromCharCode(buf[0],buf[1],buf[2],buf[3]);
+  if (magic !== 'CSTM') throw new Error('CSTM magic missing');
+  if (dv.getUint32(0x0C,true) !== buf.length) throw new Error('file size field mismatch');
+  const infoOff = dv.getUint32(0x18,true), dataOff = dv.getUint32(0x30,true);
+  if (String.fromCharCode(buf[infoOff],buf[infoOff+1],buf[infoOff+2],buf[infoOff+3]) !== 'INFO') throw new Error('INFO magic missing');
+  if (String.fromCharCode(buf[dataOff],buf[dataOff+1],buf[dataOff+2],buf[dataOff+3]) !== 'DATA') throw new Error('DATA magic missing');
+  const streamInfoRel = dv.getUint32(infoOff+0x00C,true);
+  const SI = infoOff + 0x008 + streamInfoRel;
+  const channelCount = buf[SI+0x002];
+  const sampleRate = dv.getUint32(SI+0x004,true);
+  const totalSamples = dv.getUint32(SI+0x020,true);
+  if (channelCount !== expectedChannels) throw new Error('channel count mismatch');
+  if (sampleRate !== expectedSampleRate) throw new Error('sample rate mismatch');
+  if (totalSamples !== expectedSamples) throw new Error('sample count mismatch');
+  return true;
+}
+
+/* =========================================================================
+   Canvas helpers
+   ========================================================================= */
+function bgrToCanvas(bgr, width, height, canvas){
+  canvas.width = width; canvas.height = height;
+  const ctx = canvas.getContext('2d');
+  const id = ctx.createImageData(width, height);
+  for (let i=0,j=0;j<bgr.length;i+=4,j+=3){
+    id.data[i]=bgr[j+2]; id.data[i+1]=bgr[j+1]; id.data[i+2]=bgr[j]; id.data[i+3]=255;
+  }
+  ctx.putImageData(id,0,0);
+}
+// draws the top-left crop of a full texture (the visible on-screen area)
+function bgrCropToCanvas(bgr, texWidth, cropW, cropH, canvas){
+  const full = document.createElement('canvas');
+  bgrToCanvas(bgr, texWidth, Math.ceil(bgr.length/3/texWidth), full);
+  canvas.width = cropW; canvas.height = cropH;
+  const ctx = canvas.getContext('2d');
+  ctx.imageSmoothingEnabled = false;
+  ctx.drawImage(full, 0,0,cropW,cropH, 0,0,cropW,cropH);
+}
+function imageToBgrCover(img, targetW, targetH){
+  const canvas = document.createElement('canvas');
+  canvas.width = targetW; canvas.height = targetH;
+  const ctx = canvas.getContext('2d');
+  const scale = Math.max(targetW/img.width, targetH/img.height);
+  const w = img.width*scale, h = img.height*scale;
+  const x = (targetW-w)/2, y = (targetH-h)/2;
+  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingQuality = 'high';
+  ctx.drawImage(img, x, y, w, h);
+  const id = ctx.getImageData(0,0,targetW,targetH).data;
+  const bgr = new Uint8Array(targetW*targetH*3);
+  for (let i=0,j=0;i<id.length;i+=4,j+=3){
+    bgr[j]=id[i+2]; bgr[j+1]=id[i+1]; bgr[j+2]=id[i];
+  }
+  return bgr;
+}
+function loadImageFile(file){
+  return new Promise((resolve,reject)=>{
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = ()=>{ URL.revokeObjectURL(url); resolve(img); };
+    img.onerror = reject;
+    img.src = url;
+  });
+}
+
+/* =========================================================================
+   Application state / UI wiring
+   ========================================================================= */
+const state = {
+  bodyBuf: null,        // decompressed body.bin (Uint8Array), mutated in place on export
+  header: null,
+  themeFolderName: 'CustomTheme',
+  smdh: null,
+  topTex: null, topExtTex: null, bottomTex: null,
+  topReplacementBgr: null, bottomReplacementBgr: null,
+  iconReplacement: null, // { large: RawTexture, small: RawTexture }
+  bgm: null, // { bytes: Uint8Array, filename: string, source: 'bcstm'|'converted' }
+};
+
+const el = id => document.getElementById(id);
+const statusEl = el('status');
+function setStatus(msg, kind){
+  statusEl.textContent = msg;
+  statusEl.className = 'status' + (kind ? ' '+kind : '');
+}
+
+function bytesToHuman(n){
+  if (n < 1024) return n+' B';
+  if (n < 1024*1024) return (n/1024).toFixed(1)+' KB';
+  return (n/1024/1024).toFixed(2)+' MB';
+}
+
+async function handleFile(file){
+  try{
+    setStatus('読み込み中…');
+    let bodyLzBytes = null, smdhBytes = null, folderName = file.name.replace(/\.(zip|bin)$/i,'') || 'CustomTheme';
+
+    if (/\.zip$/i.test(file.name)){
+      const zip = await JSZip.loadAsync(file);
+      let bodyEntry=null, smdhEntry=null;
+      zip.forEach((relPath, entry)=>{
+        const lower = relPath.toLowerCase();
+        if (!entry.dir && lower.endsWith('body_lz.bin')){
+          bodyEntry = entry;
+          const parts = relPath.split('/');
+          if (parts.length > 1) folderName = parts[0];
+        } else if (!entry.dir && lower.endsWith('info.smdh')){
+          smdhEntry = entry;
+        }
+      });
+      if (!bodyEntry) throw new Error('zip 内に body_LZ.bin が見つかりませんでした');
+      bodyLzBytes = new Uint8Array(await bodyEntry.async('arraybuffer'));
+      if (smdhEntry) smdhBytes = new Uint8Array(await smdhEntry.async('arraybuffer'));
+    } else {
+      bodyLzBytes = new Uint8Array(await file.arrayBuffer());
+    }
+
+    const bodyBuf = LZ11.decompress(bodyLzBytes);
+    const smdh = smdhBytes ? (parseSMDH(smdhBytes) || createDefaultSMDH()) : createDefaultSMDH();
+    // 日本語入力を許容するため、OSで禁止されている一部記号 (\ / : * ? " < > |) のみ置換するように修正
+    activateTheme(bodyBuf, smdh, folderName.replace(/[\\/:*?"<>|]/g, '_') || 'CustomTheme');
+    setStatus('読み込み完了：' + file.name + '（' + bytesToHuman(bodyLzBytes.length) + ' → 展開後 ' + bytesToHuman(bodyBuf.length) + '）', 'ok');
+  } catch(e){
+    console.error(e);
+    setStatus('エラー: ' + e.message, 'err');
+  }
+}
+
+function activateTheme(bodyBuf, smdh, folderName){
+  const header = parseThemeHeader(bodyBuf);
+  state.bodyBuf = bodyBuf;
+  state.header = header;
+  state.themeFolderName = folderName;
+  state.smdh = smdh;
+  state.topTex = readTextureRegion(bodyBuf, header.top);
+  state.topExtTex = readTextureRegion(bodyBuf, header.topExt);
+  state.bottomTex = readTextureRegion(bodyBuf, header.bottom);
+  state.topReplacementBgr = null;
+  state.bottomReplacementBgr = null;
+  state.iconReplacement = null;
+  state.bgm = null;
+
+  renderAll();
+  renderBgmStatus();
+  el('editor').classList.add('show');
+  el('exportName').value = folderName;
+  el('editor').scrollIntoView({behavior:'smooth', block:'start'});
+}
+
+function handleNewTheme(){
+  const bodyBuf = createBlankThemeBody();
+  const smdh = createDefaultSMDH();
+  activateTheme(bodyBuf, smdh, 'CustomTheme');
+  setStatus('新規テーマを作成しました。トップ/ボトム画面の画像をアップロードしてください。', 'ok');
+}
+el('newThemeBtn').onclick = handleNewTheme;
+
+function renderAll(){
+  renderTopScreen();
+  renderBottomScreen();
+  renderIcon();
+  renderTitleFields();
+  renderMeta();
+}
+
+function renderTopScreen(){
+  const disabledEl = el('topDisabled');
+  const sub = el('topSub');
+  const canvas = el('topCanvas');
+  const h = state.header;
+  if (h.topDrawType === 3){ // photo texture
+    sub.textContent = 'テクスチャサイズ ' + state.topTex.width + '×' + state.topTex.height + '（表示領域 400×240）';
+    disabledEl.style.display = 'none';
+    const bgr = state.topReplacementBgr || state.topTex.decode();
+    bgrCropToCanvas(bgr, state.topTex.width, 400, 240, canvas);
+    el('topPickBtn').disabled = false;
+  } else if (h.topDrawType === 2){ // solid color + gradient mask
+    sub.textContent = 'グラデーションマスク（単色背景 + A8 マスク, 64×64）';
+    disabledEl.style.display = 'none';
+    const bgr = state.topReplacementBgr || state.topTex.decode();
+    bgrToCanvas(bgr, 64, 64, canvas);
+    el('topPickBtn').disabled = false;
+  } else {
+    sub.textContent = 'このテーマの Top 画面は単色背景で、画像を使用していません';
+    disabledEl.style.display = 'flex';
+    disabledEl.textContent = '画像背景ではないため編集できません';
+    canvas.width=400; canvas.height=240;
+    canvas.getContext('2d').clearRect(0,0,400,240);
+    el('topPickBtn').disabled = true;
+  }
+}
+
+function renderBottomScreen(){
+  const disabledEl = el('bottomDisabled');
+  const sub = el('bottomSub');
+  const canvas = el('bottomCanvas');
+  const h = state.header;
+  if (h.bottomDrawType === 3){
+    sub.textContent = 'テクスチャサイズ ' + state.bottomTex.width + '×' + state.bottomTex.height + '（表示領域 320×240）';
+    disabledEl.style.display = 'none';
+    const bgr = state.bottomReplacementBgr || state.bottomTex.decode();
+    bgrCropToCanvas(bgr, state.bottomTex.width, 320, 240, canvas);
+    el('bottomPickBtn').disabled = false;
+  } else {
+    sub.textContent = 'このテーマの Bottom 画面は単色背景で、画像を使用していません';
+    disabledEl.style.display = 'flex';
+    disabledEl.textContent = '画像背景ではないため編集できません';
+    canvas.width=320; canvas.height=240;
+    canvas.getContext('2d').clearRect(0,0,320,240);
+    el('bottomPickBtn').disabled = true;
+  }
+}
+
+function renderIcon(){
+  const large = state.iconReplacement ? state.iconReplacement.large : state.smdh.largeIcon;
+  const small = state.iconReplacement ? state.iconReplacement.small : state.smdh.smallIcon;
+  bgrToCanvas(large.decode(), 48, 48, el('iconLarge'));
+  bgrToCanvas(small.decode(), 24, 24, el('iconSmall'));
+}
+
+function renderTitleFields(){
+  el('titleShort').value = state.smdh.shortDesc || '';
+  el('titleLong').value = state.smdh.longDesc || '';
+  el('titlePub').value = state.smdh.publisher || '';
+}
+
+function renderMeta(){
+  const h = state.header;
+  const parts = [];
+  parts.push('<span>Top: <b>' + drawTypeLabel(h.topDrawType) + '</b></span>');
+  parts.push('<span>Bottom: <b>' + drawTypeLabel(h.bottomDrawType) + '</b></span>');
+  parts.push('<span>効果音(CWAV): <b>' + (h.soundEffect ? 'あり（保持されます）' : 'なし') + '</b></span>');
+  parts.push('<span>BGM: <b>' + (state.bgm ? '設定済み' : '未設定') + '</b></span>');
+  el('metaStrip').innerHTML = parts.join('');
+}
+function drawTypeLabel(t){
+  return {0:'なし',1:'単色',2:'単色+マスク',3:'画像'}[t] || String(t);
+}
+
+/* ---- file pickers ---- */
+el('topPickBtn').onclick = ()=> el('topFile').click();
+el('bottomPickBtn').onclick = ()=> el('bottomFile').click();
+el('iconPickBtn').onclick = ()=> el('iconFile').click();
+
+el('topFile').onchange = async (e)=>{
+  const f = e.target.files[0]; if (!f) return;
+  const img = await loadImageFile(f);
+  const spec = state.topTex;
+  state.topReplacementBgr = imageToBgrCover(img, spec.width, spec.height);
+  renderTopScreen();
+  e.target.value = '';
+};
+el('bottomFile').onchange = async (e)=>{
+  const f = e.target.files[0]; if (!f) return;
+  const img = await loadImageFile(f);
+  const spec = state.bottomTex;
+  state.bottomReplacementBgr = imageToBgrCover(img, spec.width, spec.height);
+  renderBottomScreen();
+  e.target.value = '';
+};
+el('iconFile').onchange = async (e)=>{
+  const f = e.target.files[0]; if (!f) return;
+  const img = await loadImageFile(f);
+  const largeBgr = imageToBgrCover(img, 48, 48);
+  const smallBgr = imageToBgrCover(img, 24, 24);
+  const large = new RawTexture(48,48,'Bgr565'); large.encode(largeBgr);
+  const small = new RawTexture(24,24,'Bgr565'); small.encode(smallBgr);
+  state.iconReplacement = { large, small };
+  renderIcon();
+  e.target.value = '';
+};
+el('topResetBtn').onclick = ()=>{ state.topReplacementBgr = null; renderTopScreen(); };
+el('bottomResetBtn').onclick = ()=>{ state.bottomReplacementBgr = null; renderBottomScreen(); };
+el('iconResetBtn').onclick = ()=>{ state.iconReplacement = null; renderIcon(); };
+
+/* ---- BGM ---- */
+function renderBgmStatus(){
+  const box = el('bgmStatus');
+  const clearBtn = el('bgmClearBtn');
+  if (!state.bgm){
+    box.textContent = 'BGM は設定されていません';
+    box.className = 'bgm-status';
+    clearBtn.style.display = 'none';
+    return;
+  }
+  const kind = state.bgm.source === 'bcstm' ? '.bcstm を直接使用' : '自動変換（実験的）';
+  box.textContent = `BGM 設定済み: ${state.bgm.filename}（${kind}, ${bytesToHuman(state.bgm.bytes.length)}）`;
+  box.className = 'bgm-status set';
+  clearBtn.style.display = 'inline-block';
+}
+
+el('bgmBcstmPickBtn').onclick = ()=> el('bgmBcstmFile').click();
+el('bgmAudioPickBtn').onclick = ()=> el('bgmAudioFile').click();
+el('bgmClearBtn').onclick = ()=>{ state.bgm = null; renderBgmStatus(); };
+
+el('bgmBcstmFile').onchange = async (e)=>{
+  const f = e.target.files[0]; if (!f) return;
+  try{
+    const bytes = new Uint8Array(await f.arrayBuffer());
+    if (bytes.length < 4 || String.fromCharCode(bytes[0],bytes[1],bytes[2],bytes[3]) !== 'CSTM'){
+      throw new Error('CSTM ヘッダが見つかりません（.bcstm ファイルではない可能性があります）');
+    }
+    state.bgm = { bytes, filename: 'BGM.BCSTM', source: 'bcstm' };
+    renderBgmStatus();
+  } catch(err){
+    el('bgmStatus').textContent = 'エラー: ' + err.message;
+    el('bgmStatus').className = 'bgm-status err';
+  }
+  e.target.value = '';
+};
+
+el('bgmAudioFile').onchange = async (e)=>{
+  const f = e.target.files[0]; if (!f) return;
+  const box = el('bgmStatus');
+  try{
+    box.textContent = '変換中…';
+    box.className = 'bgm-status';
+    const arrBuf = await f.arrayBuffer();
+    // すでに .bcstm (CSTM) 形式のファイルがこちらに選ばれた場合は、
+    // decodeAudioData が独自ADPCMを解釈できずエラーになってしまうため、
+    // 変換せずに方法Aと同じ「そのまま同梱」パスにフォールバックする。
+    const headBytes = new Uint8Array(arrBuf);
+    if (headBytes.length >= 4 && String.fromCharCode(headBytes[0],headBytes[1],headBytes[2],headBytes[3]) === 'CSTM'){
+      state.bgm = { bytes: headBytes, filename: 'BGM.BCSTM', source: 'bcstm' };
+      renderBgmStatus();
+      e.target.value = '';
+      return;
+    }
+    const AC = window.AudioContext || window.webkitAudioContext;
+    const actx = new AC();
+    const audioBuf = await actx.decodeAudioData(arrBuf.slice(0));
+    const N = Math.min(2, audioBuf.numberOfChannels);
+    const channels = [];
+    for (let c=0;c<N;c++) channels.push(audioBuf.getChannelData(c));
+    const bytes = encodeBcstmPcm16(channels, audioBuf.sampleRate);
+    runBcstmSelfCheck(bytes, N, audioBuf.sampleRate, channels[0].length); // throws if inconsistent
+    state.bgm = { bytes, filename: 'BGM.BCSTM', source: 'converted' };
+    renderBgmStatus();
+    actx.close();
+  } catch(err){
+    console.error(err);
+    box.textContent = '変換エラー: ' + err.message;
+    box.className = 'bgm-status err';
+  }
+  e.target.value = '';
+};
+
+/* ---- drop zone ---- */
+const dz = el('dropzone');
+dz.addEventListener('click', ()=> el('fileInput').click());
+el('fileInput').addEventListener('change', e=>{ if (e.target.files[0]) handleFile(e.target.files[0]); });
+['dragenter','dragover'].forEach(evt=> dz.addEventListener(evt, e=>{ e.preventDefault(); dz.classList.add('drag'); }));
+['dragleave','drop'].forEach(evt=> dz.addEventListener(evt, e=>{ e.preventDefault(); dz.classList.remove('drag'); }));
+dz.addEventListener('drop', e=>{
+  const f = e.dataTransfer.files[0];
+  if (f) handleFile(f);
+});
+
+/* ---- export ---- */
+function buildOutputs(){
+  // 1. patch body buffer with any replaced textures
+  const buf = state.bodyBuf.slice();
+  const h = state.header;
+  if (state.topReplacementBgr && h.top){
+    const tex = new RawTexture(h.top.width, h.top.height, h.top.format);
+    tex.encode(state.topReplacementBgr);
+    writeTextureRegion(buf, h.top, tex);
+  }
+  if (state.bottomReplacementBgr && h.bottom){
+    const tex = new RawTexture(h.bottom.width, h.bottom.height, h.bottom.format);
+    tex.encode(state.bottomReplacementBgr);
+    writeTextureRegion(buf, h.bottom, tex);
+  }
+  // background-music flag byte
+  buf[0x05] = state.bgm ? 1 : 0;
+
+  // 2. recompress
+  const bodyLz = LZ11.compressStore(buf);
+
+  // 3. SMDH
+  const shortDesc = el('titleShort').value.slice(0,63);
+  const longDesc = el('titleLong').value.slice(0,127);
+  const pub = el('titlePub').value.slice(0,63);
+  const largeIcon = state.iconReplacement ? state.iconReplacement.large : state.smdh.largeIcon;
+  const smallIcon = state.iconReplacement ? state.iconReplacement.small : state.smdh.smallIcon;
+  const smdhOut = serializeSMDH(state.smdh, shortDesc, longDesc, pub, largeIcon, smallIcon);
+
+  // 4. preview.png (top screen over bottom screen, matches installer thumbnail convention)
+  const previewCanvas = document.createElement('canvas');
+  previewCanvas.width = 400; previewCanvas.height = 480;
+  const ctx = previewCanvas.getContext('2d');
+  ctx.fillStyle = '#000'; ctx.fillRect(0,0,400,480);
+  if (h.top && h.top.format==='Bgr565'){
+    const bgr = state.topReplacementBgr || state.topTex.decode();
+    const tmp = document.createElement('canvas');
+    bgrCropToCanvas(bgr, h.top.width, 400, 240, tmp);
+    ctx.drawImage(tmp,0,0);
+  }
+  if (h.bottom){
+    const bgr = state.bottomReplacementBgr || state.bottomTex.decode();
+    const tmp = document.createElement('canvas');
+    bgrCropToCanvas(bgr, h.bottom.width, 320, 240, tmp);
+    ctx.drawImage(tmp,40,240);
+  }
+
+  return { bodyLz, smdhOut, previewCanvas };
+}
+
+el('exportBinBtn').onclick = ()=>{
+  if (!state.bodyBuf){ return; }
+  const { bodyLz } = buildOutputs();
+  downloadBytes(bodyLz, 'body_LZ.bin');
+  let msg = 'body_LZ.bin を書き出しました（' + bytesToHuman(bodyLz.length) + '）';
+  if (state.bgm) msg += ' — BGM は .bin 単体には含まれません。.zip で書き出してください';
+  setStatus(msg, 'ok');
+};
+
+el('exportZipBtn').onclick = async ()=>{
+  if (!state.bodyBuf){ return; }
+  setStatus('書き出し中…');
+  try {
+    const { bodyLz, smdhOut, previewCanvas } = buildOutputs();
+    const name = (el('exportName').value || 'CustomTheme').replace(/[\\/:*?"<>|]/g, '_');
+    const zip = new JSZip();
+    
+    // フォルダを作成せず、ZIPの直下（ルート）に各ファイルを直接追加するように変更
+    zip.file('body_LZ.bin', bodyLz);
+    zip.file('info.smdh', smdhOut);
+    const pngBlob = await new Promise(res => previewCanvas.toBlob(res, 'image/png'));
+    zip.file('preview.png', pngBlob);
+    if (state.bgm) zip.file('BGM.BCSTM', state.bgm.bytes);
+    
+    const blob = await zip.generateAsync({ type:'blob' });
+    downloadBlob(blob, name + '.zip');
+    setStatus(name + '.zip を書き出しました（' + bytesToHuman(blob.size) + '）', 'ok');
+  } catch(e){
+    console.error(e);
+    setStatus('書き出しエラー: ' + e.message, 'err');
+  }
+};
+
+function downloadBytes(bytes, filename){
+  downloadBlob(new Blob([bytes], {type:'application/octet-stream'}), filename);
+}
+function downloadBlob(blob, filename){
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(()=>URL.revokeObjectURL(a.href), 4000);
+}
+</script>
+</body>
+</html>
