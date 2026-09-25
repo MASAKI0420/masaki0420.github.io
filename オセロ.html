@@ -26,15 +26,24 @@
             --black-piece: #111;
             --white-piece: #fff;
             --highlight-color: #00e676;
+
+            /* ========================================================= */
+            /* ▼ モード別のY座標調整（数値を大きくすると上に移動します）▼ */
+            /* ========================================================= */
+            
+            --y-offset-cpu: 80px; /* ★CPU戦・オンライン戦 の位置調整 */
+            
+            --y-offset-pvp: 0px;  /* ★2人対面 の位置調整 */
+            
+            /* ========================================================= */
         }
 
-        /* --- 画面を完全に固定するための変更 --- */
         html {
             background-color: var(--bg-color);
             width: 100%;
             height: 100%;
-            height: 100dvh; /* スマホのアドレスバー対策 */
-            overflow: hidden; /* スクロールを完全に禁止 */
+            height: 100dvh; 
+            overflow: hidden; 
             overscroll-behavior: none; 
         }
         
@@ -48,17 +57,33 @@
             display: flex;
             flex-direction: column;
             align-items: center;
-            justify-content: center; /* 画面中央に固定配置 */
+            justify-content: center;
             width: 100%;
             height: 100%;
-            height: 100dvh; /* スマホのアドレスバー対策 */
-            padding: 0;
+            height: 100dvh;
             margin: 0;
-            overflow: hidden; /* スクロールを完全に禁止 */
+            padding: 0;
+            overflow: hidden;
             overscroll-behavior: none;
-            touch-action: manipulation; /* ダブルタップズームなどを無効化 */
+            touch-action: manipulation;
         }
-        /* -------------------------------------- */
+
+        /* --- 強制スライド用 --- */
+        body:not(.pvp-mode) .header,
+        body:not(.pvp-mode) #status,
+        body:not(.pvp-mode) .board,
+        body:not(.pvp-mode) .controls,
+        body:not(.pvp-mode) .online-controls {
+            transform: translateY(calc(-1 * var(--y-offset-cpu)));
+            transition: transform 0.2s ease;
+        }
+
+        body.pvp-mode .pvp-ui,
+        body.pvp-mode .board {
+            transform: translateY(calc(-1 * var(--y-offset-pvp)));
+            transition: transform 0.2s ease;
+        }
+        /* --------------------- */
 
         .game-center-wrapper { 
             display: contents; 
@@ -147,7 +172,7 @@
             color: #fff; 
         }
 
-        #pvp-ui-top { transform: rotate(180deg); }
+        #pvp-ui-top { transform: rotate(180deg) translateY(calc(var(--y-offset-pvp))); }
 
         body.pvp-mode {
             background-color: #000;
@@ -161,8 +186,7 @@
             align-items: center;
             justify-content: center;
             width: 100%;
-            height: 100vh;
-            height: 100dvh; 
+            height: 100%;
             gap: 20px;
             padding-bottom: max(env(safe-area-inset-bottom), 35px);
             padding-top: max(env(safe-area-inset-top), 35px);
@@ -180,7 +204,6 @@
 
         body.pvp-mode .pvp-ui { display: flex; }
 
-        /* PvPモードの盤面固定 */
         body.pvp-mode .board {
             width: min(90vw, 65vh); 
             height: min(90vw, 65vh);
@@ -310,7 +333,6 @@
             flex-shrink: 0;
         }
 
-        /* 通常モードの盤面固定 (画面サイズに応じて動的にリサイズし、スクロールを防止) */
         .board {
             display: grid;
             grid-template-columns: repeat(8, 1fr);
@@ -320,10 +342,10 @@
             background-color: var(--cell-border);
             border: 4px solid #222;
             border-radius: 4px;
-            touch-action: none; /* スワイプやピンチズームを防ぐ */
+            touch-action: none;
             position: relative;
             box-shadow: 0 5px 15px rgba(0,0,0,0.4);
-            flex-shrink: 0; /* 縮むのを防止 */
+            flex-shrink: 0;
         }
 
         .board-star {
