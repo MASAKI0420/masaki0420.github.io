@@ -166,8 +166,8 @@
 
 
     <script>
-        // ★ここに 発行したURL を貼り付けてください！
-        const ENDPOINT_URL = "https://script.google.com/macros/s/AKfycbzZn0X8usVMinue8gBqYxOxddpjXUO1kx-KBDuPBjaciOqvncNBp7XbY86H3OgSmyVMCw/exec";
+        // ★ここに 発行した新しいURL を貼り付けてください！
+        const ENDPOINT_URL = "https://script.google.com/macros/s/AKfycbxdNWrcK7QQJ3nCJZeer5fJt54ZhOA3PDeuhn3Uw86AIwF2RfZDUBIZMPBZk2T6_7jzeA/exec";
 
         const pages = { login: document.getElementById('login-page'), home: document.getElementById('home-page'), chat: document.getElementById('chat-page') };
         const chatArea = document.getElementById('chat-area'), chatList = document.getElementById('chatList');
@@ -182,7 +182,7 @@
         let currentRoomId = '';
         let currentTarget = null;
         let autoReloadInterval = null;
-        let homePollingInterval = null; // ★ホーム画面で新着を待つためのタイマー
+        let homePollingInterval = null;
 
         async function apiGet(params) {
             const url = new URL(ENDPOINT_URL);
@@ -264,7 +264,7 @@
             } catch (e) { alert('エラーが発生しました'); }
         };
 
-        // ★新機能：自分に届いたメッセージを検知して「自動的に」リストに追加する
+        // ホーム画面：自分宛てのメッセージをくれた人を自動でリストに追加する
         async function fetchChatList() {
             try {
                 const res = await apiGet({ action: 'get_chat_list', userId: myId });
@@ -273,10 +273,8 @@
                 if (res.chatUsers) {
                     let added = false;
                     res.chatUsers.forEach(uid => {
-                        // リストにいない人からメッセージが届いているのを発見したら！
                         if (!friends.some(f => f.id === uid) && uid !== myId) {
                             friends.unshift({ id: uid, name: `新着メッセージ! (ID:${uid})`, icon: '' });
-                            updateFriendProfile(uid); // 本名とアイコンを裏で取りに行く
                             added = true;
                         }
                     });
@@ -295,12 +293,8 @@
             if (myIconBase64) document.getElementById('homeIconPreview').innerHTML = `<img src="${myIconBase64}">`;
             
             renderChatList();
-            
-            // 起動時にグループと「新着メッセージをくれた相手」を取得
             await fetchChatList();
-            friends.forEach(f => { updateFriendProfile(f.id); });
 
-            // ホーム画面にいる間は、自動で新着を検知してリストを更新する
             if (homePollingInterval) clearInterval(homePollingInterval);
             homePollingInterval = setInterval(fetchChatList, 10000);
         }
@@ -314,7 +308,7 @@
                 
                 let nameHtml = item.name;
                 if (item.name.includes('未登録') || item.name.includes('確認中') || item.name.includes('新着')) {
-                    nameHtml = `<span style="color:#e91e63; font-weight:bold;">${item.name}</span>`; // 新着は目立つように
+                    nameHtml = `<span style="color:#e91e63; font-weight:bold;">${item.name}</span>`;
                 }
 
                 li.innerHTML = `<div class="list-item-icon">${iconHtml}</div><div class="list-item-name">${nameHtml} ${item.isGroup ? '(グループ)' : ''}</div>`;
@@ -357,7 +351,6 @@
             });
         }
 
-        // 自分が追加するとき
         function addFriendLocally(targetId, isAuto = false) {
             targetId = targetId.trim().toUpperCase();
             if (targetId === '' || targetId.length !== 6) return;
@@ -369,7 +362,6 @@
             
             document.getElementById('friendIdInput').value = '';
             renderChatList(); 
-            updateFriendProfile(targetId);
         }
         
         const friendIdInput = document.getElementById('friendIdInput');
@@ -378,31 +370,6 @@
             const val = e.target.value.trim().toUpperCase();
             if (val.length === 6) addFriendLocally(val, true);
         });
-
-        async function updateFriendProfile(targetId) {
-            if (!targetId || targetId === myId) return;
-            try {
-                const res = await apiGet({ action: 'get_user', id: targetId });
-                let idx = friends.findIndex(f => f.id === targetId);
-                
-                if (idx >= 0) {
-                    if (!res.error) {
-                        friends[idx].name = res.name;
-                        friends[idx].icon = res.icon;
-                    } else {
-                        if (friends[idx].name.includes('確認中')) {
-                            friends[idx].name = `未登録 (ID:${targetId})`;
-                        }
-                    }
-                    localStorage.setItem('line_friends_v5', JSON.stringify(friends));
-                    renderChatList();
-                    
-                    if (currentTarget && currentTarget.id === targetId && !res.error) {
-                        document.getElementById('chatTargetName').textContent = res.name;
-                    }
-                }
-            } catch(e) {}
-        }
 
         function showQrModal() { document.getElementById('qrModal').style.display = 'flex'; new QRious({ element: document.getElementById('myQrCanvas'), value: myId, size: 200 }); }
 
@@ -460,23 +427,20 @@
         function openChatRoom(item) {
             currentTarget = item;
             currentRoomId = item.isGroup ? item.id : [myId, item.id].sort().join('_');
-            document.getElementById('chatTargetName').textContent = (item.name.includes('未登録') || item.name.includes('新着')) ? `ID: ${item.id}` : item.name;
+            document.getElementById('chatTargetName').textContent = (item.name.includes('未登録') || item.name.includes('確認中') || item.name.includes('新着')) ? `ID: ${item.id}` : item.name;
             pages.home.classList.remove('active'); pages.chat.classList.add('active');
             chatArea.innerHTML = '<div style="text-align:center; color:white; margin-top:10px;">読み込み中...</div>';
             
-            // トークに入ったらホーム画面のポーリングは止める
             if (homePollingInterval) clearInterval(homePollingInterval);
 
             loadPosts();
             autoReloadInterval = setInterval(() => loadPosts(true), 10000);
-
-            if (!item.isGroup) { updateFriendProfile(item.id); }
         }
 
         document.getElementById('backBtn').onclick = () => {
             clearInterval(autoReloadInterval);
             pages.chat.classList.remove('active'); pages.home.classList.add('active');
-            initHome(); // 戻った時に最新状態にし、新着の検知を再開
+            initHome(); 
         };
 
         function createMessageElement(post, isTemp = false, isRead = false) {
@@ -519,6 +483,7 @@
             return rowDiv;
         }
 
+        // ★最強の解決策：メッセージを読み込んだ瞬間、相手が送ってきた本当の名前をダイレクトに学習して反映する
         async function loadPosts(isAutoReload = false) {
             try {
                 const posts = await apiGet({ action: 'get_messages', room: currentRoomId, userId: myId });
@@ -533,7 +498,19 @@
                 posts.forEach((post, index) => {
                     const isRead = post.read || (post.senderId === myId && index < lastOtherIndex);
                     chatArea.appendChild(createMessageElement(post, false, isRead));
+
+                    // ★ここに到達した瞬間（メッセージを受信/確認した瞬間）、友達リストの名前を相手の本名に自動書き換え！
+                    if (post.senderId !== myId && currentTarget && !currentTarget.isGroup && post.senderId === currentTarget.id) {
+                        let idx = friends.findIndex(f => f.id === post.senderId);
+                        if (idx >= 0 && friends[idx].name !== post.name) {
+                            friends[idx].name = post.name;
+                            localStorage.setItem('line_friends_v5', JSON.stringify(friends));
+                            document.getElementById('chatTargetName').textContent = post.name;
+                            renderChatList();
+                        }
+                    }
                 });
+
                 if (!isAutoReload || isAtBottom) chatArea.scrollTop = chatArea.scrollHeight;
             } catch (e) {}
         }
