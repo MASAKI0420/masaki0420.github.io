@@ -97,7 +97,9 @@
                 <div class="icon-preview" id="homeIconPreview">画</div>
                 <input type="file" id="homeIconInput" accept="image/*" style="display:none;">
             </div>
-            <div style="font-size: 18px; font-weight:bold; margin-top:10px;" id="displayMyName"></div>
+            <!-- ★名前をタップして変更できるように変更 -->
+            <div style="font-size: 18px; font-weight:bold; margin-top:10px; cursor:pointer; display:inline-block;" id="displayMyName" title="タップして名前を変更"></div>
+            <span style="font-size:12px; color:#888; margin-left:5px;">✏️</span>
             <div style="font-size: 14px; color: #666; margin-top: 5px;">ID: <span id="displayMyId" style="color:#06C755; font-weight:bold;"></span></div>
         </div>
 
@@ -166,8 +168,8 @@
 
 
     <script>
-        // ★ここに 発行した新しいURL を貼り付けてください！
-        const ENDPOINT_URL = "https://script.google.com/macros/s/AKfycbxdNWrcK7QQJ3nCJZeer5fJt54ZhOA3PDeuhn3Uw86AIwF2RfZDUBIZMPBZk2T6_7jzeA/exec";
+        // ★ここに 発行したURL を貼り付けてください！
+        const ENDPOINT_URL = "https://script.google.com/macros/s/AKfycbw9JQv1FK9nDpvH92lwG0LHBlw_GhseRNdBaqa_xhk6uTukV6QHjY9ClK2pIUxH9wlCpQ/exec";
 
         const pages = { login: document.getElementById('login-page'), home: document.getElementById('home-page'), chat: document.getElementById('chat-page') };
         const chatArea = document.getElementById('chat-area'), chatList = document.getElementById('chatList');
@@ -194,8 +196,8 @@
         async function apiPost(params) {
             const form = new URLSearchParams();
             for (let key in params) form.append(key, params[key]);
-            await fetch(ENDPOINT_URL, { method: 'POST', body: form, mode: 'no-cors' });
-            return { status: "success" };
+            // バックグラウンドで即座に送信（ローカルの表示は待たせない）
+            fetch(ENDPOINT_URL, { method: 'POST', body: form, mode: 'no-cors' });
         }
 
         function processImage(file, maxSize, callback) {
@@ -244,27 +246,38 @@
             myIconBase64 = data; 
             document.getElementById('homeIconPreview').innerHTML = `<img src="${data}">`;
             localStorage.setItem('line_my_icon', data);
-            try { await apiPost({ action: 'update_profile', id: myId, name: myName, icon: data }); } catch(err) {}
+            apiPost({ action: 'update_profile', id: myId, name: myName, icon: data });
         });
+
+        // ★新機能：自分の名前をタップして即座に変更できる機能
+        document.getElementById('displayMyName').onclick = async () => {
+            const newName = prompt("新しい名前を入力してください:", myName);
+            if (newName && newName.trim() !== "") {
+                myName = newName.trim();
+                localStorage.setItem('line_my_name', myName);
+                document.getElementById('displayMyName').textContent = myName;
+                apiPost({ action: 'update_name', id: myId, name: myName });
+            }
+        };
 
         if (myId && myName) { pages.login.classList.remove('active'); pages.home.classList.add('active'); initHome(); }
 
-        document.getElementById('registerBtn').onclick = async () => {
+        document.getElementById('registerBtn').onclick = () => {
             const name = document.getElementById('regNameInput').value.trim();
             if (name === '') return alert('名前を入力してください');
             const newId = Math.random().toString(36).substring(2, 8).toUpperCase(); 
-            document.getElementById('registerBtn').textContent = '登録中...';
-            try {
-                await apiPost({ action: 'update_profile', id: newId, name: name, icon: myIconBase64 });
-                localStorage.setItem('line_my_id', newId); localStorage.setItem('line_my_name', name);
-                if(myIconBase64) localStorage.setItem('line_my_icon', myIconBase64);
-                myId = newId; myName = name;
-                pages.login.classList.remove('active'); pages.home.classList.add('active');
-                initHome();
-            } catch (e) { alert('エラーが発生しました'); }
+            
+            apiPost({ action: 'update_profile', id: newId, name: name, icon: myIconBase64 });
+            localStorage.setItem('line_my_id', newId); 
+            localStorage.setItem('line_my_name', name);
+            if(myIconBase64) localStorage.setItem('line_my_icon', myIconBase64);
+            
+            myId = newId; myName = name;
+            pages.login.classList.remove('active'); pages.home.classList.add('active');
+            initHome();
         };
 
-        // ホーム画面：自分宛てのメッセージをくれた人を自動でリストに追加する
+        // 高速化されたバックグラウンド同期（ローディングを出さない）
         async function fetchChatList() {
             try {
                 const res = await apiGet({ action: 'get_chat_list', userId: myId });
@@ -293,10 +306,10 @@
             if (myIconBase64) document.getElementById('homeIconPreview').innerHTML = `<img src="${myIconBase64}">`;
             
             renderChatList();
-            await fetchChatList();
+            fetchChatList(); // バックグラウンドで取得
 
             if (homePollingInterval) clearInterval(homePollingInterval);
-            homePollingInterval = setInterval(fetchChatList, 10000);
+            homePollingInterval = setInterval(fetchChatList, 4000); // 4秒ごとに高速チェック
         }
 
         function renderChatList() {
@@ -418,7 +431,7 @@
             const memberIds = Array.from(checkboxes).map(cb => cb.value); memberIds.push(myId);
             const gId = "G_" + Math.random().toString(36).substring(2, 10).toUpperCase();
             document.getElementById('createGroupBtn').textContent = '作成中...';
-            await apiPost({ action: 'create_group', groupId: gId, groupName: gName, members: memberIds.join(',') });
+            apiPost({ action: 'create_group', groupId: gId, groupName: gName, members: memberIds.join(',') });
             alert('グループを作成しました！');
             document.getElementById('groupModal').style.display = 'none'; document.getElementById('createGroupBtn').textContent = '作成する';
             initHome(); 
@@ -429,12 +442,13 @@
             currentRoomId = item.isGroup ? item.id : [myId, item.id].sort().join('_');
             document.getElementById('chatTargetName').textContent = (item.name.includes('未登録') || item.name.includes('確認中') || item.name.includes('新着')) ? `ID: ${item.id}` : item.name;
             pages.home.classList.remove('active'); pages.chat.classList.add('active');
-            chatArea.innerHTML = '<div style="text-align:center; color:white; margin-top:10px;">読み込み中...</div>';
+            chatArea.innerHTML = ''; // ローディング文字を出さずに即座に開く
             
             if (homePollingInterval) clearInterval(homePollingInterval);
 
             loadPosts();
-            autoReloadInterval = setInterval(() => loadPosts(true), 10000);
+            // ★トーク画面の同期を3秒間隔に高速化し、即座に相手のメッセージを反映
+            autoReloadInterval = setInterval(() => loadPosts(true), 3000);
         }
 
         document.getElementById('backBtn').onclick = () => {
@@ -483,7 +497,6 @@
             return rowDiv;
         }
 
-        // ★最強の解決策：メッセージを読み込んだ瞬間、相手が送ってきた本当の名前をダイレクトに学習して反映する
         async function loadPosts(isAutoReload = false) {
             try {
                 const posts = await apiGet({ action: 'get_messages', room: currentRoomId, userId: myId });
@@ -499,7 +512,7 @@
                     const isRead = post.read || (post.senderId === myId && index < lastOtherIndex);
                     chatArea.appendChild(createMessageElement(post, false, isRead));
 
-                    // ★ここに到達した瞬間（メッセージを受信/確認した瞬間）、友達リストの名前を相手の本名に自動書き換え！
+                    // メッセージから相手の本名を即座に学習して反映
                     if (post.senderId !== myId && currentTarget && !currentTarget.isGroup && post.senderId === currentTarget.id) {
                         let idx = friends.findIndex(f => f.id === post.senderId);
                         if (idx >= 0 && friends[idx].name !== post.name) {
@@ -522,29 +535,27 @@
             const now = new Date();
             const timeText = String(now.getHours()).padStart(2, '0') + ':' + String(now.getMinutes()).padStart(2, '0');
             const tempPost = { senderId: myId, name: myName, message: msg, date: timeText };
-            chatArea.appendChild(createMessageElement(tempPost, true, false));
+            
+            // 即座に画面に自分のメッセージを表示（ローディング待ちゼロ）
+            chatArea.appendChild(createMessageElement(tempPost, false, false));
             chatArea.scrollTop = chatArea.scrollHeight;
             
             document.getElementById('messageInput').value = '';
-            document.getElementById('submitBtn').disabled = true;
             
-            try { await apiPost({ action: 'send_message', senderId: myId, name: myName, message: msg, room: currentRoomId }); } catch(e) {}
-            await loadPosts();
-            chatArea.scrollTop = chatArea.scrollHeight;
-            document.getElementById('submitBtn').disabled = false;
+            // バックグラウンドで送信
+            apiPost({ action: 'send_message', senderId: myId, name: myName, message: msg, room: currentRoomId });
         };
 
         document.getElementById('photoInput').onchange = (e) => {
-            processImage(e.target.files[0], 800, async (base64Data) => {
+            processImage(e.target.files[0], 800, (base64Data) => {
                 const now = new Date();
                 const timeText = String(now.getHours()).padStart(2, '0') + ':' + String(now.getMinutes()).padStart(2, '0');
                 const tempPost = { senderId: myId, name: myName, message: "[IMAGE]" + base64Data, date: timeText };
-                chatArea.appendChild(createMessageElement(tempPost, true, false));
+                
+                chatArea.appendChild(createMessageElement(tempPost, false, false));
                 chatArea.scrollTop = chatArea.scrollHeight;
 
-                try { await apiPost({ action: 'send_message', senderId: myId, name: myName, message: "[IMAGE]" + base64Data, room: currentRoomId }); } catch(e) {}
-                await loadPosts();
-                chatArea.scrollTop = chatArea.scrollHeight;
+                apiPost({ action: 'send_message', senderId: myId, name: myName, message: "[IMAGE]" + base64Data, room: currentRoomId });
             });
             e.target.value = '';
         };
