@@ -167,7 +167,7 @@
 
     <script>
         // ★ここに 発行したURL を貼り付けてください！
-        const ENDPOINT_URL = "https://script.google.com/macros/s/AKfycbyEHAH4N4wQgBBYb0Y_tcmetRMFHisl3CeRWI9gZMeeJIy5iLTJ2G5EV_GvOj9YO9U18Q/exec";
+        const ENDPOINT_URL = "https://script.google.com/macros/s/AKfycbzZn0X8usVMinue8gBqYxOxddpjXUO1kx-KBDuPBjaciOqvncNBp7XbY86H3OgSmyVMCw/exec";
 
         const pages = { login: document.getElementById('login-page'), home: document.getElementById('home-page'), chat: document.getElementById('chat-page') };
         const chatArea = document.getElementById('chat-area'), chatList = document.getElementById('chatList');
@@ -175,18 +175,14 @@
         let myId = localStorage.getItem('line_my_id') || '';
         let myName = localStorage.getItem('line_my_name') || '';
         let myIconBase64 = localStorage.getItem('line_my_icon') || ''; 
-        
-        // ★友達リストが絶対に壊れないように安全に読み込む処理
         let friends = [];
-        try {
-            friends = JSON.parse(localStorage.getItem('line_friends_v5')) || [];
-            if (!Array.isArray(friends)) friends = [];
-        } catch(e) { friends = []; }
+        try { friends = JSON.parse(localStorage.getItem('line_friends_v5')) || []; if (!Array.isArray(friends)) friends = []; } catch(e) { friends = []; }
         
         let groups = [];
         let currentRoomId = '';
         let currentTarget = null;
         let autoReloadInterval = null;
+        let homePollingInterval = null; // ★ホーム画面で新着を待つためのタイマー
 
         async function apiGet(params) {
             const url = new URL(ENDPOINT_URL);
@@ -217,14 +213,9 @@
                     canvas.width = w; canvas.height = h;
                     const ctx = canvas.getContext('2d');
                     ctx.drawImage(img, 0, 0, w, h);
-                    
                     let quality = 0.8;
                     let dataUrl = canvas.toDataURL('image/jpeg', quality);
-                    
-                    while(dataUrl.length > 45000 && quality > 0.1) {
-                        quality -= 0.1;
-                        dataUrl = canvas.toDataURL('image/jpeg', quality);
-                    }
+                    while(dataUrl.length > 45000 && quality > 0.1) { quality -= 0.1; dataUrl = canvas.toDataURL('image/jpeg', quality); }
                     if (dataUrl.length > 45000) {
                         const smallCanvas = document.createElement('canvas');
                         smallCanvas.width = w / 2; smallCanvas.height = h / 2;
@@ -273,17 +264,45 @@
             } catch (e) { alert('エラーが発生しました'); }
         };
 
+        // ★新機能：自分に届いたメッセージを検知して「自動的に」リストに追加する
+        async function fetchChatList() {
+            try {
+                const res = await apiGet({ action: 'get_chat_list', userId: myId });
+                if (res.groups) groups = res.groups;
+                
+                if (res.chatUsers) {
+                    let added = false;
+                    res.chatUsers.forEach(uid => {
+                        // リストにいない人からメッセージが届いているのを発見したら！
+                        if (!friends.some(f => f.id === uid) && uid !== myId) {
+                            friends.unshift({ id: uid, name: `新着メッセージ! (ID:${uid})`, icon: '' });
+                            updateFriendProfile(uid); // 本名とアイコンを裏で取りに行く
+                            added = true;
+                        }
+                    });
+                    if (added) {
+                        localStorage.setItem('line_friends_v5', JSON.stringify(friends));
+                        renderChatList();
+                    }
+                }
+                renderChatList();
+            } catch(e) {}
+        }
+
         async function initHome() {
             document.getElementById('displayMyName').textContent = myName;
             document.getElementById('displayMyId').textContent = myId;
             if (myIconBase64) document.getElementById('homeIconPreview').innerHTML = `<img src="${myIconBase64}">`;
             
-            // 開いた瞬間にリストを表示
             renderChatList();
             
-            // バックグラウンドでグループと最新の友達情報を取得する
-            try { groups = await apiGet({ action: 'get_groups', userId: myId }); renderChatList(); } catch(e){}
+            // 起動時にグループと「新着メッセージをくれた相手」を取得
+            await fetchChatList();
             friends.forEach(f => { updateFriendProfile(f.id); });
+
+            // ホーム画面にいる間は、自動で新着を検知してリストを更新する
+            if (homePollingInterval) clearInterval(homePollingInterval);
+            homePollingInterval = setInterval(fetchChatList, 10000);
         }
 
         function renderChatList() {
@@ -291,19 +310,17 @@
             const allItems = [...friends, ...groups];
             allItems.forEach(item => {
                 const li = document.createElement('li'); li.className = 'list-item';
-                const iconHtml = item.icon ? `<img src="${item.icon}">` : (item.name ? item.name.charAt(0) : '？');
+                const iconHtml = item.icon ? `<img src="${item.icon}">` : (item.name && item.name.charAt(0) !== '新' ? item.name.charAt(0) : '？');
                 
-                // まだ相手が登録していない場合は文字をグレーにする
                 let nameHtml = item.name;
-                if (item.name.includes('未登録') || item.name.includes('確認中')) {
-                    nameHtml = `<span style="color:#aaa; font-weight:normal;">${item.name}</span>`;
+                if (item.name.includes('未登録') || item.name.includes('確認中') || item.name.includes('新着')) {
+                    nameHtml = `<span style="color:#e91e63; font-weight:bold;">${item.name}</span>`; // 新着は目立つように
                 }
 
                 li.innerHTML = `<div class="list-item-icon">${iconHtml}</div><div class="list-item-name">${nameHtml} ${item.isGroup ? '(グループ)' : ''}</div>`;
                 
                 let pressTimer;
                 let isLongPress = false;
-
                 const startPress = (e) => {
                     isLongPress = false;
                     pressTimer = setTimeout(() => {
@@ -312,7 +329,7 @@
                         if (item.isGroup) {
                             alert("グループの削除は現在対応していません。");
                         } else {
-                            if (confirm(`「${item.name}」を友達リストから削除しますか？`)) {
+                            if (confirm(`「${item.name}」をリストから削除しますか？`)) {
                                 friends = friends.filter(f => f.id !== item.id);
                                 localStorage.setItem('line_friends_v5', JSON.stringify(friends));
                                 renderChatList();
@@ -340,44 +357,28 @@
             });
         }
 
-        // ★新機能：通信を待たずに「即座に」リストに追加する最強の追加関数
+        // 自分が追加するとき
         function addFriendLocally(targetId, isAuto = false) {
             targetId = targetId.trim().toUpperCase();
             if (targetId === '' || targetId.length !== 6) return;
-            if (targetId === myId) {
-                if (!isAuto) alert('自分のIDです。');
-                return;
-            }
-            if (friends.some(f => f.id === targetId)) {
-                if (!isAuto) alert('すでに追加されています。');
-                return;
-            }
+            if (targetId === myId) { if (!isAuto) alert('自分のIDです。'); return; }
+            if (friends.some(f => f.id === targetId)) { if (!isAuto) alert('すでに追加されています。'); return; }
 
-            // 通信エラー等に一切影響されず、即座にリストへ強制追加！
             friends.push({ id: targetId, name: `確認中... (ID:${targetId})`, icon: '' });
             localStorage.setItem('line_friends_v5', JSON.stringify(friends));
             
-            document.getElementById('friendIdInput').value = ''; // 入力欄を空にする
-            renderChatList(); // すぐに画面に表示する
-            
-            // バックグラウンドで相手の名前を探しに行く
+            document.getElementById('friendIdInput').value = '';
+            renderChatList(); 
             updateFriendProfile(targetId);
         }
         
         const friendIdInput = document.getElementById('friendIdInput');
-        
-        // 追加ボタンを押したとき
         document.getElementById('addFriendBtn').onclick = () => addFriendLocally(friendIdInput.value, false);
-
-        // 6文字打った瞬間に自動追加
         friendIdInput.addEventListener('input', (e) => {
             const val = e.target.value.trim().toUpperCase();
-            if (val.length === 6) {
-                addFriendLocally(val, true);
-            }
+            if (val.length === 6) addFriendLocally(val, true);
         });
 
-        // ★新機能：裏側でこっそり相手の本当の名前とアイコンを取得して上書きする
         async function updateFriendProfile(targetId) {
             if (!targetId || targetId === myId) return;
             try {
@@ -386,11 +387,9 @@
                 
                 if (idx >= 0) {
                     if (!res.error) {
-                        // 相手が見つかった場合、本当の情報を上書き！
                         friends[idx].name = res.name;
                         friends[idx].icon = res.icon;
                     } else {
-                        // まだ相手がアプリを始めていない場合
                         if (friends[idx].name.includes('確認中')) {
                             friends[idx].name = `未登録 (ID:${targetId})`;
                         }
@@ -398,14 +397,12 @@
                     localStorage.setItem('line_friends_v5', JSON.stringify(friends));
                     renderChatList();
                     
-                    // トーク画面を開いている最中なら、上の名前も書き換える
                     if (currentTarget && currentTarget.id === targetId && !res.error) {
                         document.getElementById('chatTargetName').textContent = res.name;
                     }
                 }
             } catch(e) {}
         }
-
 
         function showQrModal() { document.getElementById('qrModal').style.display = 'flex'; new QRious({ element: document.getElementById('myQrCanvas'), value: myId, size: 200 }); }
 
@@ -426,9 +423,7 @@
                 loadingMessage.innerText = "カメラにアクセスできませんでした。\nブラウザの許可を確認してください。"; scanning = false;
             });
         }
-
         function closeQrScanner() { scanning = false; qrScannerModal.style.display = 'none'; if(stream) stream.getTracks().forEach(track => track.stop()); }
-
         function tick() {
             if (!scanning) return;
             if (video.readyState === video.HAVE_ENOUGH_DATA) {
@@ -453,10 +448,8 @@
             if (gName === '') return alert('グループ名を入力してください');
             const checkboxes = document.querySelectorAll('#groupMemberSelect input:checked');
             if (checkboxes.length === 0) return alert('メンバーを選択してください');
-            
             const memberIds = Array.from(checkboxes).map(cb => cb.value); memberIds.push(myId);
             const gId = "G_" + Math.random().toString(36).substring(2, 10).toUpperCase();
-
             document.getElementById('createGroupBtn').textContent = '作成中...';
             await apiPost({ action: 'create_group', groupId: gId, groupName: gName, members: memberIds.join(',') });
             alert('グループを作成しました！');
@@ -467,9 +460,13 @@
         function openChatRoom(item) {
             currentTarget = item;
             currentRoomId = item.isGroup ? item.id : [myId, item.id].sort().join('_');
-            document.getElementById('chatTargetName').textContent = item.name.includes('未登録') ? `ID: ${item.id}` : item.name;
+            document.getElementById('chatTargetName').textContent = (item.name.includes('未登録') || item.name.includes('新着')) ? `ID: ${item.id}` : item.name;
             pages.home.classList.remove('active'); pages.chat.classList.add('active');
             chatArea.innerHTML = '<div style="text-align:center; color:white; margin-top:10px;">読み込み中...</div>';
+            
+            // トークに入ったらホーム画面のポーリングは止める
+            if (homePollingInterval) clearInterval(homePollingInterval);
+
             loadPosts();
             autoReloadInterval = setInterval(() => loadPosts(true), 10000);
 
@@ -479,7 +476,7 @@
         document.getElementById('backBtn').onclick = () => {
             clearInterval(autoReloadInterval);
             pages.chat.classList.remove('active'); pages.home.classList.add('active');
-            initHome(); // ホームに戻った時に最新状態にする
+            initHome(); // 戻った時に最新状態にし、新着の検知を再開
         };
 
         function createMessageElement(post, isTemp = false, isRead = false) {
@@ -489,21 +486,16 @@
             if (isTemp) rowDiv.style.opacity = '0.6'; 
 
             let timeText = post.date.length > 5 ? post.date.slice(-5) : post.date;
-            
             let avatarHtml = '';
             if (!isMine) {
                 let iconHtml = post.name ? post.name.charAt(0) : '？';
                 let f = friends.find(x => x.id === post.senderId);
-                if (f && f.icon) {
-                    iconHtml = `<img src="${f.icon}">`;
-                } else if (currentTarget && !currentTarget.isGroup && currentTarget.icon) {
-                    iconHtml = `<img src="${currentTarget.icon}">`;
-                }
+                if (f && f.icon) { iconHtml = `<img src="${f.icon}">`; } 
+                else if (currentTarget && !currentTarget.isGroup && currentTarget.icon) { iconHtml = `<img src="${currentTarget.icon}">`; }
                 avatarHtml = `<div class="avatar-area"><div class="avatar">${iconHtml}</div></div>`;
             }
 
             let nameAbove = (!isMine && currentTarget && currentTarget.isGroup) ? `<div style="font-size:11px; color:#e5e5e5; margin-bottom:3px; margin-left:4px;">${post.name}</div>` : '';
-
             let bubbleContent = post.message;
             if (bubbleContent.startsWith('[IMAGE]')) {
                 const base64Data = bubbleContent.replace('[IMAGE]', '');
@@ -511,7 +503,6 @@
             }
 
             let readHtml = (isMine && isRead) ? `<div style="font-size:10px; color:#e5e5e5; margin-bottom:2px; text-align:right;">既読</div>` : '';
-
             const timeBlock = `<div style="display:flex; flex-direction:column; justify-content:flex-end; align-items:flex-end; margin:0 5px;">
                                   ${isMine ? readHtml : ''}
                                   <div class="time" style="margin:0; align-self:flex-end;">${timeText}</div>
@@ -536,10 +527,7 @@
                 
                 let lastOtherIndex = -1;
                 for (let i = posts.length - 1; i >= 0; i--) {
-                    if (posts[i].senderId !== myId) {
-                        lastOtherIndex = i;
-                        break;
-                    }
+                    if (posts[i].senderId !== myId) { lastOtherIndex = i; break; }
                 }
                 
                 posts.forEach((post, index) => {
@@ -563,10 +551,7 @@
             document.getElementById('messageInput').value = '';
             document.getElementById('submitBtn').disabled = true;
             
-            try {
-                await apiPost({ action: 'send_message', senderId: myId, name: myName, message: msg, room: currentRoomId });
-            } catch(e) {}
-            
+            try { await apiPost({ action: 'send_message', senderId: myId, name: myName, message: msg, room: currentRoomId }); } catch(e) {}
             await loadPosts();
             chatArea.scrollTop = chatArea.scrollHeight;
             document.getElementById('submitBtn').disabled = false;
@@ -580,9 +565,7 @@
                 chatArea.appendChild(createMessageElement(tempPost, true, false));
                 chatArea.scrollTop = chatArea.scrollHeight;
 
-                try {
-                    await apiPost({ action: 'send_message', senderId: myId, name: myName, message: "[IMAGE]" + base64Data, room: currentRoomId });
-                } catch(e) {}
+                try { await apiPost({ action: 'send_message', senderId: myId, name: myName, message: "[IMAGE]" + base64Data, room: currentRoomId }); } catch(e) {}
                 await loadPosts();
                 chatArea.scrollTop = chatArea.scrollHeight;
             });
