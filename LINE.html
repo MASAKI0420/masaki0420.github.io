@@ -97,7 +97,7 @@
                 <div class="icon-preview" id="homeIconPreview">画</div>
                 <input type="file" id="homeIconInput" accept="image/*" style="display:none;">
             </div>
-            <!-- ★名前をタップして変更できるように変更 -->
+            <!-- 名前タップで即時変更 -->
             <div style="font-size: 18px; font-weight:bold; margin-top:10px; cursor:pointer; display:inline-block;" id="displayMyName" title="タップして名前を変更"></div>
             <span style="font-size:12px; color:#888; margin-left:5px;">✏️</span>
             <div style="font-size: 14px; color: #666; margin-top: 5px;">ID: <span id="displayMyId" style="color:#06C755; font-weight:bold;"></span></div>
@@ -168,8 +168,8 @@
 
 
     <script>
-        // ★ここに 発行したURL を貼り付けてください！
-        const ENDPOINT_URL = "https://script.google.com/macros/s/AKfycbw9JQv1FK9nDpvH92lwG0LHBlw_GhseRNdBaqa_xhk6uTukV6QHjY9ClK2pIUxH9wlCpQ/exec";
+        // ★ここに 発行した新しいURL を貼り付けてください！
+        const ENDPOINT_URL = "https://script.google.com/macros/s/AKfycbyqhqGPRCQTIU6VbQMMx5lHLPWhDtXiQB8wKaqqway9YGZeenIDF7WnNdYhdY81I6Ilrg/exec";
 
         const pages = { login: document.getElementById('login-page'), home: document.getElementById('home-page'), chat: document.getElementById('chat-page') };
         const chatArea = document.getElementById('chat-area'), chatList = document.getElementById('chatList');
@@ -193,10 +193,9 @@
             return await res.json();
         }
 
-        async function apiPost(params) {
+        function apiPost(params) {
             const form = new URLSearchParams();
             for (let key in params) form.append(key, params[key]);
-            // バックグラウンドで即座に送信（ローカルの表示は待たせない）
             fetch(ENDPOINT_URL, { method: 'POST', body: form, mode: 'no-cors' });
         }
 
@@ -242,15 +241,15 @@
         });
 
         document.getElementById('homeIconArea').onclick = () => document.getElementById('homeIconInput').click();
-        document.getElementById('homeIconInput').onchange = (e) => processImage(e.target.files[0], 150, async data => {
+        document.getElementById('homeIconInput').onchange = (e) => processImage(e.target.files[0], 150, (data) => {
             myIconBase64 = data; 
             document.getElementById('homeIconPreview').innerHTML = `<img src="${data}">`;
             localStorage.setItem('line_my_icon', data);
             apiPost({ action: 'update_profile', id: myId, name: myName, icon: data });
         });
 
-        // ★新機能：自分の名前をタップして即座に変更できる機能
-        document.getElementById('displayMyName').onclick = async () => {
+        // 名前をタップして即時変更
+        document.getElementById('displayMyName').onclick = () => {
             const newName = prompt("新しい名前を入力してください:", myName);
             if (newName && newName.trim() !== "") {
                 myName = newName.trim();
@@ -277,7 +276,6 @@
             initHome();
         };
 
-        // 高速化されたバックグラウンド同期（ローディングを出さない）
         async function fetchChatList() {
             try {
                 const res = await apiGet({ action: 'get_chat_list', userId: myId });
@@ -306,10 +304,10 @@
             if (myIconBase64) document.getElementById('homeIconPreview').innerHTML = `<img src="${myIconBase64}">`;
             
             renderChatList();
-            fetchChatList(); // バックグラウンドで取得
+            fetchChatList();
 
             if (homePollingInterval) clearInterval(homePollingInterval);
-            homePollingInterval = setInterval(fetchChatList, 4000); // 4秒ごとに高速チェック
+            homePollingInterval = setInterval(fetchChatList, 3000);
         }
 
         function renderChatList() {
@@ -423,17 +421,17 @@
             selectDiv.innerHTML = '';
             friends.forEach(f => { selectDiv.innerHTML += `<label style="display:block; margin:5px 0;"><input type="checkbox" value="${f.id}"> ${f.name}</label>`; });
         }
-        document.getElementById('createGroupBtn').onclick = async () => {
+        document.getElementById('createGroupBtn').onclick = () => {
             const gName = document.getElementById('groupNameInput').value.trim();
             if (gName === '') return alert('グループ名を入力してください');
             const checkboxes = document.querySelectorAll('#groupMemberSelect input:checked');
             if (checkboxes.length === 0) return alert('メンバーを選択してください');
             const memberIds = Array.from(checkboxes).map(cb => cb.value); memberIds.push(myId);
             const gId = "G_" + Math.random().toString(36).substring(2, 10).toUpperCase();
-            document.getElementById('createGroupBtn').textContent = '作成中...';
+            
             apiPost({ action: 'create_group', groupId: gId, groupName: gName, members: memberIds.join(',') });
             alert('グループを作成しました！');
-            document.getElementById('groupModal').style.display = 'none'; document.getElementById('createGroupBtn').textContent = '作成する';
+            document.getElementById('groupModal').style.display = 'none';
             initHome(); 
         };
 
@@ -442,12 +440,12 @@
             currentRoomId = item.isGroup ? item.id : [myId, item.id].sort().join('_');
             document.getElementById('chatTargetName').textContent = (item.name.includes('未登録') || item.name.includes('確認中') || item.name.includes('新着')) ? `ID: ${item.id}` : item.name;
             pages.home.classList.remove('active'); pages.chat.classList.add('active');
-            chatArea.innerHTML = ''; // ローディング文字を出さずに即座に開く
+            chatArea.innerHTML = ''; 
             
             if (homePollingInterval) clearInterval(homePollingInterval);
 
             loadPosts();
-            // ★トーク画面の同期を3秒間隔に高速化し、即座に相手のメッセージを反映
+            // 3秒ごとに相手からのメッセージを自動高速取得
             autoReloadInterval = setInterval(() => loadPosts(true), 3000);
         }
 
@@ -512,7 +510,7 @@
                     const isRead = post.read || (post.senderId === myId && index < lastOtherIndex);
                     chatArea.appendChild(createMessageElement(post, false, isRead));
 
-                    // メッセージから相手の本名を即座に学習して反映
+                    // 相手の本名を即座に自動学習して反映
                     if (post.senderId !== myId && currentTarget && !currentTarget.isGroup && post.senderId === currentTarget.id) {
                         let idx = friends.findIndex(f => f.id === post.senderId);
                         if (idx >= 0 && friends[idx].name !== post.name) {
@@ -528,7 +526,7 @@
             } catch (e) {}
         }
 
-        document.getElementById('submitBtn').onclick = async () => {
+        document.getElementById('submitBtn').onclick = () => {
             const msg = document.getElementById('messageInput').value.trim();
             if (msg === '') return;
             
@@ -536,13 +534,13 @@
             const timeText = String(now.getHours()).padStart(2, '0') + ':' + String(now.getMinutes()).padStart(2, '0');
             const tempPost = { senderId: myId, name: myName, message: msg, date: timeText };
             
-            // 即座に画面に自分のメッセージを表示（ローディング待ちゼロ）
+            // 即座に画面に追加（ローディング待ちゼロ）
             chatArea.appendChild(createMessageElement(tempPost, false, false));
             chatArea.scrollTop = chatArea.scrollHeight;
             
             document.getElementById('messageInput').value = '';
             
-            // バックグラウンドで送信
+            // バックグラウンド送信
             apiPost({ action: 'send_message', senderId: myId, name: myName, message: msg, room: currentRoomId });
         };
 
