@@ -104,7 +104,6 @@
 
         <div class="settings-area">
             <div style="display:flex; gap:8px;">
-                <!-- ★自動追加機能により、入力した瞬間に反応するようになります -->
                 <input type="text" id="friendIdInput" placeholder="IDで友達を検索" style="flex:1; padding:8px;">
                 <button id="addFriendBtn" style="padding:8px 12px; background:#1a73e8; color:white; border:none; border-radius:8px;">追加</button>
             </div>
@@ -169,7 +168,7 @@
 
     <script>
         // ★ここに 発行したURL を貼り付けてください！
-        const ENDPOINT_URL = "https://script.google.com/macros/s/AKfycbzLxnHb8TwvGKfLJmYZFAa5oFNVWYSX_9zcSQ26_ZDUtE0iwRe8ks11qZND3oghf9PGPg/exec";
+        const ENDPOINT_URL = "https://script.google.com/macros/s/AKfycbx0QGS-q6jNPan1kV1sifxKqQB0ljDMfULgAPYgqpAbwubVBVMDkAVnTZJQ-rw_KFhVvw/exec";
 
         const pages = { login: document.getElementById('login-page'), home: document.getElementById('home-page'), chat: document.getElementById('chat-page') };
         const chatArea = document.getElementById('chat-area'), chatList = document.getElementById('chatList');
@@ -323,7 +322,7 @@
             });
         }
 
-        // ★新機能：自動検索・追加処理
+        // ★新機能：お互いにIDを入力することで確実につながる（エラー無視）機能
         async function searchAndAddFriend(targetId, isAuto = false) {
             if (targetId === '') return;
             if (targetId === myId) {
@@ -336,38 +335,67 @@
             }
 
             const btn = document.getElementById('addFriendBtn');
-            btn.textContent = '検索中...'; btn.disabled = true;
+            btn.textContent = '追加中...'; btn.disabled = true;
 
             try {
+                // サーバーに相手がいるか確認
                 const res = await apiGet({ action: 'get_user', id: targetId });
-                if (res.error) { 
-                    if (!isAuto) alert(res.error); 
+                
+                if (res.error) {
+                    // エラーになっても弾かず、「仮の友達」として強制追加する
+                    friends.push({ id: targetId, name: `新しい友達 (ID:${targetId})`, icon: '' });
+                    localStorage.setItem('line_friends_v5', JSON.stringify(friends));
+                    if (!isAuto) alert(`ID「${targetId}」を追加しました！\n相手にもあなたのIDを入力してもらって下さい。`);
                 } else {
+                    // 見つかれば本名で追加
                     friends.push({ id: res.id, name: res.name, icon: res.icon });
                     localStorage.setItem('line_friends_v5', JSON.stringify(friends));
-                    alert(`${res.name} さんを追加しました！`);
-                    renderChatList();
-                    document.getElementById('friendIdInput').value = '';
+                    if (!isAuto) alert(`${res.name} さんを追加しました！\n相手にもあなたのIDを入力してもらって下さい。`);
                 }
             } catch (e) { 
-                if (!isAuto) alert('通信エラーが発生しました。'); 
+                // 通信エラー時も強制追加
+                friends.push({ id: targetId, name: `新しい友達 (ID:${targetId})`, icon: '' });
+                localStorage.setItem('line_friends_v5', JSON.stringify(friends));
+                if (!isAuto) alert(`ID「${targetId}」を追加しました！\n相手にもあなたのIDを入力してもらって下さい。`);
             } finally {
                 btn.textContent = '追加'; btn.disabled = false;
+                renderChatList();
+                document.getElementById('friendIdInput').value = '';
             }
         }
         
         const friendIdInput = document.getElementById('friendIdInput');
-        
-        // 追加ボタンを押したときの手動検索
         document.getElementById('addFriendBtn').onclick = () => searchAndAddFriend(friendIdInput.value.trim().toUpperCase(), false);
 
-        // ★文字が打ち込まれるたびにチェックし、IDの長さ(6文字)になった瞬間に自動検索
+        // 6文字で自動追加
         friendIdInput.addEventListener('input', (e) => {
             const val = e.target.value.trim().toUpperCase();
             if (val.length === 6) {
                 searchAndAddFriend(val, true);
             }
         });
+
+        // ★新機能：トークを開いたときに、相手の「本当の名前とアイコン」をこっそり取得して更新する
+        async function updateFriendProfile(targetId) {
+            if (!targetId || targetId === myId) return;
+            try {
+                const res = await apiGet({ action: 'get_user', id: targetId });
+                if (!res.error) {
+                    let idx = friends.findIndex(f => f.id === targetId);
+                    if (idx >= 0 && (friends[idx].name !== res.name || friends[idx].icon !== res.icon)) {
+                        friends[idx].name = res.name;
+                        friends[idx].icon = res.icon;
+                        localStorage.setItem('line_friends_v5', JSON.stringify(friends));
+                        renderChatList();
+                        
+                        // 今開いている画面のヘッダー名も更新
+                        if (currentTarget && currentTarget.id === targetId) {
+                            document.getElementById('chatTargetName').textContent = res.name;
+                        }
+                    }
+                }
+            } catch(e) {}
+        }
 
 
         function showQrModal() { document.getElementById('qrModal').style.display = 'flex'; new QRious({ element: document.getElementById('myQrCanvas'), value: myId, size: 200 }); }
@@ -435,6 +463,11 @@
             chatArea.innerHTML = '<div style="text-align:center; color:white; margin-top:10px;">読み込み中...</div>';
             loadPosts();
             autoReloadInterval = setInterval(() => loadPosts(true), 10000);
+
+            // ★トークを開いたときに相手のプロフィールを自動更新
+            if (!item.isGroup) {
+                updateFriendProfile(item.id);
+            }
         }
 
         document.getElementById('backBtn').onclick = () => {
