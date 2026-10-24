@@ -171,6 +171,7 @@
         #taiko-wrapper #taiko-ingame-pause-button { display: none; }
         #taiko-wrapper #taiko-ui-panel { position: absolute; top: 20px; right: 30px; color: white; z-index: 20; text-shadow: 0 0 8px rgba(0,0,0,0.8); text-align: right; font-weight: 600; }
         #taiko-wrapper #taiko-score { font-size: 2.5em; }
+        #taiko-wrapper #taiko-ingame-song-title { font-size: 3em; max-width: 40vw; margin-left: auto; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         #taiko-wrapper #taiko-accuracy { font-size: 1.5em; color: #FFD700; min-width: 5.5em; text-align: right; }
         #taiko-wrapper #taiko-accuracy-container { display: flex; align-items: center; justify-content: flex-end; gap: 8px; }
         #taiko-wrapper #combo-display { position: absolute; top: 49.3%; left: calc(180px + var(--ui-offset-x)); width: calc(120px * var(--lane-scale)); height: calc(120px * var(--lane-scale)); z-index: 20; font-weight: bold; color: white; text-shadow: 0 0 8px rgba(0,0,0,0.8); opacity: 0; transform: translate(-50%, calc(-50% - 58px)) scale(0.8); transition: opacity 0.2s, transform 0.2s; display: flex; align-items: center; justify-content: center; pointer-events: none; }
@@ -179,7 +180,7 @@
         #taiko-wrapper #roll-counter-display.visible { opacity: 1; }
         #taiko-wrapper #combo { font-size: calc(4.5em * var(--lane-scale)); line-height: 1; }
         #taiko-wrapper #combo-label { display: none; }
-        #taiko-wrapper #taiko-judgment-text { position: absolute; top: calc(50% - 180px - 90px * (var(--lane-scale) - 1) - 44px * (var(--lane-scale) - 1)); left: calc(390px + var(--ui-offset-x)); transform: translateX(-50%); font-size: 2.5em; font-weight: bold; opacity: 0; z-index: 22; padding: 5px 20px; border-radius: 4px; color: white; text-align: center; text-shadow: 0 0 8px #000, 0 0 8px #000; animation: taiko-judgment-anim-new 0.4s ease-out; pointer-events: none; }
+        #taiko-wrapper #taiko-judgment-text { position: absolute; top: calc(50% - 180px - 90px * (var(--lane-scale) - 1) - 44px * (var(--lane-scale) - 1)); left: calc(390px + var(--ui-offset-x)); transform: translateX(-50%); font-size: 3.1em; font-weight: bold; opacity: 0; z-index: 22; padding: 5px 20px; border-radius: 4px; color: white; text-align: center; text-shadow: 0 0 8px #000, 0 0 8px #000; animation: taiko-judgment-anim-new 0.4s ease-out; pointer-events: none; }
         @keyframes taiko-judgment-anim-new {
             0% { transform: translateX(-50%) translateY(5px); opacity: 1; }
             20% { transform: translateX(-50%) translateY(-3px); opacity: 1; }
@@ -191,7 +192,8 @@
         #taiko-wrapper .overlay-menu { text-align: center; padding: 30px 40px; background-color: var(--panel-bg); border-radius: 12px; box-shadow: 0 0 20px rgba(0,0,0,0.5); transform: scale(0.85); }
         #taiko-wrapper .overlay-menu h2 { font-size: 2.8em; margin-top: 0; margin-bottom: 30px; letter-spacing: 2px;}
         #taiko-wrapper .overlay-button { display: block; width: 220px; padding: 15px; margin: 12px auto; font-size: 1.2em; color: white; border: 2px solid var(--panel-border); background-color: #394362; border-radius: 8px; cursor: pointer; transition: background-color 0.2s, transform 0.1s; }
-        #taiko-wrapper .overlay-button:hover, #taiko-wrapper .overlay-button.selected { background-color: #4a5578; }
+        #taiko-wrapper .overlay-button:hover { background-color: #4a5578; }
+        #taiko-wrapper .overlay-button.selected { background-color: #ffffff; color: #1b2238; border-color: #ffffff; font-weight: bold; box-shadow: 0 0 12px rgba(255,255,255,0.6); }
         #taiko-wrapper .overlay-button:active { transform: scale(0.98); }
         #taiko-wrapper #results-menu #results-song-title { font-size: 1.2em; color: #a0a8c0; margin-top: -20px; margin-bottom: 25px;}
         #taiko-wrapper #results-menu .results-main-stats { display: flex; justify-content: space-around; gap: 30px; margin-bottom: 30px; }
@@ -222,18 +224,24 @@
         #taiko-wrapper #branch-indicator.branch-E { background: rgba(48, 120, 210, 0.9); }
         #taiko-wrapper #branch-indicator.branch-M { background: rgba(170, 60, 200, 0.9); }
         /* --- Norma gauge --- */
-        #taiko-wrapper #norma-gauge { position: absolute; top: calc(50% - 58px - 90px * var(--lane-scale) - 84px * 0.528 * var(--lane-scale)); left: calc(550px + var(--ui-offset-x)); width: 1064px; height: 84px; transform: scale(calc(0.528 * var(--lane-scale))); transform-origin: 0 0; z-index: 22; pointer-events: none; display: none; }
-        #taiko-wrapper #norma-gauge .gauge-base { position: absolute; inset: 0; background: no-repeat 0 0 / 1064px 84px url(data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAABCgAAABUCAYAAABAxwZVAAAFTUlEQVR42u3dT49TVRwG4PeUlg7EP1UBiWBEqSbGxICMiSs3Y3TlChOXmrCAPYl8BPwGbt3zEVy5NvEDyMKFcWWMJhAUiVwXHYQy7cz09pZDM8+TEJg7ve/c/hIW951zT0sAAABYpVGSrSSbSd7e/vrD7e8V44GJvhEAAAB0bpTk8yQfJbloHLA3BQUAAEB3xkmuZlJOjIwD9k9BAQAAsLwTSb5O8qVRQDuedwIAAFjOte0/I/dY0J4VFAAAAO2MktzIZANMYEk9IwAAAFjYZinlhygnoDNWUAAAACxms5TyXSYrKBrjgG54PgoAAGD/ziX5Psmz7qmgWx7xAAAA2J/NTJcTQIe0fQAAAHsblVJ+bprmefdUsBpWUAAAAOyhlHIjkz0ngBWxSSYAAMDurjVNs5XJhpiLrpiY2kTzzMmU08eSl55L/ryd9GfckZ06lhwdtrvQm7/OPn76WHKk48xVXOe6vHfzbJ/5483kj1uzv6+gAAAAmG+c5NoyAcNBcu5s8s5ryeHBw+O3/zJceJSCAgAAYL6rWeLRjvPj5PzZ6WICmE1BAQAAMNvrSS63OXE4KPnk/SavvGiIsF8KCgAAgBlKKV81TbPwnhPDQfLpBynHRyVNdjnf53/AFJ/iAQAAsNM4yZVFT5qUE6UcH7X/wXfvdf9mVpL5z5pc5woy/zbPlVBQAAAA7PRZm5M+3lyunICDTEEBAADwmFLKxUXPefeNyUcwAu3YgwIAAGDauGmaC0ma7HOniI3+5NM6mjSmBy1ZQQEAADBta9ET3nsrOTI0OFiGggIAAGDauUVevNFP3jxlaLAsBQUAAMC08SIvPnPS6gnogoICAABg2oVFXnzSxpjQCQUFAADAtNEiL355ZGDQBQUFAADAEl54xgygCwoKAAAAoLq+EQAAAEwpK3w1MIcVFAAAAEB1CgoAAACgOgUFAAAAUJ2CAgAAAKhur00yx0kuJdlMshXbvwAAAAArMK+gGCf5JpNSAgAAAGClZj3icTnJT1FOAAAAAE/I4ysovk3yhbEAAAAAT9KjKyguRzkBAAAAVPCgoNjMZM8JAAAAgCfuQUFx3SgAAACAWnp5+BGiAAAAAFX0klwyBgAAAKCmXpKxMQAAAAA19eLxDgAAAKCyfpJiDAAAAEBN/TYnXWn5w27OOX4qyVGZMmXKlClTpkyZMmXKXLPME+4poTM9IwAAAABqU1AAAAAA1bV6xKPtphVll+MyZcqUKVOmTJkyZcqUuW6ZjXtK6IwVFAAAAEB1T0VBcVemTJkyZcqUKVOmTJky1zAT6I4VFAAAAEB1CgoAAACgOgUFAAAAUJ2CAgAAAKhOQQEAAABUp6AAAAAAqlNQAAAAANUpKAAAAIDqFBQAAABAdQoKAAAAoDoFBQAAAFCdggIAAACoTkEBAAAAVKegAAAAAKpTUAAAAADVKSgAAACA6hQUAAAAQHUKCgAAAKA6BQUAAABQnYICAAAAqE5BAQAAAFSnoAAAAACqU1AAAAAA1SkoAAAAgOoUFAAAAEB1/TYnNTP/udB5O443SZEpU6ZMmTJlypQpU6bMFWe2sktmmbpBKuWpvM77K8g8fLj7zOFgPd57c4Azl59n8+D0Hf9ZrKAAAAAAqitpUX68uv13s+C5d+YcHybpb7cnMmXKlClTpkyZMmXKlLmqzEMtb5zmZW4k5dDxh1/fb/Z/rXfuzrnOQXKo5a+S1z1zY5D0Duh7PwiZ/95Pfr+V3Lv3fx8xpdUjHr8odgAAACZ+MwLoQqsVFAAAAABdsgcFAAAAUJ2CAgAAAKhOQQEAAABU9x+0DwL18/oXLwAAAABJRU5ErkJggg==); }
-        #taiko-wrapper #norma-gauge[data-cells="30"] .gauge-base { background-image: url(data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAABCgAAABUCAYAAABAxwZVAAAFVElEQVR42u3dT29UVRwG4PcMU6YQ/4wKSAQjymhiTAzImLhyU6MrV5i41IQF7EnkI+g3cOuej+DKtYkfQBYujCtjNIGglch1Ma1YaCtz25lzvfM8CYEO976d/pJpLy/nnikBAIC9jZNsJJkmeX3r43e3/q4YDwCHZWgEAAA8ZJzk4yTvJblsHAAsg4ICAIBtkyTXMysnxsYBwDIpKAAAOJXkiySfGgUAtbhvEABgtd3Y+jV2bQhATVZQAACspnGSm5ltgAkA1Q2MAABg5UxLKd9GOQFAh1hBAQCwWqallK8zW0HRGAcAXeE+QwCA1XEhyTdJnnQtCEDXuMUDAGA1TLOznACATtGaAwD037iU8kPTNE+7FgSgq6ygAADouVLKzcz2nACAzrJJJgBAv91ommYjsw0x510xsWMTzXOnU86eSJ57KvntTjLc5UryzInk+KjdE7310+6Pnz2RHJMpU2bnMhfxel/l7yGrMs/vbiW/3lZQAACsmkmSGwcJGK0lF84nb7yUHF178Pid3w0XgMOloAAA6K/rOcCtHRcnycXzO4sJAFgUBQUAQD+9nORqmxNHayUfvN3khWcNEYDlUVAAAPRQKeWzpmnm3nNitJZ8+E7KyXFJk33O9/4fABwy7+IBANA/kyTX5j1pVk6UcnLc/hNv3jv8L2YRmX/IlCnz4K/NP/8fr/dN8+x85jYFBQBA/3zU5qT3pwcrJwDgIBQUAAA9U0q5PO85b74ye+s4AKjFHhQAAP0yaZrmUpImj7lTxPpw9m4dTRrTA6AaKygAAPplY94T3notOTYyOADqUlAAAPTLhXkOXh8mr54xNADqU1AAAPTLZJ6Dz522egKAblBQAAD0y6V5Dj5tY0wAOkJBAQDQL+N5Dn5+bGAAdIOCAgBghT3zhBkA0A0KCgAAAKC6oREAAPRKWeDRALAwVlAAAAAA1SkoAAAAgOoUFAAAAEB1CgoAAACguv/aJHOS5EqSaZKN2EYJAAAAWIC9CopJki8zKyUAAAAAFmq3WzyuJvk+ygkAAABgSR5eQfFVkk+MBQAAAFimf6+guBrlBAAAAFDBdkExzWzPCQAAAICl2y4oPjcKAAAAoJZBHryFKAAAAEAVgyRXjAEAAACoaZBkYgwAAABATYO4vQMAAACobJikGAMAAABQ07DNSddafrJbezx+JslxmTJlypQpU6ZMmUvNPOVaGIAOGRgBAAAAUJuCAgAAAKiu1S0ebTetKPs8LlOmTJkyZcqUKXO5mY1rYQA6xAoKAAAAoLpOFBSbMmXKlClTpkyZMpeeCQBdYgUFAAAAUJ2CAgAAAKhOQQEAAABUp6AAAAAAqlNQAAAAANUpKAAAAIDqFBQAAABAdQoKAAAAoDoFBQAAAFCdggIAAACoTkEBAAAAVKegAAAAAKpTUAAAAADVKSgAAACA6hQUAAAAQHUKCgAAAKA6BQUAAABQnYICAAAAqE5BAQAAAFSnoAAAAACqU1AAAAAA1SkoAAAAgOoUFAAAAEB1CgoAAACgOgUFAAAAUN2wzUnNrn+c67xHHm+SIlOmTJkyZcqUKXPfzFb2ySw7LuxK6eTzvL+Yr12mTJkHzDx69PAzR2u+h3Q98+DzbLZPf+SHjhUUAACsnNGaTJkyoWtKWpQfL2793sx57t29XixJhlvtiUyZMmXKlClTpszdM4+0vODbK3M9KUdOPvj4fvP4z/Xu5t7/CDrS8r/AZMqUKXN9LRmYZ28z/7qf/HI7uXfvnz5ih1a3ePyo2AEA6IefjQCAbmi1ggIAAADgMNmDAgAAAKhOQQEAAABUp6AAAAAAqvsb9vEDE95O/XEAAAAASUVORK5CYII=); }
-        #taiko-wrapper #norma-gauge[data-cells="35"] .gauge-base { background-image: url(data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAABCgAAABUCAYAAABAxwZVAAAFVklEQVR42u3dT29UVRwG4PcMU6YQ/4wKSAQjymhiTAxITVy5qdGVK0xcasIC9iTyEfQbuHXPR3Dl2sQPIAsXxpUxmkDQSuS6mFYcaZG5befcmfs8SQMd5r6d/jIld96ee6YEAABYZuMkm0k2kry+/fm72/9WjAdYFkMjAACApTNO8nGS95JcNg5gFSgoAABgeUySXM+0nBgbB7BKFBQAANB9p5J8keRTowBWlWvSAACg225sf4ydvwOrzAoKAADopnGSm5lugAmw8gZGAAAAnbNRSvk2ygmgR6ygAACAbtkopXyd6QqKxjiAvnANGwAAdMeFJN8kedL5OtA3LvEAAIBu2MhsOQHQKxpZAACob1xK+aFpmqedrwN9ZQUFAABUVkq5memeEwC9ZZNMAACo60bTNJuZbog574qJmU00z51OOXsiee6p5Lc7yXCXs/0zJ5Ljo3YP9NZPu99+9kRyTGbvMg/judTn52df5vndreTX2woKAADomkmSG/sJGK0lF84nb7yUHF17cPud3w0XWC4KCgAAqOd69nFpx8VJcvH8bDEBsKwUFAAAUMfLSa62OXC0VvLB201eeNYQgdWhoAAAgApKKZ81TTP3nhOjteTDd1JOjkuaPOJ47/8BLBnv4gEAAIs3SXJt3oOm5UQpJ8ftv/DWvYP/Zg4j8w+Znc/c+nM5nktb5tn5zB0KCgAAWLyP2hz0/sb+ygmALlNQAADAgpVSLs97zJuvTN/eD2BV2YMCAAAWa9I0zaUkTR5zp4j14fTdOpo0pgesLCsoAABgsTbnPeCt15JjI4MDVpuCAgAAFuvCPHdeHyavnjE0YPUpKAAAYLEm89z53GmrJ4B+UFAAAMBiXZrnzqdtjAn0hIICAAAWazzPnZ8fGxjQDwoKAADosGeeMAOgHxQUAAAAQHVDIwAAgIUqh3hvgKVlBQUAAABQnYICAAAAqE5BAQAAAFSnoAAAAACq+79NMidJriTZSLIZW/QAAAAAh2CvgmKS5MtMSwkAAACAQ7XbJR5Xk3wf5QQAAACwIP9dQfFVkk+MBQAAAFikf6+guBrlBAAAAFDBTkGxkemeEwAAAAALt1NQfG4UAAAAQC2DPHgLUQAAAIAqBkmuGAMAAABQ0yDJxBgAAACAmgZxeQcAAABQ2TBJMQYAAACgpmGbg661/GK39rj9TJLjMmXKlClTpkyZMmXKnHHK6xWgRwZGAAAAANSmoAAAAACqa3WJR9tNK8ojbpcpU6ZMmTJlypQpU+asxusVoEesoAAAAACq60RBsSVTpkyZMmXKlClTpkyAXrOCAgAAAKhOQQEAAABUp6AAAAAAqlNQAAAAANUpKAAAAIDqFBQAAABAdQoKAAAAoDoFBQAAAFCdggIAAACoTkEBAAAAVKegAAAAAKpTUAAAAADVKSgAAACA6hQUAAAAQHUKCgAAAKA6BQUAAABQnYICAAAAqE5BAQAAAFSnoAAAAACqU1AAAAAA1SkoAAAAgOoUFAAAAEB1CgoAAACgOgUFAAAAUJ2CAgAAAKhu2OagZte/znXcQ7c3SZEpU6ZMmTJlypQpc8kzW3lEZpk5+S6lk4/z/uF87zI7nnn06MFnjtY8P7ueuf95NjuHP/QfmhUUAABA54zWZHY9Ew5aSYvy48XtP5s5j7271w9LkuF2eyJTpkyZMmXKlClT5rJmHml5Ur5X5npSjpx88Pn95vEf692tvV+oHmn5a0qZMg87c30tGZjnymb+dT/55XZy794/fcSMVpd4/KjYAQCAxfjZCIB+aLWCAgAAAOAg2YMCAAAAqE5BAQAAAFSnoAAAAACq+xvJMgMEjSRzQQAAAABJRU5ErkJggg==); }
-        #taiko-wrapper #norma-gauge[data-cells="40"] .gauge-base { background-image: url(data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAABCgAAABUCAYAAABAxwZVAAAFTUlEQVR42u3dT49TVRwG4PeUlg7EP1UBiWBEqSbGxICMiSs3Y3TlChOXmrCAPYl8BPwGbt3zEVy5NvEDyMKFcWWMJhAUiVwXHYQy7cz09pZDM8+TEJg7ve/c/hIW951zT0sAAABYpVGSrSSbSd7e/vrD7e8V44GJvhEAAAB0bpTk8yQfJbloHLA3BQUAAEB3xkmuZlJOjIwD9k9BAQAAsLwTSb5O8qVRQDuedwIAAFjOte0/I/dY0J4VFAAAAO2MktzIZANMYEk9IwAAAFjYZinlhygnoDNWUAAAACxms5TyXSYrKBrjgG54PgoAAGD/ziX5Psmz7qmgWx7xAAAA2J/NTJcTQIe0fQAAAHsblVJ+bprmefdUsBpWUAAAAOyhlHIjkz0ngBWxSSYAAMDurjVNs5XJhpiLrpiY2kTzzMmU08eSl55L/ryd9GfckZ06lhwdtrvQm7/OPn76WHKk48xVXOe6vHfzbJ/5483kj1uzv6+gAAAAmG+c5NoyAcNBcu5s8s5ryeHBw+O3/zJceJSCAgAAYL6rWeLRjvPj5PzZ6WICmE1BAQAAMNvrSS63OXE4KPnk/SavvGiIsF8KCgAAgBlKKV81TbPwnhPDQfLpBynHRyVNdjnf53/AFJ/iAQAAsNM4yZVFT5qUE6UcH7X/wXfvdf9mVpL5z5pc5woy/zbPlVBQAAAA7PRZm5M+3lyunICDTEEBAADwmFLKxUXPefeNyUcwAu3YgwIAAGDauGmaC0ma7HOniI3+5NM6mjSmBy1ZQQEAADBta9ET3nsrOTI0OFiGggIAAGDauUVevNFP3jxlaLAsBQUAAMC08SIvPnPS6gnogoICAABg2oVFXnzSxpjQCQUFAADAtNEiL355ZGDQBQUFAADAEl54xgygCwoKAAAAoLq+EQAAAEwpK3w1MIcVFAAAAEB1CgoAAACgOgUFAAAAUJ2CAgAAAKhur00yx0kuJdlMshXbvwAAAAArMK+gGCf5JpNSAgAAAGClZj3icTnJT1FOAAAAAE/I4ysovk3yhbEAAAAAT9KjKyguRzkBAAAAVPCgoNjMZM8JAAAAgCfuQUFx3SgAAACAWnp5+BGiAAAAAFX0klwyBgAAAKCmXpKxMQAAAAA19eLxDgAAAKCyfpJiDAAAAEBN/TYnXWn5w27OOX4qyVGZMmXKlClTpkyZMmXKXLPME+4poTM9IwAAAABqU1AAAAAA1bV6xKPtphVll+MyZcqUKVOmTJkyZcqUuW6ZjXtK6IwVFAAAAEB1T0VBcVemTJkyZcqUKVOmTJky1zAT6I4VFAAAAEB1CgoAAACgOgUFAAAAUJ2CAgAAAKhOQQEAAABUp6AAAAAAqlNQAAAAANUpKAAAAIDqFBQAAABAdQoKAAAAoDoFBQAAAFCdggIAAACoTkEBAAAAVKegAAAAAKpTUAAAAADVKSgAAACA6hQUAAAAQHUKCgAAAKA6BQUAAABQnYICAAAAqE5BAQAAAFSnoAAAAACqU1AAAAAA1SkoAAAAgOoUFAAAAEB1/TYnNTP/udB5O443SZEpU6ZMmTJlypQpU6bMFWe2sktmmbpBKuWpvM77K8g8fLj7zOFgPd57c4Azl59n8+D0Hf9ZrKAAAAAAqitpUX68uv13s+C5d+YcHybpb7cnMmXKlClTpkyZMmXKlLmqzEMtb5zmZW4k5dDxh1/fb/Z/rXfuzrnOQXKo5a+S1z1zY5D0Duh7PwiZ/95Pfr+V3Lv3fx8xpdUjHr8odgAAACZ+MwLoQqsVFAAAAABdsgcFAAAAUJ2CAgAAAKhOQQEAAABU9x+0DwL18/oXLwAAAABJRU5ErkJggg==); }
-        #taiko-wrapper #norma-gauge .gauge-inner { position: absolute; left: 13px; top: 0; width: 1050px; height: 84px; clip-path: inset(0 7px 0 0); }
+        #taiko-wrapper #norma-gauge { --gauge-w: 1337px; position: absolute; top: calc(50% - 58px - 90px * var(--lane-scale) - 84px * 0.528 * var(--lane-scale)); left: calc(490px + var(--ui-offset-x)); width: var(--gauge-w); height: 84px; transform: scale(calc(0.528 * var(--lane-scale))); transform-origin: 0 0; z-index: 22; pointer-events: none; display: none; }
+        #taiko-wrapper #norma-gauge .gauge-base { position: absolute; inset: 0; background: no-repeat 0 0 / var(--gauge-w) 84px url(data:image/png;base64,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); }
+        #taiko-wrapper #norma-gauge[data-cells="30"] { --gauge-w: 1274px; }
+        #taiko-wrapper #norma-gauge[data-cells="30"] .gauge-base { background-image: url(data:image/png;base64,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); }
+        #taiko-wrapper #norma-gauge[data-cells="35"] { --gauge-w: 1316px; }
+        #taiko-wrapper #norma-gauge[data-cells="35"] .gauge-base { background-image: url(data:image/png;base64,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); }
+        #taiko-wrapper #norma-gauge[data-cells="40"] { --gauge-w: 1337px; }
+        #taiko-wrapper #norma-gauge[data-cells="40"] .gauge-base { background-image: url(data:image/png;base64,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); }
+        #taiko-wrapper #norma-gauge .gauge-inner { position: absolute; left: 13px; top: 0; width: calc(var(--gauge-w) - 14px); height: 84px; clip-path: inset(0 7px 0 0); }
         #taiko-wrapper #norma-gauge .gauge-fill { position: absolute; left: 0; top: 45px; height: 33px; width: 0%; background: repeating-linear-gradient(90deg, #e8432e 0 14px, #a82614 14px 20px, #d03a28 20px 21px); }
         #taiko-wrapper #norma-gauge .gauge-fill-hot { position: absolute; top: 12px; height: 66px; left: 0; width: 0%; clip-path: polygon(20px 0, 100% 0, 100% 100%, 0 100%, 0 14px, 1px 12px, 1px 10px, 2px 9px, 2px 8px, 3px 7px, 4px 6px, 5px 5px, 6px 4px, 7px 3px, 8px 2px, 10px 1px); background: repeating-linear-gradient(90deg, #ffd21f 0 14px, #d9a800 14px 20px, #eebb10 20px 21px); }
         #taiko-wrapper #norma-gauge .gauge-norma-line { display: none; }
         #taiko-wrapper #results-clear-status { font-size: 1.6em; font-weight: bold; margin: -10px 0 18px; text-align: center; }
         #taiko-wrapper #results-clear-status.clear { color: #ffd700; }
         #taiko-wrapper #results-clear-status.failed { color: #a0a8c0; }
+        #taiko-wrapper #results-clear-status.fullcombo { color: #ffd700; text-shadow: 0 0 10px #ff9d00, 0 0 20px #ff6a00; }
+        #taiko-wrapper #results-clear-status.allperfect { background: linear-gradient(90deg,#ff5e5e,#ffd34d,#7dff7d,#4dd2ff,#b57dff,#ff5e5e); -webkit-background-clip: text; background-clip: text; color: transparent; -webkit-text-fill-color: transparent; filter: drop-shadow(0 0 6px rgba(255,255,255,0.6)); background-size: 300% 100%; animation: taiko-niji-flow 3s linear infinite; }
+        @keyframes taiko-niji-flow { 0% { background-position: 0% 50%; } 100% { background-position: 300% 50%; } }
         @keyframes branch-pop { 0% { transform: scale(1.5); opacity: 0.2; } 100% { transform: scale(1); opacity: 1; } }
 
         /* --- Taiko Hit Error Bar Styles START --- */
@@ -245,6 +253,8 @@
         /* --- Taiko Hit Error Bar Styles END --- */
 
         #taiko-wrapper #taiko-gameplay-progress-pie { position: relative; top: 0px; left: 0px; }
+        #taiko-wrapper #taiko-accuracy-container { display: none !important; }
+        #taiko-wrapper #taiko-error-bar-container { display: none !important; }
 
         .shortcut-key-control { margin-top: 10px; }
         .shortcut-key-inputs { display: flex; gap: 15px; justify-content: center; }
@@ -440,6 +450,7 @@
             <img id="taiko-background-image" style="filter: brightness(1); display: none;">
             <button id="taiko-ingame-pause-button">||</button>
             <div id="taiko-ui-panel">
+                <div id="taiko-ingame-song-title"></div>
                 <div id="taiko-score">0</div>
                 <div id="taiko-accuracy-container">
                     <canvas id="taiko-gameplay-progress-pie" width="24" height="24"></canvas>
@@ -892,6 +903,7 @@
         let gameRunId = 0;              // やり直し・終了前に予約されたタイマーを無効化するための世代番号
         let totalPauseDuration = 0;
         let selectedPauseIndex = 0;
+        let selectedResultsIndex = 0;
         let pressedKeys = new Set();
         let osz_zip = null;
         let osz_beatmaps =[];
@@ -945,28 +957,39 @@
             return null;
         }
 
+        // 保存済み曲ライブラリ以外（ファイルを直接読み込んだ場合）でも譜面ごとに保存できるよう、
+        // 曲名・アーティスト・難易度から作るキーも使う
+        function getTaikoBeatmapContentKey() {
+            if (!songInfo || !songInfo.version) return null;
+            return `taikofile|${songInfo.title || ''}|${songInfo.artist || ''}|${songInfo.version}`;
+        }
+
         function saveTaikoBeatmapSpecificSettings() {
-            const key = getTaikoBeatmapSettingsKey();
-            if (!key) return;
-            let settings = JSON.parse(localStorage.getItem('taikoPlayerBeatmapSettings')) || {};
-            settings[key] = {
+            const keys = [getTaikoBeatmapSettingsKey(), getTaikoBeatmapContentKey()].filter(Boolean);
+            if (keys.length === 0) return;
+            let settings = {};
+            try { settings = JSON.parse(localStorage.getItem('taikoPlayerBeatmapSettings')) || {}; } catch (e) { settings = {}; }
+            const entry = {
                 individualOffset: dom.individualOffsetInput.value,
                 videoOffset: dom.videoOffsetInput.value,
                 speed: dom.speedSlider.value,
                 backgroundChoice: dom.backgroundSelect.value
             };
-            localStorage.setItem('taikoPlayerBeatmapSettings', JSON.stringify(settings));
+            keys.forEach(k => { settings[k] = entry; });
+            try { localStorage.setItem('taikoPlayerBeatmapSettings', JSON.stringify(settings)); } catch (e) { console.warn('譜面別設定の保存に失敗:', e); }
         }
 
         function loadTaikoBeatmapSpecificSettings() {
             const key = getTaikoBeatmapSettingsKey();
+            const contentKey = getTaikoBeatmapContentKey();
             let individualOffset = 0;
             let videoOffset = legacyGlobalVideoOffset;
             let speed = 0; 
             let backgroundChoice = 'video';
-            if (key) {
-                const settings = JSON.parse(localStorage.getItem('taikoPlayerBeatmapSettings')) || {};
-                const saved = settings[key];
+            if (key || contentKey) {
+                let settings = {};
+                try { settings = JSON.parse(localStorage.getItem('taikoPlayerBeatmapSettings')) || {}; } catch (e) { settings = {}; }
+                const saved = (key && settings[key]) || (contentKey && settings[contentKey]);
                 if (typeof saved === 'object' && saved !== null) {
                     individualOffset = saved.individualOffset || 0;
                     if (saved.videoOffset !== undefined && saved.videoOffset !== null && saved.videoOffset !== '') {
@@ -2098,6 +2121,7 @@
         function initKeyConfig() { dom.keyConfigInputs.querySelectorAll('.key-config-input').forEach(keyInput => { keyInput.addEventListener('click', e => { if (isGameRunning) return; root.querySelectorAll('.key-config-input.is-waiting').forEach(el => el.blur()); e.currentTarget.textContent = '...'; e.currentTarget.classList.add('is-waiting'); }); keyInput.addEventListener('blur', e => { const keyId = e.currentTarget.dataset.keyId; e.currentTarget.classList.remove('is-waiting'); e.currentTarget.textContent = KEYS[keyId]; saveSettings(); }); keyInput.addEventListener('keydown', e => { e.preventDefault(); const keyDiv = e.currentTarget; if (!keyDiv.classList.contains('is-waiting')) return; if (e.key === 'Escape') { keyDiv.blur(); return; } const newKey = e.key.toUpperCase(); if (newKey.length > 1 && !['SPACE', 'BACKSPACE', 'ENTER'].includes(newKey) ) return; const keyId = keyDiv.dataset.keyId; if (Object.values(KEYS).some((key, k_idx) => key === newKey && Object.keys(KEYS)[k_idx] !== keyId)) { alert('そのキーは他のアクションで既に使用されています。'); return; } KEYS[keyId] = newKey; keyDiv.blur(); }); }); }
         function initGameUI() { const rect = dom.playfield.getBoundingClientRect(); dom.canvas.width = rect.width; dom.canvas.height = rect.height; }
         function resetGame() {
+            { const t = root.querySelector('#taiko-ingame-song-title'); if (t) t.textContent = (typeof songInfo !== 'undefined' && songInfo && songInfo.title) ? songInfo.title : ''; }
             score = 0;
             combo = 0;
             maxCombo = 0;
@@ -2112,7 +2136,7 @@
             if(animationFrameId) cancelAnimationFrame(animationFrameId);
             if (hitObjects && hitObjects.length > 0) {
                 hitObjects.forEach(note => {
-                    note.judged = false;
+                    note.judged = false; note.missed = false; note.passed = false;
                     note.sePlayed = false;
                     if ('hitsMade' in note) {
                         note.hitsMade = 0;
@@ -2142,6 +2166,7 @@
         }
         async function startGame() {
             if (isGameRunning || !beatmapLoaded || !audioLoaded) return;
+            saveTaikoBeatmapSpecificSettings(); // 開始時点の動画オフセットなどをこの譜面用に保存
             if (audioSrc && dom.audioPlayer.currentSrc !== audioSrc) {
                 dom.audioPlayer.src = audioSrc;
             }
@@ -2635,10 +2660,19 @@
             const BEIGE_RING = '#F0EAD6';
             const BLACK_BORDER = '#000000';
 
+            // 太鼓(ドラム)アイコンの中心より左は描画しない。音符は太鼓の下に潜り込んだ状態で見えなくなる。
+            // ドラム中心X = 180px + --ui-offset-x、判定枠X = 390px + --ui-offset-x なので差は常に210px
+            const DRUM_CENTER_X = JUDGE_POINT_X - 210;
+            dom.ctx.save();
+            dom.ctx.beginPath();
+            dom.ctx.rect(DRUM_CENTER_X, 0, dom.canvas.width - DRUM_CENTER_X, dom.canvas.height);
+            dom.ctx.clip();
+
             for (let i = hitObjects.length - 1; i >= 0; i--) {
                 const note = hitObjects[i];
 
-                if (note.judged || !isNoteActive(note)) continue;
+                // 見逃した音符・通り過ぎた連打/風船は、画面の左端まで流し切る
+                if ((note.judged && !note.missed && !note.passed) || !isNoteActive(note)) continue;
                 // オート時：叩く瞬間（elapsedTime >= note.time）のフレームでは、音符を必ず判定枠の中心に止めて描画する
                 // （叩く処理は描画の後に走るため、補正しないと1フレーム分だけ判定枠を通り過ぎた位置で消える）
                 const timeToJudge = (isAutoPlay && (note.type === 'don' || note.type === 'katsu'))
@@ -2649,7 +2683,7 @@
                 if (note.type === 'roll') {
                     const timeToEnd = note.endTime - elapsedTime;
                     const endX = JUDGE_POINT_X + timeToEnd * note.scrollSpeed * pixelMultiplier;
-                    if (endX < JUDGE_POINT_X - 50 || startX > dom.canvas.width + 50) continue;
+                    if (endX < -150 || startX > dom.canvas.width + 50) continue;
 
                     const barHeight = note.isBig ? y * 0.8 : y * 0.8;
                     const headRadius = barHeight / 2;
@@ -2722,7 +2756,7 @@
                     }
 
                 } else { 
-                    if (startX > dom.canvas.width + 50 || startX < JUDGE_POINT_X - 50) continue;
+                    if (startX > dom.canvas.width + 50 || startX < -(note.isBig ? y * 0.65 : y * 0.42) - 10) continue;
                     
                     const color = note.type === 'don' ? '#F83838' : '#46B6B6';
                     const baseRadius = note.isBig ? y * 0.65 : y * 0.42;
@@ -2746,6 +2780,7 @@
                     dom.ctx.fill();
                 }
             }
+            dom.ctx.restore();
         }
         function drawRollCounter(elapsedTime) { if (rollCounterClearTime > 0 && elapsedTime >= rollCounterClearTime) { activeRollHits = 0; rollCounterClearTime = 0; } if (activeRollHits > 0) { dom.rollCounterDisplay.textContent = activeRollHits; dom.rollCounterDisplay.classList.add('visible'); } else { dom.rollCounterDisplay.classList.remove('visible'); } }
         
@@ -2823,9 +2858,8 @@
             if (activeLongNote) {
                 if (activeLongNote.type === 'roll') {
                     if (!isAutoSE) playHitSound(keyType);
-                    let scoreToAdd = activeLongNote.isBig ? 200 : 100;
-                    if (isGoGoNow) scoreToAdd *= 1.2;
-                    score += scoreToAdd;
+                    // ニジイロ配点: 連打は大小問わず1打100点・ゴーゴー倍率なし
+                    score += 100;
                     activeLongNote.hitsMade++;
                     totalRollHits++;
                     activeRollHits = activeLongNote.hitsMade;
@@ -2834,15 +2868,11 @@
                 } else if (activeLongNote.type === 'balloon') {
                     if (keyType === 'don') {
                         playHitSound('don');
-                        let scoreToAdd = 300;
-                        if (isGoGoNow) scoreToAdd *= 1.2;
-                        score += scoreToAdd;
+                        // ニジイロ配点: 風船は1打100点・破裂ボーナスなし・ゴーゴー倍率なし
+                        score += 100;
                         activeLongNote.hitsMade++;
                         totalRollHits++;
                         if (activeLongNote.hitsMade >= activeLongNote.hitsRequired) {
-                            let balloonBurstBonus = 5000;
-                            if (isGoGoNow) balloonBurstBonus *= 1.2;
-                            score += balloonBurstBonus;
                             activeLongNote.judged = true;
                         }
                         dom.scoreElement.textContent = Math.floor(score);
@@ -2899,11 +2929,12 @@
             pressedKeys.delete(e.key.toUpperCase());
         });
 
-        function checkMisses(elapsedTime) { for (let i = lastCheckedNoteIndex; i < hitObjects.length; i++) { const note = hitObjects[i]; if (note.judged || !isNoteActive(note)) { continue; } if (note.time > elapsedTime + HIT_WINDOW_BAD) break; if (note.type !== 'balloon' && note.type !== 'roll') { if (elapsedTime > note.time + HIT_WINDOW_BAD) { handleJudgment('fuka', note); } } else { if (elapsedTime > note.endTime) { if (note.type === 'roll' && note.hitsMade > 0) rollCounterClearTime = elapsedTime + 100; note.judged = true; } } } }
+        function checkMisses(elapsedTime) { for (let i = lastCheckedNoteIndex; i < hitObjects.length; i++) { const note = hitObjects[i]; if (note.judged || !isNoteActive(note)) { continue; } if (note.time > elapsedTime + HIT_WINDOW_BAD) break; if (note.type !== 'balloon' && note.type !== 'roll') { if (elapsedTime > note.time + HIT_WINDOW_BAD) { note.missed = true; handleJudgment('fuka', note); } } else { if (elapsedTime > note.endTime) { if (note.type === 'roll' && note.hitsMade > 0) rollCounterClearTime = elapsedTime + 100; note.passed = true; note.judged = true; } } } }
         // --- ノルマゲージ（Better-taiko-web の gamerules.js / game.js と同じ計算） ---
         // ・ゲージは 0〜10000。良/可/不可ごとの増減は「総音符数」と難易度から決まる（soulPoints）。
         // ・ゲージ表示は 1/50 刻み（floor(gauge/200)/50）、クリア判定もその値で行う。
         // ・クリアライン：かんたん 30/50、ふつう・むずかしい 35/50、おに・エディット 40/50。
+        const GAUGE_RED_CELLS = { 30: 40, 35: 47, 40: 53 }; // 表示上の赤ゾーンのマス数（ノルマ位置ごと）
         const GAUGE_CLEAR_RATE = { 1: 30 / 50, 2: 35 / 50, 3: 35 / 50, 4: 40 / 50, 5: 40 / 50 };
         function gaugeSoulPoints(diff, combo) {
             let good, ok, bad;
@@ -2931,27 +2962,53 @@
             return total;
         }
         function gaugePercent() { return Math.floor(gaugeValue / 200) / 50; }
-        function isGaugeCleared() { return gaugeTotal > 0 && gaugePercent() >= gaugeClearRate; }
+        // ノルマ線ちょうどではクリアにならず、黄色ゾーンに1マス（1/50）以上入って初めてクリア
+        function isGaugeCleared() { return gaugeTotal > 0 && gaugePercent() > gaugeClearRate + 1e-9; }
         function updateGaugeUI() {
             if (!dom.normaGauge) return;
             const pos = gaugePercent();
-            dom.gaugeFill.style.width = (pos * 100) + '%';
+            // 赤ゾーンのマス数を増やしてある（かんたん30→40、ふつう/むずかしい35→47、おに40→53）。黄色ゾーンは元のまま。
+            // 1マスの幅は赤・黄とも21px。
+            const normaCells = Math.round(gaugeClearRate * 50);
+            const redTotal = GAUGE_RED_CELLS[normaCells] || normaCells;
+            const CELL_PX = 21;
+            const fRate = Math.max(0, Math.min(1, gaugeValue / 10000));
+            const redFilled = fRate >= gaugeClearRate ? redTotal : Math.floor(fRate / gaugeClearRate * redTotal + 1e-9);
+            const yellowFilled = Math.max(0, Math.round(pos * 50) - normaCells);
+            dom.gaugeFill.style.width = ((redFilled + yellowFilled) * CELL_PX) + 'px';
             // 白線(ノルマ線)より右側に伸びた部分だけを黄色く光らせる
-            dom.gaugeFillHot.style.left = (gaugeClearRate * 100) + '%';
-            dom.gaugeFillHot.style.width = Math.max(0, pos - gaugeClearRate) * 100 + '%';
+            dom.gaugeFillHot.style.left = (redTotal * CELL_PX) + 'px';
+            dom.gaugeFillHot.style.width = (yellowFilled * CELL_PX) + 'px';
             dom.normaGauge.classList.toggle('cleared', isGaugeCleared());
             // ゲージが満タンになったら全体を虹色に光らせる
             dom.normaGauge.classList.toggle('full', gaugeTotal > 0 && gaugeValue >= 10000);
+        }
+        // --- ニジイロVer.配点: 天井スコア ≒ 100万点 ＝ 最大コンボ数×初項 + 風船総打数×100 ---
+        let nijiroNoteScore = 0;
+        function countBalloonTotalHits() {
+            let common = 0;
+            const perRegion = {};
+            for (const n of hitObjects) {
+                if (n.type !== 'balloon') continue;
+                const h = n.hitsRequired || 0;
+                if (n.branch === undefined || n.branch === 'C') { common += h; continue; }
+                const r = perRegion[n.region] || (perRegion[n.region] = {});
+                r[n.branch] = (r[n.branch] || 0) + h;
+            }
+            let total = common;
+            for (const k in perRegion) total += Math.max(...Object.values(perRegion[k]));
+            return total;
         }
         function initGauge() {
             const diff = songInfo.difficulty || 4;
             gaugeValue = 0;
             gaugeTotal = countGaugeTotalNotes();
+            nijiroNoteScore = gaugeTotal > 0 ? Math.max(10, Math.round((1000000 - countBalloonTotalHits() * 100) / gaugeTotal / 10) * 10) : 0;
             gaugeClearRate = GAUGE_CLEAR_RATE[diff] || 0.8;
             gaugePoints = gaugeTotal > 0 ? gaugeSoulPoints(diff, gaugeTotal) : { ryo: 0, ka: 0, fuka: 0 };
             if (dom.normaGauge) {
                 dom.normaGauge.style.display = gaugeTotal > 0 ? 'block' : 'none';
-                dom.gaugeNormaLine.style.left = (gaugeClearRate * 100) + '%';
+                dom.gaugeNormaLine.style.left = ((GAUGE_RED_CELLS[Math.round(gaugeClearRate * 50)] || Math.round(gaugeClearRate * 50)) * 21) + 'px';
                 dom.normaGauge.setAttribute('data-cells', String(Math.round(gaugeClearRate * 50)));
             }
             updateGaugeUI();
@@ -2972,29 +3029,21 @@
             judgmentCounts[judgement]++;
             applyGauge(judgement);
             if(judgement === 'ryo' || judgement === 'ka') {
-                const basePoints = judgement === 'ryo' ? 300 : 100;
-                let scoreMultiplier = 1;
-                if(note.isBig) {
-                    if (isSingleHandBigNoteEnabled) {
-                        scoreMultiplier = 2;
-                    } else {
-                        const isDonHit = note.type === 'don' && pressedKeys.has(KEYS.don_left) && pressedKeys.has(KEYS.don_right);
-                        const isKatsuHit = note.type === 'katsu' && pressedKeys.has(KEYS.katsu_left) && pressedKeys.has(KEYS.katsu_right);
-                        if (isDonHit || isKatsuHit) scoreMultiplier = 2;
-                    }
-                }
-                updateScore(basePoints * scoreMultiplier);
+                // ニジイロ配点: コンボ加点・ゴーゴー倍率・大音符2倍なし。可は半分(1の位切り捨て)
+                const basePoints = judgement === 'ryo' ? nijiroNoteScore : Math.floor(nijiroNoteScore / 2 / 10) * 10;
+                updateScore(basePoints);
                 updateCombo(true);
             } else {
                 updateCombo(false);
             }
             updateAccuracy();
         }
-        function updateScore(points) { let currentPoints = points + (points * Math.floor(combo / 10) * 0.1); if(isGoGoNow) { currentPoints *= 1.2; } score += currentPoints; dom.scoreElement.textContent = Math.floor(score); }
+        function updateScore(points) { score += points; dom.scoreElement.textContent = Math.floor(score); }
         function updateCombo(hit) { if (hit) { combo++; if (combo > maxCombo) maxCombo = combo; } else { combo = 0; } updateComboDisplay(); }
         function updateAccuracy() { const totalHits = judgmentCounts.ryo + judgmentCounts.ka + judgmentCounts.fuka; if (totalHits === 0) { accuracy = 100; } else { const accVal = (judgmentCounts.ryo * 300 + judgmentCounts.ka * 150) / (totalHits * 300); accuracy = accVal * 100; } let rank = 'S'; if (accuracy < 100) rank = 'S'; if (accuracy < 95) rank = 'A'; if (accuracy < 90) rank = 'B'; if (accuracy < 80) rank = 'C'; if (accuracy < 70) rank = 'D'; dom.accuracyElement.textContent = `${rank} ${accuracy.toFixed(2)}%`; }
         function showJudgment(text) { const el = dom.judgmentTextElement; const judgmentStyles = { "良": 'gold', "可": 'white', "不可": '#dda0dd' }; el.textContent = text; el.style.color = judgmentStyles[text] || 'white'; el.style.animation = 'none'; void el.offsetHeight; el.style.animation = null; }
         function updateComboDisplay() { if (combo > 0) { dom.comboElement.textContent = combo; dom.comboDisplay.classList.add('visible'); } else { dom.comboDisplay.classList.remove('visible'); } }
+        function updateResultsSelection() { const buttons = dom.resultsOverlay.querySelectorAll('.overlay-button'); buttons.forEach((btn, index) => { btn.classList.toggle('selected', index === selectedResultsIndex); }); }
         function updatePauseSelection() { const buttons = dom.pauseOverlay.querySelectorAll('.overlay-button'); buttons.forEach((btn, index) => { btn.classList.toggle('selected', index === selectedPauseIndex); }); }
         
         function togglePause() { 
@@ -3085,6 +3134,29 @@
                             e.preventDefault(); 
                             break;
                     }
+                } else if (dom.resultsOverlay.style.display === 'flex') {
+                    const rButtons = dom.resultsOverlay.querySelectorAll('.overlay-button');
+                    if (rButtons.length === 0) return;
+                    switch (e.key) {
+                        case 'ArrowUp':
+                            e.preventDefault();
+                            selectedResultsIndex = (selectedResultsIndex - 1 + rButtons.length) % rButtons.length;
+                            updateResultsSelection();
+                            break;
+                        case 'ArrowDown':
+                            e.preventDefault();
+                            selectedResultsIndex = (selectedResultsIndex + 1) % rButtons.length;
+                            updateResultsSelection();
+                            break;
+                        case 'Enter':
+                            e.preventDefault();
+                            rButtons[selectedResultsIndex].click();
+                            break;
+                        case 'ArrowLeft':
+                        case 'ArrowRight':
+                            e.preventDefault();
+                            break;
+                    }
                 } else if (isGameRunning && e.code === 'Space') {
                     e.preventDefault();
                 } else if (!isGameRunning && e.code === 'Space' && !dom.startButton.disabled) {
@@ -3153,9 +3225,21 @@
             dom.resultsKaValue.textContent = judgmentCounts.ka; 
             dom.resultsFukaValue.textContent = judgmentCounts.fuka; 
             const gaugeCleared = isGaugeCleared();
-            dom.resultsClearStatus.textContent = gaugeCleared ? 'CLEAR' : 'FAILED';
-            dom.resultsClearStatus.className = gaugeCleared ? 'clear' : 'failed';
+            const isFullCombo = totalHits > 0 && judgmentCounts.fuka === 0;
+            const isAllPerfect = isFullCombo && judgmentCounts.ka === 0;
+            if (isAllPerfect) {
+                dom.resultsClearStatus.textContent = 'ALLPERFECT';
+                dom.resultsClearStatus.className = 'allperfect';
+            } else if (isFullCombo) {
+                dom.resultsClearStatus.textContent = 'FULLCOMBO';
+                dom.resultsClearStatus.className = 'fullcombo';
+            } else {
+                dom.resultsClearStatus.textContent = gaugeCleared ? 'CLEAR' : 'FAILED';
+                dom.resultsClearStatus.className = gaugeCleared ? 'clear' : 'failed';
+            }
 
+            selectedResultsIndex = 0;
+            updateResultsSelection();
             dom.resultsOverlay.style.display = 'flex'; 
             if (selectedBackgroundType === 'video') dom.backgroundVideo.pause(); 
         }
@@ -3218,6 +3302,7 @@
                 });
                 dom.offsetInput.addEventListener('change', saveSettings);
                 dom.videoOffsetInput.addEventListener('change', saveTaikoBeatmapSpecificSettings);
+                dom.videoOffsetInput.addEventListener('input', saveTaikoBeatmapSpecificSettings);
                 dom.seOffsetInput.addEventListener('change', saveSettings);
                 dom.autoPlayCheckbox.addEventListener('change', saveSettings);
                 dom.singleHandBigNoteCheckbox.addEventListener('change', saveSettings);
