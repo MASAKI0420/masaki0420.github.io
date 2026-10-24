@@ -1170,7 +1170,7 @@
                 if (n.isBig) n.label = n.type === 'don' ? 'ドン(大)' : 'カッ(大)';   // 大音符は常に(大)付き
                 else n.label = n.type === 'don' ? (isShort ? 'ド' : 'ドン') : (isShort ? 'カ' : 'カッ');
             }
-            for (const n of hitObjects) { if (n.type === 'roll') n.label = '連打'; }   // 連打は「連打━━━」と連打の長さに合わせて線を伸ばす
+            for (const n of hitObjects) { if (n.type === 'roll') n.label = n.isBig ? '連打(大)' : '連打'; }   // 連打は「連打━━━」と連打の長さに合わせて線を伸ばす
         }
         function splitTjaToCourses(content, relativePath) {
             const courses = [];
@@ -2756,7 +2756,7 @@
                     const endX = JUDGE_POINT_X + timeToEnd * note.scrollSpeed * pixelMultiplier;
                     if (endX < -150 || startX > dom.canvas.width + 50) continue;
 
-                    const barHeight = note.isBig ? y * 0.72 : y * 0.72;
+                    const barHeight = note.isBig ? y * 1.17 : y * 0.72; // 大連打は大音符(半径 y*0.585)と同じ大きさ
                     const headRadius = barHeight / 2;
                     const BAR_THICKNESS_SCALE = 1.046;
                     const barRadius = headRadius * BAR_THICKNESS_SCALE;
@@ -3250,7 +3250,7 @@
             const P = getFxPoints();
             const big = !!note.isBig;
             fxFlash(layer, P.jx, P.jy, P.h * 0.8, keyType === 'katsu' ? 'rgba(120,200,255,0.6)' : 'rgba(255,200,60,0.6)');
-            fxFly(layer, P, P.h * 0.38, keyType === 'katsu' ? '#46B6B6' : '#F83838', () => fxBurst(layer, P.sx, P.sy, 1, 6), false); // 大連打も含め、通常の小音符と同じ大きさ
+            fxFly(layer, P, P.h * (big ? 0.585 : 0.38), keyType === 'katsu' ? '#46B6B6' : '#F83838', () => fxBurst(layer, P.sx, P.sy, big ? 1.25 : 1, big ? 10 : 6), big); // 大連打は大音符と同じ大きさで飛ぶ
         }
         // 風船：規定回数を叩ききったら大音符サイズで魂へ飛ぶ
         function spawnBalloonBreakEffect() {
