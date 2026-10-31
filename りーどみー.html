@@ -75,6 +75,27 @@
   .don { color: #ff6b6b; font-weight: bold; }
   .katsu { color: #4dd2e0; font-weight: bold; }
   footer { text-align: center; color: var(--muted); font-size: 0.9em; margin-top: 30px; }
+  .back-btn {
+    position: fixed;
+    right: 24px;
+    bottom: 24px;
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    background: var(--accent);
+    color: #fff;
+    font-size: 30px;
+    line-height: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-decoration: none;
+    box-shadow: 0 4px 14px rgba(0,0,0,0.5);
+    z-index: 100;
+    transition: background-color 0.2s, transform 0.1s;
+  }
+  .back-btn:hover { background: #c9302c; }
+  .back-btn:active { transform: scale(0.94); }
   @media (max-width: 640px) { nav ol { columns: 1; } section { padding: 6px 16px 18px; } }
 </style>
 </head>
@@ -300,5 +321,6 @@
 
 <footer>Taiko Player（TJA完全対応版） 使い方ガイド</footer>
 </div>
+<a class="back-btn" href="https://masaki0420.github.io/TJAplayer.html" title="プレイヤーに戻る" aria-label="プレイヤーに戻る">&#8592;</a>
 </body>
 </html>
