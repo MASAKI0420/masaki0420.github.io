@@ -174,8 +174,9 @@
         #taiko-wrapper #taiko-start-button:disabled, #taiko-wrapper #save-song-to-pc-button:disabled { background-color: var(--disabled-color); cursor: not-allowed; color: #8c92a3; }
         #taiko-wrapper #taiko-song-info { min-height: 80px; text-align: center; background: #2a344d; border-radius: 8px; padding: 10px; display: flex; flex-direction: column; justify-content: center; border: 1px solid var(--panel-border); }
         #taiko-wrapper #taiko-ingame-pause-button { display: none; }
-        #taiko-wrapper #taiko-ui-panel { position: absolute; top: 20px; right: 30px; color: white; z-index: 20; text-shadow: 0 0 8px rgba(0,0,0,0.8); text-align: right; font-weight: 600; }
-        #taiko-wrapper #taiko-score { font-size: 2.5em; }
+        #taiko-wrapper #taiko-ui-panel { position: absolute; top: 20px; right: 30px; color: white; z-index: 31; text-shadow: 0 0 8px rgba(0,0,0,0.8); text-align: right; font-weight: 600; }
+        /* スコア：白い太鼓の上、少し左側（レーン上端のすぐ上）に表示。ゲーム画面は全画面固定なので fixed で画面基準に配置 */
+        #taiko-wrapper #taiko-score { font-size: 2.5em; position: fixed; left: calc(180px + var(--ui-offset-x) - 120px); top: calc(50% - 215px); transform: translate(-100%, -100%); line-height: 1.1; text-align: right; white-space: nowrap; pointer-events: none; }
         #taiko-wrapper #taiko-ingame-song-title { font-size: 3em; max-width: 40vw; margin-left: auto; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         #taiko-wrapper #taiko-accuracy { font-size: 1.5em; color: #FFD700; min-width: 5.5em; text-align: right; }
         #taiko-wrapper #taiko-accuracy-container { display: flex; align-items: center; justify-content: flex-end; gap: 8px; }
@@ -507,7 +508,7 @@
                     <button id="taiko-start-button" disabled="">ゲーム開始 (Space)</button>
                 </div>
                 
-                <p class="grid-item-full">※ WキーまたはESCキーでポーズ / ESC長押しでフルスクリーン解除</p>
+                <p class="grid-item-full"><a href="https://masaki0420.github.io/%E3%82%8A%E3%83%BC%E3%81%A9%E3%81%BF%E3%83%BC.html" target="_blank" rel="noopener noreferrer" style="color:inherit;text-decoration:underline;">使い方はこちら！</a></p>
                 
                 <!-- Hidden file input -->
                 <input type="file" id="taiko-osz-file" accept=".zip,.tja,application/zip,application/x-zip-compressed,application/x-zip,application/octet-stream,application/x-tja,text/plain" multiple="">
@@ -1052,8 +1053,21 @@
             const noteDia = NOTE_UNIT * 2 * 0.38; // 小音符の直径（drawNotesの r = y*0.38 と同じ）
             return noteDia * chartBaseBPM / 15000 * 0.92 * (uiScrollSpeed / BASE_SCROLL_SPEED);
         }
-        const HIT_WINDOW_PERFECT = 25, HIT_WINDOW_GOOD = 70, HIT_WINDOW_BAD = 100;
-        const EARLY_MISS_WINDOW = 100;
+        // 判定幅(±ms)：難易度ごとに切り替える（おに・むずかしい／ふつう・かんたん）。エディットはおにと同じ。
+        const HIT_WINDOWS = {
+            oni:  { perfect: 25, good: 75, bad: 100 },               // おに・エディット
+            hard: { perfect: 25.025, good: 75.075, bad: 108.442 },   // むずかしい
+            easy: { perfect: 41.708, good: 108.442, bad: 125.125 }   // ふつう・かんたん
+        };
+        let HIT_WINDOW_PERFECT = 25.025, HIT_WINDOW_GOOD = 75.075, HIT_WINDOW_BAD = 108.442;
+        let EARLY_MISS_WINDOW = 108.442;
+        function applyHitWindows(difficulty) {
+            const w = (difficulty === 1 || difficulty === 2) ? HIT_WINDOWS.easy : (difficulty === 3 ? HIT_WINDOWS.hard : HIT_WINDOWS.oni);
+            HIT_WINDOW_PERFECT = w.perfect;
+            HIT_WINDOW_GOOD = w.good;
+            HIT_WINDOW_BAD = w.bad;
+            EARLY_MISS_WINDOW = w.bad;   // 早押しの不可も同じ幅
+        }
         let JUDGE_POINT_X = 416; 
         let audioContext;
         let seGainNode;
@@ -2702,6 +2716,7 @@
         function resetGame() {
             setSongTitleDisplay(root.querySelector('#taiko-ingame-song-title'), (songInfo && songInfo.title) ? songInfo.title : '', ''); // プレイ中はサブタイトルを表示しない
             score = 0;
+            scoreDirty = false; pendingRollFx = null;
             combo = 0;
             maxCombo = 0;
             totalPauseDuration = 0;
@@ -2790,6 +2805,7 @@
             
             drawProgressPie('taiko-gameplay-progress-pie', 0);
 
+            applyHitWindows(songInfo.difficulty);
             isAutoPlay = dom.autoPlayCheckbox.checked;
             isAutoSE = dom.autoSeCheckbox.checked;
             optMissMode = dom.missModeSelect.value;
@@ -3199,6 +3215,8 @@
             }
 
             drawRollCounter(elapsedTime);
+            if (scoreDirty) { dom.scoreElement.textContent = Math.floor(score); scoreDirty = false; }
+            if (pendingRollFx) { const p = pendingRollFx; pendingRollFx = null; spawnRollEffect(p.note, p.keyType); }
             if (isAutoPlay) {
                 autoPlayHandler(elapsedTime);
             } else {
@@ -3512,6 +3530,9 @@
             }
             if (playOffset < buffer.duration) {
                 source.start(playTime, playOffset);
+                seVoices.push(source);
+                source.onended = () => { const i = seVoices.indexOf(source); if (i >= 0) seVoices.splice(i, 1); };
+                if (seVoices.length > 24) { const old = seVoices.shift(); try { old.stop(); } catch (e) {} }   // 古い音から止める（余韻なので聞こえ方はほぼ変わらない）
             }
         }
         function autoSEHandler(elapsedTime) { for (let i = lastAutoSEIndex; i < hitObjects.length; i++) { const note = hitObjects[i]; if (!isNoteActive(note)) { if (elapsedTime >= note.time) note.sePlayed = true; continue; } if (note.sePlayed) continue; if (elapsedTime >= note.time) { if (note.type === 'don' || note.type === 'katsu') { playHitSound(note.type); note.sePlayed = true; } } else { break; } } while(hitObjects[lastAutoSEIndex] && hitObjects[lastAutoSEIndex].sePlayed) { lastAutoSEIndex++; } }
@@ -3569,7 +3590,7 @@
 
             if (activeLongNote) {
                 if (activeLongNote.type === 'roll') {
-                    spawnRollEffect(activeLongNote, keyType);
+                    pendingRollFx = { note: activeLongNote, keyType };   // 飛ぶ音符は次の描画フレームで出す
                     if (!isAutoSE) playHitSound(keyType);
                     // ニジイロ配点: 連打は大小問わず1打100点・ゴーゴー倍率なし
                     score += 100;
@@ -3577,7 +3598,7 @@
                     totalRollHits++;
                     activeRollHits = activeLongNote.hitsMade;
                     rollCounterClearTime = 0;
-                    dom.scoreElement.textContent = Math.floor(score);
+                    scoreDirty = true;   // スコア文字は次の描画フレームで更新
                 } else if (activeLongNote.type === 'balloon') {
                     if (keyType === 'don') {
                         playHitSound('don');
@@ -3589,7 +3610,7 @@
                             activeLongNote.judged = true;
                             spawnBalloonBreakEffect();
                         }
-                        dom.scoreElement.textContent = Math.floor(score);
+                        scoreDirty = true;
                     } else {
                         playHitSound('katsu'); 
                     }
@@ -3769,6 +3790,9 @@
         }
         // --- 叩いた時のエフェクト（太鼓の達人風：音符が魂ゲージへ飛び、到着点で火花が弾ける） ---
         let fxLayer = null, lastRollFxTime = 0;
+        // 連打中の画面更新（スコア文字・飛ぶ音符）は、キーを押した瞬間ではなく次の描画フレームでまとめて行う（連打時のカクつき対策）
+        let scoreDirty = false, pendingRollFx = null;
+        const seVoices = [];   // 鳴っているSEの管理（連打で大量に重なって音声処理が重くなるのを防ぐ）
         function getFxLayer() {
             if (!fxLayer || fxLayer.parentNode !== dom.gameContainer) {
                 fxLayer = document.createElement('div');
@@ -3810,14 +3834,15 @@
             ], { duration: 260, easing: 'ease-out' });
             a.onfinish = () => d.remove();
         }
-        function fxBurst(layer, x, y, scale, count) {
-            fxFlash(layer, x, y, 150 * scale, 'rgba(255,170,30,0.75)');
+        // light=true：連打用の軽量版（光の玉を出さず、粒も少なく、ぼかし影なし）
+        function fxBurst(layer, x, y, scale, count, light) {
+            if (!light) fxFlash(layer, x, y, 150 * scale, 'rgba(255,170,30,0.75)');
             const colors = ['#ffd34d', '#ff9d00', '#ffffff', '#ff6a00', '#ffe9a0'];
             for (let i = 0; i < count; i++) {
                 const size = (8 + Math.random() * 12) * scale;
                 const star = Math.random() < 0.5;
                 const col = colors[(Math.random() * colors.length) | 0];
-                const d = fxDiv(`width:${size}px;height:${size}px;background:${col};box-shadow:0 0 ${size}px ${col};` + (star ? 'clip-path:polygon(50% 0,60% 40%,100% 50%,60% 60%,50% 100%,40% 60%,0 50%,40% 40%);' : 'border-radius:50%;'));
+                const d = fxDiv(`width:${size}px;height:${size}px;background:${col};` + (light ? '' : `box-shadow:0 0 ${size}px ${col};`) + (star ? 'clip-path:polygon(50% 0,60% 40%,100% 50%,60% 60%,50% 100%,40% 60%,0 50%,40% 40%);' : 'border-radius:50%;'));
                 layer.appendChild(d);
                 const ang = Math.random() * Math.PI * 2, dist = (35 + Math.random() * 70) * scale;
                 const ex = x + Math.cos(ang) * dist, ey = y + Math.sin(ang) * dist - 12 * scale;
@@ -3838,21 +3863,27 @@
             // 頂点で音符の中心が画面の上端(y=0)に来る＝音符が半分だけ見える。
             // 2次ベジェ曲線の最高点がちょうど y=0 になる制御点は cy = -√(始点y × 終点y)
             // APEX_RAISE(px)：頂点をさらに上へ上げる量（上端から音符が隠れる分が増える）
-            const APEX_RAISE = 10;
-            const cx = P.jx + (P.sx - P.jx) * 0.3, cy = -Math.sqrt(Math.max(1, (P.jy + APEX_RAISE) * (P.sy + APEX_RAISE))) - APEX_RAISE;
-            // 曲線上を等速で進む（弧長で等間隔にキーフレームを置く）。サイズ・不透明度は最後まで変えない
-            const bez = t => { const u = 1 - t; return [u * u * P.jx + 2 * u * t * cx + t * t * P.sx, u * u * P.jy + 2 * u * t * cy + t * t * P.sy]; };
-            const M = 120, pts = [bez(0)], cum = [0];
-            for (let i = 1; i <= M; i++) { const q = bez(i / M), pr = pts[i - 1]; pts.push(q); cum.push(cum[i - 1] + Math.hypot(q[0] - pr[0], q[1] - pr[1])); }
-            const total = cum[M], N = 28, frames = [];
-            let k = 0;
-            for (let i = 0; i <= N; i++) {
-                const target = total * i / N;
-                while (k < M - 1 && cum[k + 1] < target) k++;
-                const seg = cum[k + 1] - cum[k] || 1, f = Math.min(1, Math.max(0, (target - cum[k]) / seg));
-                const x = pts[k][0] + (pts[k + 1][0] - pts[k][0]) * f, y = pts[k][1] + (pts[k + 1][1] - pts[k][1]) * f;
-                frames.push({ transform: `translate(${x - dia / 2}px,${y - dia / 2}px)` });
+            // 軌道（弧長で等間隔に並べた座標）は毎回同じなので、1回だけ計算して使い回す（連打時の負荷軽減）
+            if (!P.path) {
+                // APEX_HEIGHT(px)：判定の円から頂点までの高さ。画面サイズによらず一定（この数字を変えると跳ねる高さが変わる）
+                const APEX_HEIGHT = 400;
+                const apexY = Math.min(P.jy - APEX_HEIGHT, P.sy - 20);   // 頂点のy座標（魂より低くならないよう保護）
+                const cx = P.jx + (P.sx - P.jx) * 0.3, cy = apexY - Math.sqrt(Math.max(1, (P.jy - apexY) * (P.sy - apexY)));
+                // 曲線上を等速で進む（弧長で等間隔にキーフレームを置く）。サイズ・不透明度は最後まで変えない
+                const bez = t => { const u = 1 - t; return [u * u * P.jx + 2 * u * t * cx + t * t * P.sx, u * u * P.jy + 2 * u * t * cy + t * t * P.sy]; };
+                const M = 120, pts = [bez(0)], cum = [0];
+                for (let i = 1; i <= M; i++) { const q = bez(i / M), pr = pts[i - 1]; pts.push(q); cum.push(cum[i - 1] + Math.hypot(q[0] - pr[0], q[1] - pr[1])); }
+                const total = cum[M], N = 28, path = [];
+                let k = 0;
+                for (let i = 0; i <= N; i++) {
+                    const target = total * i / N;
+                    while (k < M - 1 && cum[k + 1] < target) k++;
+                    const seg = cum[k + 1] - cum[k] || 1, f = Math.min(1, Math.max(0, (target - cum[k]) / seg));
+                    path.push([pts[k][0] + (pts[k + 1][0] - pts[k][0]) * f, pts[k][1] + (pts[k + 1][1] - pts[k][1]) * f]);
+                }
+                P.path = path;
             }
+            const frames = P.path.map(p => ({ transform: `translate(${p[0] - dia / 2}px,${p[1] - dia / 2}px)` }));
             const a = d.animate(frames, { duration: 560, easing: 'linear', fill: 'forwards' });
             a.onfinish = () => { onArrive(); const last = frames[frames.length - 1].transform; const f = d.animate([{ transform: last, opacity: 1 }, { transform: last, opacity: 0 }], { duration: 500, easing: 'linear', fill: 'forwards' }); f.onfinish = () => d.remove(); }; // 魂に届いたら0.5秒かけてだんだん薄くなって消える
         }
@@ -3869,14 +3900,14 @@
         // 連打：その音符の大きさのまま魂へ飛ぶ（小連打は小音符サイズ、大連打は大音符サイズ）
         function spawnRollEffect(note, keyType) {
             const now = performance.now();
-            if (now - lastRollFxTime < 45 || dom.gameContainer.style.display === 'none') return;
+            // 連打中は大量に作ると重くなるので、間隔を空けて数も制限する（見た目は連続して飛んでいるように保つ）
+            if (now - lastRollFxTime < 90 || dom.gameContainer.style.display === 'none') return;
             lastRollFxTime = now;
             const layer = getFxLayer();
-            if (layer.childElementCount > 200) return;
+            if (layer.childElementCount > 40) return;
             const P = getFxPoints();
             const big = !!note.isBig;
-            fxFlash(layer, P.jx, P.jy, P.h * 0.8, keyType === 'katsu' ? 'rgba(120,200,255,0.6)' : 'rgba(255,200,60,0.6)');
-            fxFly(layer, P, P.h * (big ? 0.5836 : 0.385), keyType === 'katsu' ? '#46B6B6' : '#F83838', () => fxBurst(layer, P.sx, P.sy, big ? 1.25 : 1, big ? 10 : 6), big); // 大連打は大音符と同じ大きさで飛ぶ
+            fxFly(layer, P, P.h * (big ? 0.5836 : 0.385), keyType === 'katsu' ? '#46B6B6' : '#F83838', () => fxBurst(layer, P.sx, P.sy, big ? 1.25 : 1, big ? 4 : 3, true), big); // 大連打は大音符と同じ大きさで飛ぶ
         }
         // 風船：規定回数を叩ききったら大音符サイズで魂へ飛ぶ
         function spawnBalloonBreakEffect() {
