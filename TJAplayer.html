@@ -2409,7 +2409,7 @@
             tjaBgSpecified = { video: false, image: false };
             updateBackgroundSelector();
             applyCustomBackground(false);
-            dom.saveSongToPcButton.disabled = true;
+            dom.saveSongToPcButton.disabled = !dom.savedSongsList.value;   // 保存済み譜面を選んでいる間は押せるまま（読み込みの初期化で無効になっていた）
             dom.individualOffsetInput.value = 0;
             dom.videoOffsetInput.value = 0;
             if (fullReset) {
@@ -4183,7 +4183,7 @@
                 document.body.appendChild(a);
                 a.click();
                 document.body.removeChild(a);
-                URL.revokeObjectURL(url);
+                setTimeout(() => URL.revokeObjectURL(url), 60000);   // すぐ解放するとダウンロードが途中で失敗することがあるため、少し待つ
             } catch (err) {
                 alert('ファイルの保存に失敗しました。');
                 console.error('Failed to save .zip file from Taiko player:', err);
