@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Taiko Player 使い方</title>
+<style>
+  :root {
+    --bg: #0d0d1a;
+    --panel: #1f2940;
+    --panel2: #2a344d;
+    --border: #4a5578;
+    --text: #e0e5f0;
+    --muted: #a0a8c0;
+    --accent: #d9534f;
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Hiragino Sans", "Yu Gothic", Meiryo, sans-serif;
+    line-height: 1.8;
+    font-size: 19px;
+  }
+  .wrap { max-width: 1100px; margin: 0 auto; padding: 32px 20px 80px; }
+  header { text-align: center; margin-bottom: 28px; }
+  header h1 { margin: 0 0 8px; font-size: 2em; color: var(--accent); }
+  header p { margin: 0; color: var(--muted); }
+  nav {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 16px 22px;
+    margin-bottom: 32px;
+  }
+  nav strong { display: block; margin-bottom: 6px; }
+  nav ol { margin: 0; padding-left: 1.4em; columns: 2; column-gap: 32px; }
+  nav a { color: var(--text); text-decoration: none; }
+  nav a:hover { color: var(--accent); text-decoration: underline; }
+  section {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 8px 26px 22px;
+    margin-bottom: 24px;
+  }
+  h2 { font-size: 1.5em; border-bottom: 2px solid var(--accent); padding-bottom: 6px; margin: 20px 0 14px; }
+  h3 { font-size: 1.1em; margin: 22px 0 8px; color: #ffd27a; }
+  p { margin: 8px 0; }
+  ul, ol { padding-left: 1.4em; margin: 8px 0; }
+  li { margin: 3px 0; }
+  code, kbd {
+    background: var(--panel2);
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    padding: 1px 6px;
+    font-family: Consolas, Menlo, monospace;
+    font-size: 0.92em;
+  }
+  kbd { border-bottom-width: 2px; font-weight: bold; }
+  .table-wrap { overflow-x: auto; margin: 10px 0; }
+  table { border-collapse: collapse; width: 100%; font-size: 1em; }
+  th, td { border: 1px solid var(--border); padding: 8px 12px; text-align: left; vertical-align: top; }
+  th { background: var(--panel2); }
+  .note {
+    background: rgba(217, 83, 79, 0.12);
+    border-left: 4px solid var(--accent);
+    border-radius: 6px;
+    padding: 8px 14px;
+    margin: 12px 0;
+  }
+  .note.info { background: rgba(77, 171, 247, 0.12); border-left-color: #4dabf7; }
+  .don { color: #ff6b6b; font-weight: bold; }
+  .katsu { color: #4dd2e0; font-weight: bold; }
+  footer { text-align: center; color: var(--muted); font-size: 0.9em; margin-top: 30px; }
+  @media (max-width: 640px) { nav ol { columns: 1; } section { padding: 6px 16px 18px; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <h1>Taiko Player（TJA完全対応版）</h1>
+  <p>使い方ガイド</p>
+</header>
+
+<nav>
+  <strong>目次</strong>
+  <ol>
+    <li><a href="#start">はじめに</a></li>
+    <li><a href="#add">譜面を追加する</a></li>
+    <li><a href="#play">遊び方</a></li>
+    <li><a href="#settings">設定一覧</a></li>
+    <li><a href="#trouble">困ったとき</a></li>
+    <li><a href="#misc">補足</a></li>
+  </ol>
+</nav>
+
+<section id="start">
+  <h2>1. はじめに</h2>
+  <p>太鼓さん次郎形式（<code>.tja</code>）の譜面を、ブラウザだけで遊べるプレイヤーです。<br>
+  譜面・SE・背景はすべて、お使いのブラウザ内（IndexedDB）に保存されます。サーバーへは送信されません。</p>
+  <ol>
+    <li><code>TJAplayer_34_14.html</code> をブラウザ（Chrome / Edge などを推奨）で開く</li>
+    <li>曲を追加する（2章）</li>
+    <li>曲と難易度を選び、「ゲーム開始 (Space)」を押す</li>
+  </ol>
+  <div class="note info">初回はキー入力かクリックのあとに音が有効になります。譜面データを入れたブラウザとは別のブラウザ・別のURLで開くと、保存済みの譜面は表示されません。</div>
+</section>
+
+<section id="add">
+  <h2>2. 譜面を追加する</h2>
+
+  <h3>追加の手順</h3>
+  <ol>
+    <li>左上「譜面管理」の <strong>追加 (ZIP)</strong> をクリック</li>
+    <li>譜面ZIPを選択（複数選択できます）</li>
+    <li>ジャンルを聞かれるので、数字で指定</li>
+  </ol>
+
+  <h3>ZIPの中身</h3>
+  <ul>
+    <li><code>.tja</code> ファイル（必須）</li>
+    <li>音声ファイル（<code>.mp3</code> / <code>.ogg</code> / <code>.wav</code>）。TJAの <code>WAVE:</code> で指定した名前を優先して探し、見つからなければZIP内の音声を自動で使います</li>
+    <li>背景の動画・画像（任意。TJAの <code>BGMOVIE:</code> / <code>BGIMAGE:</code> で指定されたものを優先）</li>
+  </ul>
+  <p>文字コードは UTF-8 / Shift-JIS / EUC-JP / UTF-16 などを自動判定します。</p>
+
+  <h3>ジャンル（1〜9）</h3>
+  <div class="table-wrap">
+  <table>
+    <tr><th>番号</th><th>ジャンル</th><th>番号</th><th>ジャンル</th></tr>
+    <tr><td>1</td><td>J-POP</td><td>6</td><td>クラシック</td></tr>
+    <tr><td>2</td><td>アニメ</td><td>7</td><td>ゲームミュージック</td></tr>
+    <tr><td>3</td><td>キッズ</td><td>8</td><td>ナムコオリジナル</td></tr>
+    <tr><td>4</td><td>ボーカロイド</td><td>9</td><td>創作譜面（初期値）</td></tr>
+    <tr><td>5</td><td>バラエティ</td><td></td><td></td></tr>
+  </table>
+  </div>
+  <p>複数ファイルを追加するとき：</p>
+  <ul>
+    <li>数字（1〜9）＝全曲に同じジャンルを付ける</li>
+    <li><code>0</code> ＝曲ごとに指定する</li>
+    <li>空欄／キャンセル＝TJAのGENRE記載から自動判定（判定できなければ9）</li>
+  </ul>
+  <p>あとから変えるには、曲を選んで <strong>ジャンル変更 (1〜9)</strong> を押します。</p>
+
+  <h3>選ぶ・探す・消す</h3>
+  <ul>
+    <li><strong>曲を検索…</strong>：曲名で絞り込み</li>
+    <li><strong>ジャンル：すべて</strong>：ジャンルで絞り込み（切り替えると選択中の曲はリセットされます）</li>
+    <li><strong>保存済み譜面を選択</strong>：プルダウンから曲を選ぶ</li>
+    <li><strong>削除</strong>：選択中の曲を削除</li>
+    <li><strong>PCへ保存</strong>：選択中の譜面ZIPをPCにダウンロード（バックアップ用）</li>
+  </ul>
+
+  <h3>難易度</h3>
+  <p>曲を選ぶと「難易度を選択」が出ます（かんたん / ふつう / むずかしい / おに / エディット。☆の数も表示）。<br>
+  2P譜面（<code>#START P2</code>）は読み込みません。</p>
+</section>
+
+<section id="play">
+  <h2>3. 遊び方</h2>
+
+  <h3>キー操作（初期値）</h3>
+  <div class="table-wrap">
+  <table>
+    <tr><th>操作</th><th>キー</th></tr>
+    <tr><td>ドン（左 / 右）</td><td><kbd>D</kbd> / <kbd>K</kbd></td></tr>
+    <tr><td>カッ（左 / 右）</td><td><kbd>S</kbd> / <kbd>L</kbd></td></tr>
+    <tr><td>ポーズ</td><td><kbd>W</kbd> または <kbd>Esc</kbd></td></tr>
+    <tr><td>リトライ</td><td><kbd>R</kbd></td></tr>
+    <tr><td>メニューへ戻る</td><td><kbd>H</kbd></td></tr>
+    <tr><td>ゲーム開始</td><td><kbd>Space</kbd></td></tr>
+  </table>
+  </div>
+  <ul>
+    <li>「キー設定」の枠をクリック → 割り当てたいキーを押すと変更できます（Escでキャンセル。他の操作と重複するキーは使えません）。</li>
+    <li>リトライ・メニューのショートカットは、画面右側「ショートカットキー」で変更できます（リトライは連続使用防止のため3秒のクールダウンあり）。</li>
+  </ul>
+  <div class="note">初回は枠の表示（X / Z など）が実際の割り当てとずれて見える場合があります。各枠を一度クリックして設定し直すと確実です。</div>
+
+  <h3>音符</h3>
+  <ul>
+    <li><span class="don">ドン（赤）</span>：ドンキー ／ <span class="katsu">カッ（青）</span>：カッキー</li>
+    <li><strong>大音符</strong>：「大音符を片手で処理」がONなら、どれか1キーで判定されます</li>
+    <li><strong>連打（黄色い帯）</strong>：期間中、ドン・カッのどちらでも連打</li>
+    <li><strong>風船</strong>：ドンで規定回数を叩いて割る</li>
+    <li>譜面分岐（普通 / 玄人 / 達人）に対応しており、分岐は演奏成績で自動的に切り替わります</li>
+  </ul>
+
+  <h3>判定とスコア</h3>
+  <ul>
+    <li>良 / 可 / 不可 の3段階。判定幅は難易度ごとに変わります</li>
+    <li>配点はニジイロVer.方式（天井スコアがおよそ100万点）</li>
+    <li>画面上のゲージが各難易度のノルマ線を超えると <strong>CLEAR</strong>。最後までミス無しなら <strong>FULLCOMBO</strong>、全て良なら <strong>ALLPERFECT</strong></li>
+  </ul>
+
+  <h3>ポーズ・結果画面</h3>
+  <ul>
+    <li>ポーズ中は <kbd>↑</kbd><kbd>↓</kbd> でボタンを選び、<kbd>Enter</kbd> で決定（再開 / やり直し / タイトルへ戻る）</li>
+    <li>結果画面でも <kbd>↑</kbd><kbd>↓</kbd> と <kbd>Enter</kbd> で、やり直しとタイトルを選べます</li>
+  </ul>
+</section>
+
+<section id="settings">
+  <h2>4. 設定一覧</h2>
+
+  <h3>表示・速度</h3>
+  <ul>
+    <li><strong>スクロール速度</strong>：音符の流れる速さ（曲のBPMに応じて自動調整。譜面ごとに保存）</li>
+    <li><strong>レーン不透明度</strong>／<strong>背景の明るさ</strong></li>
+    <li><strong>レーンカバー</strong>：右側の見える範囲を隠して、音符の見える範囲を狭める</li>
+  </ul>
+
+  <h3>オフセット（ms）</h3>
+  <div class="table-wrap">
+  <table>
+    <tr><th>項目</th><th>内容</th></tr>
+    <tr><td>譜面オフセット</td><td>すべての譜面に共通のタイミング調整</td></tr>
+    <tr><td>個別譜面オフセット</td><td>その譜面だけの調整（譜面ごとに保存）</td></tr>
+    <tr><td>動画オフセット</td><td>背景動画だけをずらす（譜面ごとに保存）</td></tr>
+    <tr><td>SEオフセット</td><td>叩いた音の鳴るタイミングだけ調整。音が遅れて聞こえる場合は <code>-50</code> のようにマイナスを入力</td></tr>
+  </table>
+  </div>
+
+  <h3>プレイアシスト</h3>
+  <ul>
+    <li><strong>オートプレイ</strong>：自動で演奏</li>
+    <li><strong>大音符を片手で処理</strong>：大音符を1キーで判定</li>
+    <li><strong>自動SE</strong>：音符のタイミングで自動的にSEを鳴らす</li>
+  </ul>
+
+  <h3>演奏オプション</h3>
+  <ul>
+    <li><strong>ミスしたとき</strong>
+      <ul>
+        <li>そのまま</li>
+        <li>かんぺき：不可で演奏終了</li>
+        <li>超かんぺき：可・不可で演奏終了</li>
+        <li>とっくん：不可でやり直し</li>
+        <li>超とっくん：可・不可でやり直し</li>
+      </ul>
+    </li>
+    <li><strong>音符の入れ替え</strong>：なし / きまぐれ（ちょっと） / でたらめ（かなり） / あべこべ（ドンとカッを逆に）</li>
+    <li><strong>ドロン</strong>：音符を隠します（判定は通常どおり）</li>
+    <li><strong>演奏スキップ</strong>：プレイ中に <kbd>Enter</kbd> で演奏を終了して結果画面へ</li>
+  </ul>
+
+  <h3>サウンド</h3>
+  <ul>
+    <li>曲の音量／SEの音量</li>
+    <li><strong>SE（ドン・カッ）</strong>：自分のSEに差し替えられます
+      <ol>
+        <li>「追加 (ZIP)」で、<code>dong.wav</code>（ドン）と <code>ka.wav</code>（カッ）を入れたZIPを選ぶ</li>
+        <li>名前を付けて保存</li>
+        <li>プルダウンから選んで使用（「名前変更」「削除」も可）</li>
+      </ol>
+      ファイル名は <code>don</code> / <code>katsu</code> でも可。拡張子は wav / mp3 / ogg / m4a / flac / aac / opus が使えます
+    </li>
+  </ul>
+
+  <h3>背景（動画・画像）</h3>
+  <ul>
+    <li><strong>背景（動画・画像）</strong>：ZIP内の背景を「動画」「画像」「背景なし」から選択</li>
+    <li><strong>背景を追加</strong>：動画・画像に名前を付けて保存（複数選択可）</li>
+    <li><strong>保存した背景を選択</strong>：保存した背景を選ぶと、その譜面用として記憶されます</li>
+    <li><strong>名前を変更</strong> ／ <strong>解除</strong>（標準に戻す）</li>
+    <li><strong>ランダム ON/OFF</strong>：ONにすると、保存した画像の中から譜面を読み込んだとき・ゲーム開始時にランダムで選びます</li>
+  </ul>
+</section>
+
+<section id="trouble">
+  <h2>5. 困ったとき</h2>
+  <div class="table-wrap">
+  <table>
+    <tr><th>症状</th><th>対処</th></tr>
+    <tr><td>音が出ない</td><td>一度クリックかキー入力をしてから、もう一度開始してください</td></tr>
+    <tr><td>「ZIP内に音声ファイルが見つかりません」</td><td>ZIPに <code>.mp3</code> / <code>.ogg</code> / <code>.wav</code> が入っているか確認してください</td></tr>
+    <tr><td>「.tjaファイルが見つかりませんでした」</td><td>ZIPの中に <code>.tja</code> があるか確認してください</td></tr>
+    <tr><td>音と譜面がずれる</td><td>「譜面オフセット」または「個別譜面オフセット」で調整。SEだけなら「SEオフセット」</td></tr>
+    <tr><td>動画が読み込めない</td><td>自動で画像に切り替わります。ブラウザが対応する形式（mp4 / webm など）をお使いください</td></tr>
+    <tr><td>保存できない</td><td>ブラウザの保存容量が上限の可能性があります。不要な譜面・背景を削除してください</td></tr>
+    <tr><td>「別のタブで開かれています」と出る</td><td>他のタブやウィンドウを閉じてから再読み込みしてください（保存データは消えていません）</td></tr>
+    <tr><td>データが消えた</td><td>ブラウザのサイトデータを削除すると保存した譜面も消えます。大切な譜面は「PCへ保存」でバックアップしてください</td></tr>
+  </table>
+  </div>
+</section>
+
+<section id="misc">
+  <h2>6. 補足</h2>
+  <ul>
+    <li>ポーズ・リトライ・メニュー用のショートカットキー設定は、このプレイヤー全体の共通設定として保存されます</li>
+    <li>スクロール速度・個別オフセット・動画オフセット・選んだ背景は、譜面ごとに記憶されます</li>
+    <li><kbd>Esc</kbd> キー長押しでフルスクリーンを解除できます</li>
+  </ul>
+</section>
+
+<footer>Taiko Player（TJA完全対応版） 使い方ガイド</footer>
+</div>
+</body>
+</html>
