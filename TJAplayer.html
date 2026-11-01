@@ -6,7 +6,7 @@
     <!-- PWA設定 -->
     <meta name="theme-color" content="#1f2940">
     <link rel="manifest" href="manifest.json">
-    <title>Taiko Player</title>
+    <title>Taiko Player (TJA完全対応版)</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <style>
         /* --- Global Styles --- */
@@ -3668,7 +3668,10 @@
             const keyType = hitKeyId.startsWith('don') ? 'don' : 'katsu';
             showDrumHit(hitKeyId);
             // SEオフセットは判定・音符の位置には影響させない（音の再生タイミングだけに適用: playHitSound）
-            const elapsedTime = getGameTime() - offset;
+            // 実際にキーが押された時刻(e.timeStamp)から処理開始までの遅れを差し引き、押した瞬間の時刻で判定する
+            let inputLag = performance.now() - e.timeStamp;
+            if (!(inputLag > 0 && inputLag < 100)) inputLag = 0;
+            const elapsedTime = getGameTime() - offset - inputLag;
             if (elapsedTime < -500) return;
 
              let activeLongNote = null;
@@ -3686,7 +3689,7 @@
 
             if (activeLongNote) {
                 if (activeLongNote.type === 'roll') {
-                    if (pendingRollFx.length < 30) pendingRollFx.push({ note: activeLongNote, keyType });   // 飛ぶ音符は次の描画フレームで出す（打った回数ぶん溜める）
+                    spawnRollEffect(activeLongNote, keyType);   // 打った瞬間に音符を飛ばす（次のフレームを待たない）
                     if (!isAutoSE) playHitSound(keyType);
                     // ニジイロ配点: 連打は大小問わず1打100点・ゴーゴー倍率なし
                     score += 100;
@@ -3694,6 +3697,7 @@
                     totalRollHits++;
                     activeRollHits = activeLongNote.hitsMade;
                     rollCounterClearTime = 0;
+                    dom.scoreElement.textContent = Math.floor(score);   // スコアも即時表示
                     scoreDirty = true;   // スコア文字は次の描画フレームで更新
                 } else if (activeLongNote.type === 'balloon') {
                     if (keyType === 'don') {
