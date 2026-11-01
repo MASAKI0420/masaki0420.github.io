@@ -6,7 +6,7 @@
     <!-- PWA設定 -->
     <meta name="theme-color" content="#1f2940">
     <link rel="manifest" href="manifest.json">
-    <title>Taiko Player (TJA完全対応版)</title>
+    <title>Taiko Player</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <style>
         /* --- Global Styles --- */
@@ -2724,7 +2724,7 @@
         function resetGame() {
             setSongTitleDisplay(root.querySelector('#taiko-ingame-song-title'), (songInfo && songInfo.title) ? songInfo.title : '', ''); // プレイ中はサブタイトルを表示しない
             score = 0;
-            scoreDirty = false; pendingRollFx = null;
+            scoreDirty = false; pendingRollFx = [];
             combo = 0;
             maxCombo = 0;
             totalPauseDuration = 0;
@@ -3257,7 +3257,7 @@
 
             drawRollCounter(elapsedTime);
             if (scoreDirty) { dom.scoreElement.textContent = Math.floor(score); scoreDirty = false; }
-            if (pendingRollFx) { const p = pendingRollFx; pendingRollFx = null; spawnRollEffect(p.note, p.keyType); }
+            if (pendingRollFx.length) { const q = pendingRollFx; pendingRollFx = []; for (const p of q) spawnRollEffect(p.note, p.keyType); }   // 1打ごとに1個ずつ飛ばす（同一フレームに複数打っても全部出す）
             if (isAutoPlay) {
                 autoPlayHandler(elapsedTime);
             } else {
@@ -3686,7 +3686,7 @@
 
             if (activeLongNote) {
                 if (activeLongNote.type === 'roll') {
-                    pendingRollFx = { note: activeLongNote, keyType };   // 飛ぶ音符は次の描画フレームで出す
+                    if (pendingRollFx.length < 30) pendingRollFx.push({ note: activeLongNote, keyType });   // 飛ぶ音符は次の描画フレームで出す（打った回数ぶん溜める）
                     if (!isAutoSE) playHitSound(keyType);
                     // ニジイロ配点: 連打は大小問わず1打100点・ゴーゴー倍率なし
                     score += 100;
@@ -3887,7 +3887,7 @@
         // --- 叩いた時のエフェクト（太鼓の達人風：音符が魂ゲージへ飛び、到着点で火花が弾ける） ---
         let fxLayer = null, lastRollFxTime = 0;
         // 連打中の画面更新（スコア文字・飛ぶ音符）は、キーを押した瞬間ではなく次の描画フレームでまとめて行う（連打時のカクつき対策）
-        let scoreDirty = false, pendingRollFx = null;
+        let scoreDirty = false, pendingRollFx = [];
         const seVoices = [];   // 鳴っているSEの管理（連打で大量に重なって音声処理が重くなるのを防ぐ）
         function getFxLayer() {
             if (!fxLayer || fxLayer.parentNode !== dom.gameContainer) {
@@ -3995,12 +3995,10 @@
         }
         // 連打：その音符の大きさのまま魂へ飛ぶ（小連打は小音符サイズ、大連打は大音符サイズ）
         function spawnRollEffect(note, keyType) {
-            const now = performance.now();
-            // 連打中は大量に作ると重くなるので、間隔を空けて数も制限する（見た目は連続して飛んでいるように保つ）
-            if (now - lastRollFxTime < 90 || dom.gameContainer.style.display === 'none') return;
-            lastRollFxTime = now;
+            // 打った回数ぶん音符を飛ばす（間隔による間引きはしない。重くなりすぎないよう同時表示数だけ上限を設ける）
+            if (dom.gameContainer.style.display === 'none') return;
             const layer = getFxLayer();
-            if (layer.childElementCount > 40) return;
+            if (layer.childElementCount > 150) return;
             const P = getFxPoints();
             const big = !!note.isBig;
             fxFly(layer, P, P.h * (big ? 0.5836 : 0.385), keyType === 'katsu' ? '#46B6B6' : '#F83838', () => fxBurst(layer, P.sx, P.sy, big ? 1.25 : 1, big ? 4 : 3, true), big); // 大連打は大音符と同じ大きさで飛ぶ
