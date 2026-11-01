@@ -1059,12 +1059,12 @@
         }
         // 判定幅(±ms)：難易度ごとに切り替える（おに・むずかしい／ふつう・かんたん）。エディットはおにと同じ。
         const HIT_WINDOWS = {
-            oni:  { perfect: 25, good: 75, bad: 100 },               // おに・エディット
-            hard: { perfect: 25.025, good: 75.075, bad: 108.442 },   // むずかしい
+            oni:  { perfect: 25, good: 70, bad: 100 },               // おに・エディット
+            hard: { perfect: 25, good: 70, bad: 100 },               // むずかしい
             easy: { perfect: 41.708, good: 108.442, bad: 125.125 }   // ふつう・かんたん
         };
-        let HIT_WINDOW_PERFECT = 25.025, HIT_WINDOW_GOOD = 75.075, HIT_WINDOW_BAD = 108.442;
-        let EARLY_MISS_WINDOW = 108.442;
+        let HIT_WINDOW_PERFECT = 25, HIT_WINDOW_GOOD = 70, HIT_WINDOW_BAD = 100;
+        let EARLY_MISS_WINDOW = 100;
         function applyHitWindows(difficulty) {
             const w = (difficulty === 1 || difficulty === 2) ? HIT_WINDOWS.easy : (difficulty === 3 ? HIT_WINDOWS.hard : HIT_WINDOWS.oni);
             HIT_WINDOW_PERFECT = w.perfect;
