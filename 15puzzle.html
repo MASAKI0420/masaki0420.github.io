@@ -1,0 +1,737 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>15パズル タイムアタック</title>
+    <style>
+        /* 全体のベーススタイル */
+        body {
+            font-family: 'Helvetica Neue', Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background-color: #f8fafc;
+            color: #334155;
+            touch-action: manipulation;
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        #game-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px 0;
+        }
+
+        /* --- タイトル画面 --- */
+        #title-screen {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        #start-btn {
+            font-size: 28px;
+            padding: 15px 60px;
+            border-radius: 50px;
+            background-color: #3b82f6;
+            color: white;
+            border: none;
+            cursor: pointer;
+            box-shadow: 0 10px 20px -5px rgba(59, 130, 246, 0.5);
+            transition: all 0.2s;
+            font-weight: bold;
+            letter-spacing: 3px;
+        }
+        #start-btn:hover {
+            background-color: #2563eb;
+            transform: translateY(-2px);
+            box-shadow: 0 15px 25px -5px rgba(59, 130, 246, 0.5);
+        }
+        #start-btn:active {
+            transform: translateY(2px);
+            box-shadow: 0 5px 10px -5px rgba(59, 130, 246, 0.5);
+        }
+
+        /* ランキングボード */
+        #ranking-container, #online-ranking-container {
+            margin-top: 40px;
+            background: #ffffff;
+            padding: 20px 30px;
+            border-radius: 12px;
+            box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1);
+            width: 260px;
+        }
+        #online-ranking-container { margin-top: 24px; }
+        #ranking-container h2, #online-ranking-container h2 {
+            font-size: 20px;
+            margin: 0 0 15px 0;
+            text-align: center;
+            color: #1e293b;
+            border-bottom: 2px solid #f1f5f9;
+            padding-bottom: 10px;
+        }
+        #ranking-list, #online-ranking-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+        #ranking-list li, #online-ranking-list li {
+            display: flex;
+            justify-content: space-between;
+            padding: 10px 0;
+            border-bottom: 1px solid #f1f5f9;
+            font-size: 16px;
+        }
+        #ranking-list li:last-child, #online-ranking-list li:last-child { border-bottom: none; }
+        .rank-1 { color: #d97706; font-weight: bold; } /* 金 */
+        .rank-2 { color: #64748b; font-weight: bold; } /* 銀 */
+        .rank-3 { color: #b45309; font-weight: bold; } /* 銅 */
+        .rank-4, .rank-5, .rank-6, .rank-7, .rank-8, .rank-9, .rank-10 { color: #334155; }
+
+        /* ランキングへ移動するボタン */
+        #ranking-btn {
+            margin-top: 20px;
+            font-size: 20px;
+            padding: 12px 40px;
+            border-radius: 50px;
+            background-color: #ffffff;
+            color: #3b82f6;
+            border: 2px solid #3b82f6;
+            cursor: pointer;
+            font-weight: bold;
+            letter-spacing: 2px;
+            transition: all 0.2s;
+        }
+        #ranking-btn:hover { background-color: #eff6ff; }
+        #ranking-btn:active { transform: translateY(2px); }
+
+        /* --- ランキング画面 --- */
+        #ranking-screen {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding-bottom: 30px;
+        }
+        #ranking-screen #online-ranking-container { margin-top: 10px; }
+        #ranking-back-btn { margin-top: 24px; background-color: #ef4444; }
+        #ranking-back-btn:hover { background-color: #dc2626; }
+
+        /* --- プレイ画面 --- */
+        #play-screen {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        #timer {
+            font-size: 36px;
+            font-weight: bold;
+            font-variant-numeric: tabular-nums;
+            font-family: 'Courier New', Courier, monospace;
+            color: #0f172a;
+            margin-bottom: 20px;
+            background: #e2e8f0;
+            padding: 8px 24px;
+            border-radius: 8px;
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.05);
+        }
+
+        #board {
+            width: 320px;
+            height: 320px;
+            background-color: #cbd5e1;
+            position: relative;
+            border-radius: 8px;
+            box-shadow: 0 10px 25px -5px rgba(0,0,0,0.15);
+            overflow: hidden;
+        }
+
+        .tile {
+            width: 76px;
+            height: 76px;
+            background-color: #f1f5f9;
+            color: #334155;
+            font-size: 32px;
+            font-weight: bold;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            position: absolute;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.15);
+            cursor: pointer;
+            transition: top 0.15s ease, left 0.15s ease, background-color 0.2s, color 0.2s, transform 0.1s;
+            user-select: none;
+        }
+        .tile:active { transform: scale(0.95); }
+        .tile.correct { background-color: #10b981; color: white; }
+
+        #message {
+            margin-top: 20px;
+            font-size: 22px;
+            font-weight: bold;
+            color: #ef4444;
+            min-height: 55px; /* メッセージが複数行になってもレイアウト崩れを防ぐ */
+            text-align: center;
+            line-height: 1.4;
+        }
+
+        .btn-group {
+            display: flex;
+            gap: 12px;
+            margin-top: 15px;
+            flex-wrap: wrap; /* ボタンが多い場合に折り返す */
+            justify-content: center;
+            width: 100%;
+            max-width: 350px;
+        }
+        .action-btn {
+            padding: 10px 20px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            border: none;
+            border-radius: 25px;
+            color: white;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            transition: background-color 0.2s, transform 0.1s;
+        }
+        .action-btn:active { transform: translateY(2px); }
+        
+        #retry-btn { background-color: #64748b; }
+        #retry-btn:hover { background-color: #475569; }
+        
+        #back-btn { background-color: #ef4444; }
+        #back-btn:hover { background-color: #dc2626; }
+
+        /* X (Twitter) ポストボタン用スタイル */
+        #x-share-btn { background-color: #0f1419; color: #ffffff; }
+        #x-share-btn:hover { background-color: #272c30; }
+
+        /* --- ランクイン時の名前入力モーダル --- */
+        #name-modal {
+            position: fixed;
+            top: 0; left: 0; width: 100vw; height: 100vh;
+            background: rgba(15, 23, 42, 0.7);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+        .modal-content {
+            background: #ffffff;
+            padding: 30px;
+            border-radius: 12px;
+            text-align: center;
+            box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1);
+        }
+        .modal-content h2 { margin-top: 0; color: #10b981; }
+        .modal-content p { font-size: 18px; margin-bottom: 20px; font-weight: bold; }
+        .modal-content input {
+            padding: 10px; font-size: 16px; border: 2px solid #cbd5e1;
+            border-radius: 6px; outline: none; margin-bottom: 20px;
+            width: 200px; text-align: center;
+        }
+        .modal-content input:focus { border-color: #3b82f6; }
+        #submit-score {
+            padding: 10px 30px; font-size: 16px; background-color: #3b82f6;
+            color: white; border: none; border-radius: 25px; font-weight: bold;
+            cursor: pointer; transition: 0.2s;
+        }
+        #submit-score:hover { background-color: #2563eb; }
+        #submit-score:disabled { background-color: #94a3b8; cursor: default; }
+
+        .online-note { font-size: 13px; color: #94a3b8; text-align: center; }
+
+    </style>
+</head>
+<body>
+
+    <div id="game-container">
+        
+        <!-- 初期画面（スタートボタン ＆ ランキング） -->
+        <div id="title-screen">
+            <button id="start-btn">START</button>
+            <button id="ranking-btn">🏆 ランキング</button>
+        </div>
+
+        <!-- ランキング画面 -->
+        <div id="ranking-screen" class="hidden">
+            <div id="online-ranking-container">
+                <h2>🌐 オンラインランキング</h2>
+                <ul id="online-ranking-list">
+                    <!-- Javascriptでオンランキング生成 -->
+                </ul>
+            </div>
+            <button id="ranking-back-btn" class="action-btn">戻る</button>
+        </div>
+
+        <!-- プレイ画面（パズル） -->
+        <div id="play-screen" class="hidden">
+            <div id="timer">00:00.000</div>
+            <div id="board"></div>
+            <div id="message"></div>
+            <div class="btn-group">
+                <button id="retry-btn" class="action-btn">やり直す</button>
+                <!-- 𝕏 でポスト ボタン (最初は非表示) -->
+                <button id="x-share-btn" class="action-btn hidden">𝕏 でポスト</button>
+                <button id="back-btn" class="action-btn">戻る</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ランクイン時の名前入力ダイアログ -->
+    <div id="name-modal" class="hidden">
+        <div class="modal-content">
+            <h2>🎉 ランクイン！</h2>
+            <p>タイム: <span id="modal-time"></span></p>
+            <input type="text" id="player-name" placeholder="名前を入力 (10文字以内)" maxlength="10">
+            <br>
+            <button id="submit-score">登録</button>
+        </div>
+    </div>
+
+    <script>
+        // ============================================================
+        // オンランキング設定
+        // Google Apps Script のウェブアプリURLを入れてください。
+        // 例: "https://script.google.com/macros/s/xxxxxxxx/exec"
+        // 空のままだとオンランキングは無効（ローカルのみ動作）になります。
+        // ============================================================
+        const ONLINE_API_URL = "https://script.google.com/macros/s/AKfycby2Je4o05Zl64XHK-k-WWfLmflfi3-VOpGB4vGt2f6iic8ulRC9Y8iSKlr1I1onFwv5/exec";
+        const ONLINE_TOP_N = 100;
+        const ONLINE_MIN_TIME_MS = 3000; // ありえない短時間の記録は送らない
+
+        // --- 変数定義 ---
+        let tiles = [];
+        const boardEl = document.getElementById('board');
+        const titleScreen = document.getElementById('title-screen');
+        const playScreen = document.getElementById('play-screen');
+        const timerEl = document.getElementById('timer');
+        const messageEl = document.getElementById('message');
+        const retryBtn = document.getElementById('retry-btn');
+        const xShareBtn = document.getElementById('x-share-btn');
+        const tilesEl = [];
+        
+        let isPlaying = false;
+        let timerInterval;
+        let startTime;
+        let elapsedTime = 0;
+
+        // ランクイン登録用の一時状態
+        let pendingLocal = false;
+        let pendingOnline = false;
+        let pendingTime = 0;
+
+        // --- 端末ごとのプレイヤーID・オンライン自己ベスト ---
+        // 同じ端末では自己ベストを更新したときだけオンランキングに登録される
+        function getPlayerId() {
+            try {
+                let id = localStorage.getItem('15puzzle_player_id');
+                if (!id) {
+                    id = (window.crypto && crypto.randomUUID)
+                        ? crypto.randomUUID()
+                        : 'p-' + Date.now().toString(36) + Math.random().toString(36).slice(2, 12);
+                    localStorage.setItem('15puzzle_player_id', id);
+                }
+                return id;
+            } catch (e) {
+                return 'p-' + Date.now().toString(36) + Math.random().toString(36).slice(2, 12);
+            }
+        }
+
+        function getOnlineBest() {
+            const v = localStorage.getItem('15puzzle_online_best');
+            return v === null ? null : Number(v);
+        }
+
+        function setOnlineBest(time) {
+            localStorage.setItem('15puzzle_online_best', String(time));
+        }
+
+        // --- ランキング関連の関数 ---
+        function getRanking() {
+            const data = localStorage.getItem('15puzzle_ranking');
+            return data ? JSON.parse(data) : [];
+        }
+
+        function saveRanking(name, time) {
+            let ranking = getRanking();
+            ranking.push({ name: name || '名無し', time: time });
+            ranking.sort((a, b) => a.time - b.time); // タイムが短い順
+            if (ranking.length > 5) ranking.length = 5; // 上位5件まで保持
+            localStorage.setItem('15puzzle_ranking', JSON.stringify(ranking));
+            updateRankingUI(); // ランキングUIの更新
+        }
+
+        function escapeHtml(str) {
+            return String(str).replace(/[&<>'"]/g, tag => ({
+                '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;'
+            }[tag]));
+        }
+
+        function updateRankingUI() {
+            const ranking = getRanking();
+            const list = document.getElementById('ranking-list');
+            if (!list) return; // ローカルランキングは画面に表示しない
+            list.innerHTML = '';
+            
+            if (ranking.length === 0) {
+                list.innerHTML = '<li style="justify-content:center; color:#94a3b8;">まだ記録がありません</li>';
+                return;
+            }
+
+            ranking.forEach((record, index) => {
+                const li = document.createElement('li');
+                const safeName = escapeHtml(record.name);
+                
+                li.innerHTML = `<span class="rank-${index+1}">${index+1}. ${safeName}</span>
+                                <span>${formatTime(record.time)}</span>`;
+                list.appendChild(li);
+            });
+        }
+
+        // --- オンランキング関連の関数 ---
+        function onlineEnabled() {
+            return ONLINE_API_URL && ONLINE_API_URL.trim() !== "";
+        }
+
+        // 上位N件を取得（失敗時は null）
+        async function fetchOnlineRanking() {
+            if (!onlineEnabled()) return null;
+            try {
+                const res = await fetch(ONLINE_API_URL);
+                if (!res.ok) throw new Error('HTTP ' + res.status);
+                const data = await res.json();
+                if (!Array.isArray(data)) return [];
+                const arr = data.filter(r => r && typeof r.time === 'number');
+                arr.sort((a, b) => a.time - b.time);
+                return arr.slice(0, ONLINE_TOP_N);
+            } catch (e) {
+                console.error('オンランキング取得失敗', e);
+                return null;
+            }
+        }
+
+        // 記録を送信（成功: true）
+        async function postOnlineRecord(name, time) {
+            if (!onlineEnabled()) return false;
+            try {
+                // text/plain にすることでCORSのプリフライトを回避
+                const res = await fetch(ONLINE_API_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                    body: JSON.stringify({ id: getPlayerId(), name: name || '名無し', time: time })
+                });
+                if (!res.ok) return false;
+                const result = await res.json();
+                return result && result.ok === true;
+            } catch (e) {
+                console.error('オンランキング送信失敗', e);
+                return false;
+            }
+        }
+
+        async function updateOnlineRankingUI() {
+            const list = document.getElementById('online-ranking-list');
+            const container = document.getElementById('online-ranking-container');
+
+            if (!onlineEnabled()) {
+                container.classList.add('hidden');
+                return;
+            }
+            container.classList.remove('hidden');
+            list.innerHTML = '<li class="online-note" style="justify-content:center;">読み込み中...</li>';
+
+            const ranking = await fetchOnlineRanking();
+            list.innerHTML = '';
+
+            if (ranking === null) {
+                list.innerHTML = '<li style="justify-content:center; color:#94a3b8;">取得できませんでした</li>';
+                return;
+            }
+            if (ranking.length === 0) {
+                list.innerHTML = '<li style="justify-content:center; color:#94a3b8;">まだ記録がありません</li>';
+                return;
+            }
+
+            ranking.forEach((record, index) => {
+                const li = document.createElement('li');
+                const safeName = escapeHtml(record.name);
+                li.innerHTML = `<span class="rank-${index+1}">${index+1}. ${safeName}</span>
+                                <span>${formatTime(record.time)}</span>`;
+                list.appendChild(li);
+            });
+        }
+
+        // --- パズルの初期化処理 ---
+        function init() {
+            updateRankingUI(); 
+            for (let i = 1; i <= 15; i++) {
+                const tile = document.createElement('div');
+                tile.classList.add('tile');
+                tile.textContent = i;
+                tile.addEventListener('click', () => moveTile(i));
+                boardEl.appendChild(tile);
+                tilesEl[i] = tile;
+                tiles.push(i);
+            }
+            tiles.push(0);
+        }
+
+        // --- 描画処理 ---
+        function render() {
+            for (let i = 0; i < 16; i++) {
+                let tileNum = tiles[i];
+                if (tileNum !== 0) {
+                    let row = Math.floor(i / 4);
+                    let col = i % 4;
+                    let tileEl = tilesEl[tileNum];
+                    
+                    tileEl.style.top = (row * 80 + 2) + 'px';
+                    tileEl.style.left = (col * 80 + 2) + 'px';
+                    
+                    if (tileNum === i + 1) {
+                        tileEl.classList.add('correct');
+                    } else {
+                        tileEl.classList.remove('correct');
+                    }
+                }
+            }
+        }
+
+        // --- シャッフル処理 ---
+        function shuffle() {
+            let emptyIndex = tiles.indexOf(0);
+            let lastEmptyIndex = -1;
+            
+            for (let i = 0; i < 300; i++) {
+                let validMoves = [];
+                let row = Math.floor(emptyIndex / 4);
+                let col = emptyIndex % 4;
+                
+                if (row > 0 && emptyIndex - 4 !== lastEmptyIndex) validMoves.push(emptyIndex - 4);
+                if (row < 3 && emptyIndex + 4 !== lastEmptyIndex) validMoves.push(emptyIndex + 4);
+                if (col > 0 && emptyIndex - 1 !== lastEmptyIndex) validMoves.push(emptyIndex - 1);
+                if (col < 3 && emptyIndex + 1 !== lastEmptyIndex) validMoves.push(emptyIndex + 1);
+                
+                if (validMoves.length === 0) {
+                    if (row > 0) validMoves.push(emptyIndex - 4);
+                    if (row < 3) validMoves.push(emptyIndex + 4);
+                    if (col > 0) validMoves.push(emptyIndex - 1);
+                    if (col < 3) validMoves.push(emptyIndex + 1);
+                }
+                
+                let randomMove = validMoves[Math.floor(Math.random() * validMoves.length)];
+                
+                tiles[emptyIndex] = tiles[randomMove];
+                tiles[randomMove] = 0;
+                
+                lastEmptyIndex = emptyIndex;
+                emptyIndex = randomMove;
+            }
+        }
+
+        // --- 画面遷移（タイトルに戻る） ---
+        function showTitleScreen() {
+            isPlaying = false;
+            clearInterval(timerInterval);
+            titleScreen.classList.remove('hidden');
+            playScreen.classList.add('hidden');
+            document.getElementById('ranking-screen').classList.add('hidden');
+        }
+
+        // --- ランキング画面へ移動 ---
+        function showRankingScreen() {
+            titleScreen.classList.add('hidden');
+            document.getElementById('ranking-screen').classList.remove('hidden');
+            updateRankingUI();
+            updateOnlineRankingUI();
+            window.scrollTo(0, 0);
+        }
+
+        // --- ゲーム開始 ---
+        function startGame() {
+            titleScreen.classList.add('hidden');
+            playScreen.classList.remove('hidden');
+            
+            // Xボタンを隠して、やり直しボタンを通常の状態に
+            xShareBtn.classList.add('hidden');
+            retryBtn.textContent = "やり直す";
+            retryBtn.style.backgroundColor = "#64748b";
+
+            shuffle();
+            render();
+            
+            elapsedTime = 0;
+            timerEl.textContent = "00:00.000";
+            messageEl.textContent = "";
+            
+            clearInterval(timerInterval);
+            startTime = Date.now();
+            timerInterval = setInterval(() => {
+                elapsedTime = Date.now() - startTime;
+                timerEl.textContent = formatTime(elapsedTime);
+            }, 10);
+            
+            isPlaying = true;
+        }
+
+        // --- タイル移動 ---
+        function moveTile(tileNum) {
+            if (!isPlaying) return;
+            
+            let tileIndex = tiles.indexOf(tileNum);
+            let emptyIndex = tiles.indexOf(0);
+            
+            let tRow = Math.floor(tileIndex / 4);
+            let tCol = tileIndex % 4;
+            let eRow = Math.floor(emptyIndex / 4);
+            let eCol = emptyIndex % 4;
+            
+            let isAdjacent = (Math.abs(tRow - eRow) === 1 && tCol === eCol) || 
+                             (Math.abs(tCol - eCol) === 1 && tRow === eRow);
+                             
+            if (isAdjacent) {
+                tiles[emptyIndex] = tileNum;
+                tiles[tileIndex] = 0;
+                render();
+                checkClear();
+            }
+        }
+
+        // --- クリア判定 ---
+        async function checkClear() {
+            for (let i = 0; i < 15; i++) {
+                if (tiles[i] !== i + 1) return;
+            }
+            
+            isPlaying = false;
+            clearInterval(timerInterval);
+            pendingTime = elapsedTime;
+            
+            const ranking = getRanking();
+            // 記録が5件未満、または5位のタイムより早ければローカルランクイン
+            pendingLocal = ranking.length < 5 || pendingTime < ranking[ranking.length - 1].time;
+
+            // オンラインのランクイン判定
+            pendingOnline = false;
+            if (onlineEnabled() && pendingTime >= ONLINE_MIN_TIME_MS) {
+                messageEl.textContent = "ランキング確認中...";
+                const online = await fetchOnlineRanking();
+                const best = getOnlineBest();
+                // 自己ベスト更新時のみ対象
+                if (online !== null && (best === null || pendingTime < best)) {
+                    pendingOnline = online.length < ONLINE_TOP_N ||
+                                    pendingTime < online[online.length - 1].time;
+                }
+            }
+
+            if (onlineEnabled() ? pendingOnline : pendingLocal) {
+                document.getElementById('modal-time').textContent = formatTime(pendingTime);
+                document.getElementById('player-name').value = ""; 
+                document.getElementById('submit-score').disabled = false;
+                document.getElementById('name-modal').classList.remove('hidden');
+            } else {
+                showClearResult(); // ランク外ならそのまま結果表示
+            }
+        }
+
+        // --- クリア後の結果表示（メッセージ ＆ Xシェアボタン表示） ---
+        function showClearResult(extraMsg) {
+            messageEl.innerHTML = `🎉 クリア！<br>タイム: ${formatTime(elapsedTime)}` +
+                (extraMsg ? `<br><span style="font-size:14px;color:#64748b;">${extraMsg}</span>` : '');
+            retryBtn.textContent = "もう一度プレイ";
+            retryBtn.style.backgroundColor = "#3b82f6";
+            
+            // Xでシェアするボタンを表示
+            xShareBtn.classList.remove('hidden');
+        }
+
+        // --- X (Twitter) へのシェア機能 ---
+        function postToX() {
+            const timeString = formatTime(elapsedTime);
+            const text = `${timeString}で解けました!\nhttps://masaki0420.github.io/15puzzle.html \n#15パズルタイムアタック`;
+            // URLエンコードしてTwitterの投稿URLを生成
+            const url = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}`;
+            window.open(url, '_blank');
+        }
+
+        // --- 時間フォーマット処理 ---
+        function formatTime(ms) {
+            let totalSeconds = Math.floor(ms / 1000);
+            let minutes = Math.floor(totalSeconds / 60);
+            let seconds = totalSeconds % 60;
+            let milliseconds = ms % 1000;
+            
+            return String(minutes).padStart(2, '0') + ':' + 
+                   String(seconds).padStart(2, '0') + '.' + 
+                   String(milliseconds).padStart(3, '0');
+        }
+
+        // --- イベントリスナー ---
+        document.getElementById('start-btn').addEventListener('click', startGame);
+        document.getElementById('retry-btn').addEventListener('click', startGame);
+        document.getElementById('back-btn').addEventListener('click', showTitleScreen);
+        document.getElementById('ranking-btn').addEventListener('click', showRankingScreen);
+        document.getElementById('ranking-back-btn').addEventListener('click', showTitleScreen);
+        xShareBtn.addEventListener('click', postToX); // 𝕏ポストボタン
+
+        // ランクイン登録ボタン
+        document.getElementById('submit-score').addEventListener('click', async () => {
+            const btn = document.getElementById('submit-score');
+            btn.disabled = true;
+            const name = document.getElementById('player-name').value.trim();
+
+            if (pendingLocal) saveRanking(name, pendingTime);
+
+            let extra = "";
+            if (pendingOnline) {
+                const ok = await postOnlineRecord(name, pendingTime);
+                if (ok) setOnlineBest(pendingTime);
+                extra = ok ? "オンランキングに登録しました" : "オンライン登録に失敗しました";
+            }
+
+            document.getElementById('name-modal').classList.add('hidden');
+            
+            // 登録後、画面遷移せずにクリア結果とXシェアボタンを表示する
+            showClearResult(extra);
+        });
+
+        // エンターキーでも登録できるようにする
+        document.getElementById('player-name').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                document.getElementById('submit-score').click();
+            }
+        });
+
+        // キーボード（矢印キー）操作対応
+        document.addEventListener('keydown', (e) => {
+            if (!isPlaying) return;
+            let emptyIndex = tiles.indexOf(0);
+            let targetIndex = -1;
+            
+            if (e.key === 'ArrowUp') { targetIndex = emptyIndex + 4; }
+            else if (e.key === 'ArrowDown') { targetIndex = emptyIndex - 4; }
+            else if (e.key === 'ArrowLeft') { targetIndex = emptyIndex + 1; if (targetIndex % 4 === 0) targetIndex = -1; }
+            else if (e.key === 'ArrowRight') { targetIndex = emptyIndex - 1; if (emptyIndex % 4 === 0) targetIndex = -1; }
+            
+            if (targetIndex >= 0 && targetIndex < 16) {
+                e.preventDefault();
+                moveTile(tiles[targetIndex]);
+            }
+        });
+
+        // 実行
+        window.onload = init;
+    </script>
+</body>
+</html>
