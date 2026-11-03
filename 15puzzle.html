@@ -5,6 +5,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>15パズル タイムアタック</title>
     <style>
+        /* スクロールバーの出入りによる横ズレを防ぐ */
+        html {
+            overflow-y: scroll;
+            scrollbar-gutter: stable;
+        }
+
         /* 全体のベーススタイル */
         body {
             font-family: 'Helvetica Neue', Arial, sans-serif;
@@ -12,8 +18,6 @@
             padding: 0;
             min-height: 100vh;
             display: flex;
-            justify-content: center;
-            align-items: center;
             background-color: #f8fafc;
             color: #334155;
             touch-action: manipulation;
@@ -23,11 +27,13 @@
             display: none !important;
         }
 
+        /* margin:auto で上下左右の完全中央固定（はみ出す場合も上が切れない） */
         #game-container {
             display: flex;
             flex-direction: column;
             align-items: center;
             padding: 20px 0;
+            margin: auto;
         }
 
         /* --- タイトル画面 --- */
@@ -174,27 +180,31 @@
         .tile:active { transform: scale(0.95); }
         .tile.correct { background-color: #10b981; color: white; }
 
+        /* メッセージ欄は高さ固定（表示内容が変わっても盤面が動かない） */
         #message {
             margin-top: 20px;
             font-size: 22px;
             font-weight: bold;
             color: #ef4444;
-            min-height: 55px; /* メッセージが複数行になってもレイアウト崩れを防ぐ */
+            height: 90px;
+            overflow: hidden;
             text-align: center;
             line-height: 1.4;
         }
 
+        /* ボタン群も高さ・幅固定（Xボタンの出入りや文言変更で動かない） */
         .btn-group {
             display: flex;
             gap: 12px;
             margin-top: 15px;
-            flex-wrap: wrap; /* ボタンが多い場合に折り返す */
+            flex-wrap: nowrap;
             justify-content: center;
-            width: 100%;
-            max-width: 350px;
+            align-items: center;
+            width: 360px;
+            height: 44px;
         }
         .action-btn {
-            padding: 10px 20px;
+            padding: 10px 0;
             font-size: 16px;
             font-weight: bold;
             cursor: pointer;
@@ -203,9 +213,15 @@
             color: white;
             box-shadow: 0 4px 6px rgba(0,0,0,0.1);
             transition: background-color 0.2s, transform 0.1s;
+            white-space: nowrap;
+            text-align: center;
         }
         .action-btn:active { transform: translateY(2px); }
-        
+
+        .btn-group #retry-btn { width: 132px; }
+        .btn-group #x-share-btn { width: 108px; }
+        .btn-group #back-btn { width: 80px; }
+
         #retry-btn { background-color: #64748b; }
         #retry-btn:hover { background-color: #475569; }
         
@@ -215,6 +231,11 @@
         /* X (Twitter) ポストボタン用スタイル */
         #x-share-btn { background-color: #0f1419; color: #ffffff; }
         #x-share-btn:hover { background-color: #272c30; }
+        /* 非表示時もスペースは確保（display:noneにしない） */
+        #x-share-btn.hidden { display: inline-block !important; visibility: hidden; pointer-events: none; }
+
+        /* ランキング画面の戻るボタン（幅固定ルールの対象外） */
+        #ranking-back-btn { padding: 10px 20px; }
 
         /* --- ランクイン時の名前入力モーダル --- */
         #name-modal {
@@ -664,7 +685,8 @@
             const mm = String(Math.floor(totalSec / 60)).padStart(2, '0');
             const ss = String(totalSec % 60).padStart(2, '0');
             const ms = String(elapsedTime % 1000).padStart(3, '0');
-            const text = `${mm}：${ss}秒：${ms}で解けました！\nmasaki0420.github.io/15puzzle.html\n#15パズルタイムアタック`;
+            // 〇〇：〇〇：〇〇〇 の形式（分：秒：ミリ秒）
+            const text = `${mm}：${ss}：${ms}で解けました！\nmasaki0420.github.io/15puzzle.html\n#15パズルタイムアタック`;
             // URLエンコードしてTwitterの投稿URLを生成
             const url = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}`;
             window.open(url, '_blank');
