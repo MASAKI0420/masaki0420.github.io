@@ -1,0 +1,476 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>自動マッチング！連打綱引きゲーム</title>
+    <script src="https://unpkg.com/peerjs@1.5.1/dist/peerjs.min.js"></script>
+    <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
+    <style>
+        /* 画面が絶対にスクロール・揺れ・拡大しないように完全固定 */
+        html, body {
+            width: 100%; height: 100%; margin: 0; padding: 0;
+            overflow: hidden; position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+            overscroll-behavior: none; user-select: none; -webkit-user-select: none;
+            touch-action: none;
+            font-family: 'Helvetica Neue', Arial, 'Hiragino Kaku Gothic ProN', 'Hiragino Sans', Meiryo, sans-serif;
+            background-color: #f7f9fc; color: #333; text-align: center;
+        }
+
+        #app {
+            width: 100%; height: 100%; max-width: 500px; margin: 0 auto;
+            padding: 20px; box-sizing: border-box; background-color: white;
+            display: flex; flex-direction: column; justify-content: center;
+            align-items: center; box-shadow: 0 0 15px rgba(0,0,0,0.1);
+            position: relative;
+        }
+
+        .screen { display: none; width: 100%; flex-direction: column; align-items: center; position: relative; }
+        .screen.active { display: flex; }
+        
+        /* プレイヤー名入力フォーム */
+        input[type="text"] {
+            padding: 15px; font-size: 1.2rem; font-weight: bold; width: 80%; max-width: 250px;
+            margin: 10px auto 30px auto; text-align: center;
+            border: 2px solid #b2bec3; border-radius: 8px; outline: none;
+            -webkit-appearance: none; transition: border-color 0.2s;
+            user-select: auto; -webkit-user-select: auto; touch-action: auto;
+        }
+        input[type="text"]:focus { border-color: #00b894; }
+
+        button.btn-primary {
+            padding: 15px 30px; font-size: 1.2rem; font-weight: bold; margin: 10px;
+            cursor: pointer; border: none; border-radius: 8px;
+            background-color: #0984e3; color: white; box-shadow: 0 4px #074b83;
+            transition: transform 0.1s, box-shadow 0.1s; z-index: 100; position: relative;
+        }
+        button.btn-primary:active { transform: translateY(2px); box-shadow: 0 2px #074b83; }
+        
+        .spinner {
+            width: 50px; height: 50px; border: 5px solid #dfe6e9; border-top: 5px solid #00b894;
+            border-radius: 50%; animation: spin 1s linear infinite; margin: 30px auto;
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+        /* ゲージのスタイル */
+        #game-area { width: 100%; margin: 40px 0; }
+        #gauge-container {
+            width: 100%; height: 40px; background-color: #0984e3;
+            position: relative; border: 3px solid #2d3436;
+            border-radius: 25px; box-sizing: border-box; overflow: hidden;
+        }
+        #red-territory {
+            width: 50%; height: 100%; background-color: #d63031;
+            transition: width 0.05s ease-out;
+        }
+        #center-line {
+            position: absolute; top: 0; bottom: 0; left: 50%; width: 4px;
+            background-color: #2d3436; transform: translateX(-50%); z-index: 10;
+        }
+        .labels {
+            display: flex; justify-content: space-between;
+            font-weight: bold; margin-top: 10px; font-size: 1rem;
+        }
+        .label-red { color: #d63031; }
+        .label-blue { color: #0984e3; }
+
+        #timer { font-size: 4.5rem; font-weight: bold; margin-bottom: 10px; font-variant-numeric: tabular-nums; }
+
+        /* 連打指示テキスト */
+        #mash-text {
+            font-size: 1.8rem; font-weight: bold; margin-bottom: 20px; color: #b2bec3;
+            animation: pulse 0.8s infinite alternate;
+        }
+        #mash-subtext {
+            font-size: 0.9rem; color: #636e72; font-weight: bold; margin-top: -15px; margin-bottom: 20px;
+        }
+        @keyframes pulse { 0% { transform: scale(1); } 100% { transform: scale(1.05); } }
+
+        /* カウントダウン表示 */
+        #countdown-display {
+            position: absolute; top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 8rem; font-weight: bold; color: #2d3436;
+            text-shadow: 0 0 20px white, 0 0 10px white;
+            z-index: 1000; display: none; pointer-events: none;
+        }
+        @keyframes pop {
+            0% { transform: translate(-50%, -50%) scale(0.5); opacity: 0; }
+            20% { transform: translate(-50%, -50%) scale(1.2); opacity: 1; }
+            80% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+            100% { transform: translate(-50%, -50%) scale(0.9); opacity: 0; }
+        }
+
+        /* タップ時の波紋エフェクト */
+        .tap-effect {
+            position: fixed; width: 30px; height: 30px; border-radius: 50%;
+            transform: translate(-50%, -50%) scale(1);
+            pointer-events: none;
+            animation: ripple 0.3s ease-out forwards;
+            z-index: 9999;
+        }
+        @keyframes ripple { to { transform: translate(-50%, -50%) scale(8); opacity: 0; } }
+    </style>
+</head>
+<body>
+    <div id="app">
+        <!-- トップ画面 -->
+        <div id="screen-top" class="screen active">
+            <h1 style="color: #2d3436; margin-bottom: 10px;">オンライン<br>連打綱引き</h1>
+            <p style="margin-bottom: 20px;">自動で相手を見つけて10秒バトル！<br><b>※一本指での連打のみ有効です</b></p>
+            
+            <input type="text" id="player-name-input" placeholder="あなたの名前 (10文字以内)" maxlength="10">
+
+            <button class="btn-primary" onclick="startMatchmaking()" style="background-color: #00b894; box-shadow: 0 4px #008f73; font-size: 1.4rem; padding: 20px 40px;">
+                対戦相手を探す
+            </button>
+        </div>
+
+        <!-- マッチング待機画面 -->
+        <div id="screen-wait" class="screen">
+            <h2>対戦相手を探しています...</h2>
+            <p>同じタイミングで探している人と<br>自動的に繋がります</p>
+            <div class="spinner"></div>
+            <button class="btn-primary" onclick="location.reload()" style="background-color: #636e72; box-shadow: 0 4px #2d3436; margin-top: 30px;">キャンセル</button>
+        </div>
+
+        <!-- ゲーム画面 -->
+        <div id="screen-game" class="screen">
+            <div id="countdown-display">3</div>
+            
+            <div id="timer">10.0</div>
+            
+            <div id="game-area">
+                <div id="gauge-container">
+                    <div id="red-territory"></div>
+                    <div id="center-line"></div>
+                </div>
+                <div class="labels">
+                    <span class="label-red" id="label-red">◀ 赤陣地</span>
+                    <span class="label-blue" id="label-blue">青陣地 ▶</span>
+                </div>
+            </div>
+
+            <div id="mash-text">準備中...</div>
+            <div id="mash-subtext">相手の通信を待っています</div>
+            <p id="player-role" style="font-weight: bold; font-size: 1.2rem; margin-top:10px;"></p>
+        </div>
+
+        <!-- 結果画面 -->
+        <div id="screen-result" class="screen">
+            <h1 id="result-text" style="font-size: 2.5rem;"></h1>
+            
+            <p style="font-size: 1.1rem; margin-bottom: 5px;">あなた (<span id="result-my-name" style="font-weight:bold;"></span>) の連打数</p>
+            <p style="margin: 0 0 20px 0;"><span id="my-score" style="font-weight:bold; font-size:1.8rem; color:#0984e3;">0</span> 回</p>
+            
+            <p style="font-size: 1.1rem; margin-bottom: 5px;">相手 (<span id="result-op-name" style="font-weight:bold;"></span>) の連打数</p>
+            <p style="margin: 0 0 20px 0;"><span id="op-score" style="font-weight:bold; font-size:1.8rem; color:#d63031;">0</span> 回</p>
+
+            <button class="btn-primary" onclick="location.reload()" style="margin-top: 10px;">タイトルに戻る</button>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('touchmove', function(e) { e.preventDefault(); }, { passive: false });
+
+        let peer = null;
+        let conn = null;
+        let mqttClient = null;
+        let isHost = false; 
+        let myPeerId = null;
+        let matchmakingInterval = null;
+        let isMatched = false;
+
+        let myName = "名無し";
+        let opponentName = "";
+
+        const LOBBY_TOPIC = "public-mash-game-lobby-random-99812";
+        
+        let myClicks = 0;
+        let opponentClicks = 0;
+        let timeRemaining = 10.0;
+        let timerInterval = null;
+        let gameActive = false;
+        let isGameOver = false; 
+
+        // ★結果の完全同期用フラグ・変数★
+        let myFinalScore = -1;
+        let opponentFinalScore = -1;
+        let isTimeUp = false;
+
+        window.onload = () => {
+            const savedName = localStorage.getItem('playerName');
+            if (savedName) document.getElementById('player-name-input').value = savedName;
+        };
+
+        function showScreen(id) {
+            document.querySelectorAll('.screen').forEach(el => el.classList.remove('active'));
+            document.getElementById(id).classList.add('active');
+        }
+
+        function startMatchmaking() {
+            const inputName = document.getElementById('player-name-input').value.trim();
+            myName = inputName || "名無し";
+            localStorage.setItem('playerName', myName);
+
+            showScreen('screen-wait');
+            isMatched = false;
+            isGameOver = false;
+            peer = new Peer();
+            
+            peer.on('open', id => {
+                myPeerId = id;
+                mqttClient = mqtt.connect('wss://broker.emqx.io:8084/mqtt');
+                
+                mqttClient.on('connect', () => {
+                    mqttClient.subscribe(LOBBY_TOPIC);
+                    matchmakingInterval = setInterval(() => {
+                        if(!isMatched) mqttClient.publish(LOBBY_TOPIC, JSON.stringify({ peerId: myPeerId }));
+                    }, 2000);
+                });
+                
+                mqttClient.on('message', (topic, message) => {
+                    if (isMatched) return;
+                    try {
+                        const data = JSON.parse(message.toString());
+                        const opponentId = data.peerId;
+                        if (opponentId && opponentId !== myPeerId) {
+                            if (myPeerId < opponentId) {
+                                isMatched = true; isHost = false; stopMatchmaking();
+                                conn = peer.connect(opponentId);
+                                setupConnection();
+                            }
+                        }
+                    } catch (e) {}
+                });
+            });
+            
+            peer.on('connection', connection => {
+                if (isMatched) return;
+                isMatched = true; isHost = true; stopMatchmaking();
+                conn = connection;
+                setupConnection();
+            });
+            peer.on('error', err => { alert("通信エラー"); location.reload(); });
+        }
+
+        function stopMatchmaking() {
+            if (matchmakingInterval) clearInterval(matchmakingInterval);
+            if (mqttClient) { mqttClient.end(); mqttClient = null; }
+        }
+
+        function updatePlayerLabels() {
+            if (isHost) {
+                document.getElementById('label-red').innerText = "◀ " + myName;
+                document.getElementById('label-blue').innerText = (opponentName || "待機中...") + " ▶";
+            } else {
+                document.getElementById('label-red').innerText = "◀ " + (opponentName || "待機中...");
+                document.getElementById('label-blue').innerText = myName + " ▶";
+            }
+        }
+
+        function setupConnection() {
+            conn.on('open', () => {
+                document.getElementById('player-role').innerText = isHost ? "あなたは【◀ 赤陣地】です" : "あなたは【青陣地 ▶】です";
+                document.getElementById('player-role').style.color = isHost ? "#d63031" : "#0984e3";
+                showScreen('screen-game');
+                
+                conn.send({ type: 'name', name: myName });
+                updatePlayerLabels();
+            });
+
+            conn.on('data', data => {
+                if (data.type === 'name') {
+                    opponentName = data.name;
+                    updatePlayerLabels();
+                    
+                    if (isHost) {
+                        setTimeout(() => { 
+                            startCountdown();
+                            conn.send({ type: 'countdown' }); 
+                        }, 1000);
+                    }
+                }
+                else if (data.type === 'countdown') { startCountdown(); }
+                else if (data.type === 'click') { 
+                    if (!isTimeUp) { // 自分が終了する前だけ画面を更新
+                        opponentClicks++; updateGauge(); 
+                    }
+                }
+                // ★相手の最終スコアを受信★
+                else if (data.type === 'finish') {
+                    opponentFinalScore = data.score;
+                    checkAndShowResult(); // 最終スコアの突き合わせを実行
+                }
+            });
+            
+            conn.on('close', () => { 
+                if (!isGameOver) { alert("対戦相手との通信が途切れてしまいました。"); location.reload(); }
+            });
+        }
+
+        function startCountdown() {
+            let count = 3;
+            const cdElement = document.getElementById('countdown-display');
+            cdElement.style.display = 'block';
+            document.getElementById('mash-subtext').innerText = "まもなくスタート！";
+            
+            function playAnimation(text) {
+                cdElement.innerText = text;
+                cdElement.style.animation = 'none';
+                cdElement.offsetHeight; 
+                cdElement.style.animation = 'pop 1s ease-out forwards';
+            }
+            
+            playAnimation(count);
+            
+            let iv = setInterval(() => {
+                count--;
+                if (count > 0) {
+                    playAnimation(count);
+                } else if (count === 0) {
+                    playAnimation("GO!");
+                } else {
+                    clearInterval(iv);
+                    cdElement.style.display = 'none';
+                    startGame(); 
+                }
+            }, 1000);
+        }
+
+        function startGame() {
+            myClicks = 0; opponentClicks = 0; timeRemaining = 10.0; gameActive = true;
+            
+            // ★同期フラグの初期化★
+            myFinalScore = -1;
+            opponentFinalScore = -1;
+            isTimeUp = false;
+
+            const mashText = document.getElementById('mash-text');
+            const mashSubText = document.getElementById('mash-subtext');
+            mashText.innerText = "1本指で連打！";
+            mashText.style.color = isHost ? "#d63031" : "#0984e3";
+            mashSubText.innerText = "※複数指（ピアノ打ち）は無効になります";
+            
+            updateGauge();
+
+            let lastTime = Date.now();
+            timerInterval = setInterval(() => {
+                let now = Date.now();
+                timeRemaining -= (now - lastTime) / 1000;
+                lastTime = now;
+                
+                if (timeRemaining <= 0) { timeRemaining = 0; endGame(); }
+                document.getElementById('timer').innerText = timeRemaining.toFixed(1);
+            }, 50);
+        }
+
+        document.body.addEventListener('touchstart', (e) => {
+            if (e.target.tagName === 'BUTTON' || e.target.tagName === 'INPUT') return;
+            if (!gameActive) return;
+            e.preventDefault(); 
+            if (e.touches.length > 1) return;
+            handleClick(e.touches[0].clientX, e.touches[0].clientY);
+        }, { passive: false });
+
+        document.body.addEventListener('mousedown', (e) => {
+            if (e.target.tagName === 'BUTTON' || e.target.tagName === 'INPUT') return;
+            if (!gameActive) return;
+            e.preventDefault();
+            handleClick(e.clientX, e.clientY);
+        });
+
+        function handleClick(x, y) {
+            myClicks++;
+            updateGauge();
+            if (conn && conn.open) conn.send({ type: 'click' });
+            createTapEffect(x, y);
+        }
+
+        function createTapEffect(x, y) {
+            const effect = document.createElement('div');
+            effect.className = 'tap-effect';
+            effect.style.left = x + 'px';
+            effect.style.top = y + 'px';
+            effect.style.background = isHost ? 'rgba(214, 48, 49, 0.5)' : 'rgba(9, 132, 227, 0.5)';
+            document.body.appendChild(effect);
+            setTimeout(() => { effect.remove(); }, 300);
+        }
+
+        function clamp(val, min, max) { return Math.min(Math.max(val, min), max); }
+
+        function updateGauge() {
+            let hostClicks = isHost ? myClicks : opponentClicks;
+            let guestClicks = isHost ? opponentClicks : myClicks;
+            
+            let diff = hostClicks - guestClicks; 
+            let widthPercent = clamp(50 + diff, 0, 100);
+            
+            document.getElementById('red-territory').style.width = widthPercent + '%';
+        }
+
+        // ★ゲーム終了処理（すぐに結果を出さず、相手に自分のスコアを送る）★
+        function endGame() {
+            gameActive = false;
+            isTimeUp = true;
+            clearInterval(timerInterval);
+            
+            const mashText = document.getElementById('mash-text');
+            document.getElementById('mash-subtext').innerText = "";
+            mashText.innerText = "判定中...";
+            mashText.style.color = "#b2bec3";
+            document.getElementById('timer').innerText = "0.0";
+            
+            myFinalScore = myClicks;
+            
+            // 自分の確定スコアを相手に送信
+            if (conn && conn.open) {
+                conn.send({ type: 'finish', score: myFinalScore });
+            }
+            
+            checkAndShowResult();
+        }
+
+        // ★お互いのスコアが揃ったか確認してから結果を出す★
+        function checkAndShowResult() {
+            // お互いの最終スコアが揃い、自分のタイマーも終わっていれば結果を確定
+            if (isTimeUp && myFinalScore !== -1 && opponentFinalScore !== -1) {
+                isGameOver = true; 
+                
+                // 通信遅延のズレを最終スコアで上書きして修正
+                myClicks = myFinalScore;
+                opponentClicks = opponentFinalScore;
+                updateGauge();
+                
+                let hostClicks = isHost ? myClicks : opponentClicks;
+                let guestClicks = isHost ? opponentClicks : myClicks;
+                let finalWidth = 50 + (hostClicks - guestClicks);
+                
+                let resultMessage = "";
+                if (finalWidth > 50) {
+                    resultMessage = isHost ? "🎉 あなたの勝ち！" : "😭 あなたの負け...";
+                } else if (finalWidth < 50) {
+                    resultMessage = isHost ? "😭 あなたの負け..." : "🎉 あなたの勝ち！";
+                } else {
+                    resultMessage = "🤝 引き分け！";
+                }
+
+                document.getElementById('result-text').innerText = resultMessage;
+                document.getElementById('result-text').style.color = resultMessage.includes("勝ち") ? "#d63031" : "#2d3436";
+                
+                document.getElementById('result-my-name').innerText = myName;
+                document.getElementById('result-op-name').innerText = opponentName;
+                document.getElementById('my-score').innerText = myClicks;
+                document.getElementById('my-score').style.color = isHost ? "#d63031" : "#0984e3";
+                document.getElementById('op-score').innerText = opponentClicks;
+                document.getElementById('op-score').style.color = isHost ? "#0984e3" : "#d63031";
+                
+                setTimeout(() => {
+                    showScreen('screen-result');
+                    if (conn) conn.close();
+                }, 1000); // 1秒だけ余韻を残して結果画面へ
+            }
+        }
+    </script>
+</body>
+</html>
