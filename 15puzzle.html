@@ -5,10 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>15パズル タイムアタック</title>
     <style>
-        /* スクロールバーの出入りによる横ズレを防ぐ */
-        html {
-            overflow-y: scroll;
-            scrollbar-gutter: stable;
+        /* ページ自体は一切スクロールさせない（完全固定） */
+        html, body {
+            height: 100%;
+            overflow: hidden;
         }
 
         /* 全体のベーススタイル */
@@ -16,7 +16,8 @@
             font-family: 'Helvetica Neue', Arial, sans-serif;
             margin: 0;
             padding: 0;
-            min-height: 100vh;
+            height: 100vh;
+            height: 100dvh;
             display: flex;
             background-color: #f8fafc;
             color: #334155;
@@ -88,6 +89,12 @@
             list-style: none;
             padding: 0;
             margin: 0;
+        }
+        /* ランキングが長い場合は、ページではなくリストの中だけスクロール */
+        #online-ranking-list {
+            max-height: calc(100vh - 230px);
+            max-height: calc(100dvh - 230px);
+            overflow-y: auto;
         }
         #ranking-list li, #online-ranking-list li {
             display: flex;
@@ -186,7 +193,7 @@
             font-size: 22px;
             font-weight: bold;
             color: #ef4444;
-            height: 90px;
+            height: 80px;
             overflow: hidden;
             text-align: center;
             line-height: 1.4;
