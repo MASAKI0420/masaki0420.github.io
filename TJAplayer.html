@@ -294,7 +294,15 @@
         .shortcut-key-item > span { font-size: 0.9em; color: #a0a8c0; }
         .shortcut-key-item .key-config-input { width: 80px; }
         #taiko-wrapper .shortcut-key-inputs { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-    </style>
+    
+        /* テキスト選択・コピーを無効化(入力欄は除く) */
+        html, body { -webkit-user-select: none; -moz-user-select: none; -ms-user-select: none; user-select: none; -webkit-touch-callout: none; }
+        input, textarea, [contenteditable="true"] { -webkit-user-select: text; -moz-user-select: text; -ms-user-select: text; user-select: text; }
+
+        /* フォーカス時の白い縁(アウトライン)を非表示 */
+        button, select, a, summary, [tabindex], input[type="checkbox"], input[type="range"] { outline: none !important; -webkit-tap-highlight-color: transparent; }
+        button:focus, button:focus-visible, select:focus, select:focus-visible, a:focus-visible, [tabindex]:focus-visible { outline: none !important; }
+</style>
 </head>
 <body>
 
@@ -708,8 +716,8 @@
             activeElement.isContentEditable
         );
 
-        // --- ポーズキー (W または Esc) の処理 ---
-        if ((e.key.toUpperCase() === 'W' || e.key === 'Escape') && !e.repeat) {
+        // --- ポーズキー (Esc) の処理 ---
+        if (e.key === 'Escape' && !e.repeat) {
              e.preventDefault();
              if (activeGame === 'taiko') TaikoGame.togglePauseExternal();
         }
@@ -3617,6 +3625,7 @@
         function playHitSound(type, offset) {
             if (offset === undefined) offset = parseInt(dom.seOffsetInput.value, 10) || 0; // SEオフセット(ms): 正=遅らせる / 負=頭を削って早める
             if (!audioContext) return;
+            if (audioContext.state === 'suspended') audioContext.resume();   // 止まっていたら即再開
             const buffer = (type === 'don') ? donSoundBuffer : katsuSoundBuffer;
             if (!buffer) return;
             const source = audioContext.createBufferSource();
@@ -3764,7 +3773,7 @@
                 }
             }
         }
-        document.addEventListener('keydown', handleKeydown);
+        window.addEventListener('keydown', handleKeydown, true);   // キャプチャ段階で最初に処理し、他のキー処理を待たずに即反応させる
         document.addEventListener('keydown', e => {
             if (activeGame === 'taiko' && optSkip && isGameRunning && !isPaused && e.key === 'Enter' && !e.repeat) {
                 e.preventDefault();
@@ -4390,5 +4399,18 @@
     })();
 
     </script>
+<script>
+/* テキスト選択・コピーを無効化(入力欄は除く) */
+(function () {
+    function isEditable(t) {
+        return t && t.closest && t.closest('input, textarea, [contenteditable="true"]');
+    }
+    ['selectstart', 'copy', 'cut', 'dragstart'].forEach(function (type) {
+        document.addEventListener(type, function (e) {
+            if (!isEditable(e.target)) e.preventDefault();
+        });
+    });
+})();
+</script>
 </body>
 </html>
