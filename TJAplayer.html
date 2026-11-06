@@ -6,7 +6,7 @@
     <!-- PWA設定 -->
     <meta name="theme-color" content="#1f2940">
     <link rel="manifest" href="manifest.json">
-    <title>Taiko Player (TJA完全対応版)</title>
+    <title>Taiko Player</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <style>
         /* --- Global Styles --- */
@@ -190,7 +190,7 @@
         #taiko-wrapper #roll-counter-display.visible { opacity: 1; }
         #taiko-wrapper #combo { font-size: calc(4.5em * var(--lane-scale)); line-height: 1; }
         #taiko-wrapper #combo-label { display: none; }
-        #taiko-wrapper #taiko-judgment-text { position: absolute; top: calc(50% - 200px - 90px * (var(--lane-scale) - 1) - 44px * (var(--lane-scale) - 1) + var(--lane-shift)); left: calc(416px + var(--ui-offset-x)); transform: translateX(-50%); font-size: 3em; font-weight: bold; opacity: 0; z-index: 22; padding: 5px 20px; border-radius: 4px; color: white; text-align: center; text-shadow: 0 0 8px #000, 0 0 8px #000; animation: taiko-judgment-anim-new 0.4s ease-out; pointer-events: none; }
+        #taiko-wrapper #taiko-judgment-text { position: absolute; top: calc(50% - 200px - 90px * (var(--lane-scale) - 1) - 44px * (var(--lane-scale) - 1) + var(--lane-shift) + var(--judgment-text-down, -6px)); left: calc(416px + var(--ui-offset-x)); transform: translateX(-50%); font-size: 3em; font-weight: bold; opacity: 0; z-index: 40; padding: 5px 20px; border-radius: 4px; color: white; text-align: center; text-shadow: 0 0 8px #000, 0 0 8px #000; animation: taiko-judgment-anim-new 0.4s ease-out; pointer-events: none; }
         @keyframes taiko-judgment-anim-new {
             0% { transform: translateX(-50%) translateY(5px); opacity: 1; }
             20% { transform: translateX(-50%) translateY(-3px); opacity: 1; }
@@ -397,6 +397,11 @@
                                     <input type="checkbox" id="play-super-doron-checkbox">
                                     <span class="custom-checkbox"></span>
                                     <span>超ドロン（音符と下の文字をすべて隠す）</span>
+                                </label>
+                                <label for="play-invert-notes-checkbox" class="checkbox-wrapper">
+                                    <input type="checkbox" id="play-invert-notes-checkbox">
+                                    <span class="custom-checkbox"></span>
+                                    <span>音符反転（見た目だけ。青=ドン／赤=カッ扱い）</span>
                                 </label>
                             </div>
                             <label for="play-skip-checkbox" class="checkbox-wrapper">
@@ -783,6 +788,7 @@
             doronCheckbox: root.querySelector('#play-doron-checkbox'),
             superDoronCheckbox: root.querySelector('#play-super-doron-checkbox'),
             skipCheckbox: root.querySelector('#play-skip-checkbox'),
+            invertNotesCheckbox: root.querySelector('#play-invert-notes-checkbox'),
             keyConfigInputs: root.querySelector('#taiko-key-config-inputs'),
             startButton: root.querySelector('#taiko-start-button'),
             saveSongToPcButton: root.querySelector('#save-song-to-pc-button'),
@@ -1095,7 +1101,7 @@
         let hitObjects = [], barLines = [], goGoSections =[];
         let audioLoaded = false, beatmapLoaded = false;
         let isGameRunning = false, isPaused = false, isAutoPlay = false, isAutoSE = false;
-        let optMissMode = 'none', optPlacement = 'none', optDoron = false, optSuperDoron = false, optSkip = false, playAborted = false; // 演奏オプション
+        let optMissMode = 'none', optPlacement = 'none', optDoron = false, optSuperDoron = false, optSkip = false, optInvertNotes = false, playAborted = false; // 演奏オプション
         let pausedTime = 0;
         let isSingleHandBigNoteEnabled = true;
         let score = 0, combo = 0, offset = 0, maxCombo = 0, accuracy = 100;
@@ -1164,8 +1170,8 @@
         }
 
         let legacyGlobalVideoOffset = 0; // 旧バージョンの共通動画オフセット（譜面ごとの保存が無い譜面の初期値として使用）
-        function saveSettings() { try { const settings = { offset: dom.offsetInput.value, videoOffset: legacyGlobalVideoOffset, seOffset: dom.seOffsetInput.value, keys: KEYS, autoPlay: dom.autoPlayCheckbox.checked, singleHandBigNote: dom.singleHandBigNoteCheckbox.checked, autoSE: dom.autoSeCheckbox.checked, laneOpacity: dom.laneOpacitySlider.value, bgBrightness: dom.bgBrightnessSlider.value, musicVolume: dom.musicVolumeSlider.value, seVolume: dom.seVolumeSlider.value, missMode: dom.missModeSelect.value, placement: dom.placementSelect.value, doron: dom.doronCheckbox.checked, superDoron: dom.superDoronCheckbox.checked, skip: dom.skipCheckbox.checked }; localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings)); } catch (e) { console.error("Failed to save settings:", e); } }
-        function loadSettings() { const savedSettings = localStorage.getItem(SETTINGS_KEY); if (savedSettings) { try { const settings = JSON.parse(savedSettings); if (settings.offset !== undefined) dom.offsetInput.value = settings.offset; if (settings.videoOffset !== undefined) legacyGlobalVideoOffset = parseInt(settings.videoOffset, 10) || 0; if (settings.seOffset !== undefined) dom.seOffsetInput.value = settings.seOffset; if (settings.keys) { KEYS = settings.keys; for (const keyId in KEYS) { const elId = `key-${keyId.replace('_', '-')}`; const el = root.querySelector(`#${elId}`); if (el) el.textContent = KEYS[keyId]; } } if (settings.autoPlay !== undefined) dom.autoPlayCheckbox.checked = settings.autoPlay; if (settings.singleHandBigNote !== undefined) dom.singleHandBigNoteCheckbox.checked = settings.singleHandBigNote; if (settings.autoSE !== undefined) dom.autoSeCheckbox.checked = settings.autoSE; if (settings.laneOpacity !== undefined) dom.laneOpacitySlider.value = settings.laneOpacity; if (settings.bgBrightness !== undefined) dom.bgBrightnessSlider.value = settings.bgBrightness; if (settings.musicVolume !== undefined) dom.musicVolumeSlider.value = settings.musicVolume; if (settings.seVolume !== undefined) dom.seVolumeSlider.value = settings.seVolume; if (settings.missMode !== undefined) dom.missModeSelect.value = settings.missMode; if (settings.placement !== undefined) dom.placementSelect.value = settings.placement; if (settings.doron !== undefined) dom.doronCheckbox.checked = settings.doron; if (settings.superDoron !== undefined) dom.superDoronCheckbox.checked = settings.superDoron; if (settings.skip !== undefined) dom.skipCheckbox.checked = settings.skip; } catch (e) { console.error("Failed to load settings:", e); localStorage.removeItem(SETTINGS_KEY); } } applyMusicVolume(dom.musicVolumeSlider.value); applySEVolume(dom.seVolumeSlider.value); updateUiOffset(); }
+        function saveSettings() { try { const settings = { offset: dom.offsetInput.value, videoOffset: legacyGlobalVideoOffset, seOffset: dom.seOffsetInput.value, keys: KEYS, autoPlay: dom.autoPlayCheckbox.checked, singleHandBigNote: dom.singleHandBigNoteCheckbox.checked, autoSE: dom.autoSeCheckbox.checked, laneOpacity: dom.laneOpacitySlider.value, bgBrightness: dom.bgBrightnessSlider.value, musicVolume: dom.musicVolumeSlider.value, seVolume: dom.seVolumeSlider.value, missMode: dom.missModeSelect.value, placement: dom.placementSelect.value, doron: dom.doronCheckbox.checked, superDoron: dom.superDoronCheckbox.checked, skip: dom.skipCheckbox.checked, invertNotes: dom.invertNotesCheckbox.checked }; localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings)); } catch (e) { console.error("Failed to save settings:", e); } }
+        function loadSettings() { const savedSettings = localStorage.getItem(SETTINGS_KEY); if (savedSettings) { try { const settings = JSON.parse(savedSettings); if (settings.offset !== undefined) dom.offsetInput.value = settings.offset; if (settings.videoOffset !== undefined) legacyGlobalVideoOffset = parseInt(settings.videoOffset, 10) || 0; if (settings.seOffset !== undefined) dom.seOffsetInput.value = settings.seOffset; if (settings.keys) { KEYS = settings.keys; for (const keyId in KEYS) { const elId = `key-${keyId.replace('_', '-')}`; const el = root.querySelector(`#${elId}`); if (el) el.textContent = KEYS[keyId]; } } if (settings.autoPlay !== undefined) dom.autoPlayCheckbox.checked = settings.autoPlay; if (settings.singleHandBigNote !== undefined) dom.singleHandBigNoteCheckbox.checked = settings.singleHandBigNote; if (settings.autoSE !== undefined) dom.autoSeCheckbox.checked = settings.autoSE; if (settings.laneOpacity !== undefined) dom.laneOpacitySlider.value = settings.laneOpacity; if (settings.bgBrightness !== undefined) dom.bgBrightnessSlider.value = settings.bgBrightness; if (settings.musicVolume !== undefined) dom.musicVolumeSlider.value = settings.musicVolume; if (settings.seVolume !== undefined) dom.seVolumeSlider.value = settings.seVolume; if (settings.missMode !== undefined) dom.missModeSelect.value = settings.missMode; if (settings.placement !== undefined) dom.placementSelect.value = settings.placement; if (settings.doron !== undefined) dom.doronCheckbox.checked = settings.doron; if (settings.superDoron !== undefined) dom.superDoronCheckbox.checked = settings.superDoron; if (settings.skip !== undefined) dom.skipCheckbox.checked = settings.skip; if (settings.invertNotes !== undefined) dom.invertNotesCheckbox.checked = settings.invertNotes; } catch (e) { console.error("Failed to load settings:", e); localStorage.removeItem(SETTINGS_KEY); } } applyMusicVolume(dom.musicVolumeSlider.value); applySEVolume(dom.seVolumeSlider.value); updateUiOffset(); }
         
         function getTaikoBeatmapSettingsKey() {
             if (currentSongId && songInfo && songInfo.version) {
@@ -2834,6 +2840,7 @@
             optDoron = dom.doronCheckbox.checked;
             optSuperDoron = dom.superDoronCheckbox.checked;
             optSkip = dom.skipCheckbox.checked;
+            optInvertNotes = dom.invertNotesCheckbox.checked;
             applyPlacementOption();
             isSingleHandBigNoteEnabled = dom.singleHandBigNoteCheckbox.checked;
             // 譜面の基準タイミングはTJAの#OFFSET（パース時に各ノーツの時刻へ反映済み）。
@@ -3508,7 +3515,7 @@
                 } else { 
                     if (startX > dom.canvas.width + 50 || startX < -(note.isBig ? NOTE_UNIT * 0.5836 : NOTE_UNIT * 0.385) - 10) continue;
                     
-                    const color = note.type === 'don' ? '#F83838' : '#46B6B6';
+                    const color = ((note.type === 'don') !== optInvertNotes) ? '#F83838' : '#46B6B6';   // 音符反転オプション：見た目の色だけ入れ替える
                     const baseRadius = note.isBig ? NOTE_UNIT * 0.5836 : NOTE_UNIT * 0.385;
                     
                     // 参考画像に合わせた比率：黒フチ 6.5% / 白フチ 17.6% / 中心 約76%（半径に対する割合。大小どちらの音符も同じ形）
@@ -3614,7 +3621,7 @@
                 const x = JUDGE_POINT_X + timeToJudge * note.scrollSpeed * pixelMultiplier;
                 if (x > cv.width + 60) continue;
                 if (x < DRUM_CENTER_X - 60) continue;
-                const ns = getLabelSprite(note.label, fontSize, cv.height, cy);
+                const ns = getLabelSprite(optInvertNotes ? note.label.replace(/ドン|カッ|ド|カ/g, m => ({ 'ドン': 'カッ', 'カッ': 'ドン', 'ド': 'カ', 'カ': 'ド' })[m]) : note.label, fontSize, cv.height, cy);   // 音符反転：文字も入れ替える
                 ctx.drawImage(ns.c, x - ns.pad - ns.tw / 2, 0);
             }
             ctx.restore();
@@ -3660,7 +3667,7 @@
                 }
             }, 1500);
         }
-        function autoPlayHandler(elapsedTime) { const AUTO_HIT_INTERVAL = 25; for (const note of hitObjects) { if (note.judged || !isNoteActive(note)) continue; if (note.type === 'balloon' || note.type === 'roll') { if (elapsedTime >= note.time && elapsedTime <= note.endTime) { if (elapsedTime - (note.lastAutoHitTime || 0) > AUTO_HIT_INTERVAL) { if (note.type === 'roll') spawnRollEffect(note, 'don'); playHitSound('don'); const hitSide = autoPlayHitCounter % 2 === 0 ? 'don_right' : 'don_left'; showDrumHit(hitSide); autoPlayHitCounter++; score += 100; note.hitsMade++; totalRollHits++; if (note.type === 'roll') { activeRollHits = note.hitsMade; rollCounterClearTime = 0; } else if (note.type === 'balloon' && note.hitsMade >= note.hitsRequired) { note.judged = true; spawnBalloonBreakEffect(); } dom.scoreElement.textContent = Math.floor(score); note.lastAutoHitTime = elapsedTime; } } if (elapsedTime > note.endTime && !note.judged) { if (note.type === 'roll' && note.hitsMade > 0) rollCounterClearTime = elapsedTime + 100; note.passed = true; note.judged = true; } } else if (elapsedTime >= note.time) { playHitSound(note.type); const isBigNoteTwoHands = note.isBig && !isSingleHandBigNoteEnabled; if (note.type === 'don') { if (isBigNoteTwoHands) { showDrumHit('don_left'); showDrumHit('don_right'); } else { const hitSide = autoPlayHitCounter % 2 === 0 ? 'don_right' : 'don_left'; showDrumHit(hitSide); } } else if (note.type === 'katsu') { if (isBigNoteTwoHands) { showDrumHit('katsu_left'); showDrumHit('katsu_right'); } else { const hitSide = autoPlayHitCounter % 2 === 0 ? 'katsu_right' : 'katsu_left'; showDrumHit(hitSide); } } autoPlayHitCounter++; handleJudgment('ryo', note, 0); } } }
+        function autoPlayHandler(elapsedTime) { const AUTO_HIT_INTERVAL = 25; for (const note of hitObjects) { if (note.judged || !isNoteActive(note)) continue; if (note.type === 'balloon' || note.type === 'roll') { if (elapsedTime >= note.time && elapsedTime <= note.endTime) { if (elapsedTime - (note.lastAutoHitTime || 0) > AUTO_HIT_INTERVAL) { if (note.type === 'roll') spawnRollEffect(note, 'don'); playHitSound('don'); const hitSide = autoPlayHitCounter % 2 === 0 ? 'don_right' : 'don_left'; showDrumHit(hitSide); autoPlayHitCounter++; score += 100; note.hitsMade++; totalRollHits++; if (note.type === 'roll') { activeRollHits = note.hitsMade; rollCounterClearTime = 0; } else if (note.type === 'balloon' && note.hitsMade >= note.hitsRequired) { note.judged = true; spawnBalloonBreakEffect(); } dom.scoreElement.textContent = Math.floor(score); note.lastAutoHitTime = elapsedTime; } } if (elapsedTime > note.endTime && !note.judged) { if (note.type === 'roll' && note.hitsMade > 0) rollCounterClearTime = note.endTime + 1000; note.passed = true; note.judged = true; } } else if (elapsedTime >= note.time) { playHitSound(note.type); const isBigNoteTwoHands = note.isBig && !isSingleHandBigNoteEnabled; if (note.type === 'don') { if (isBigNoteTwoHands) { showDrumHit('don_left'); showDrumHit('don_right'); } else { const hitSide = autoPlayHitCounter % 2 === 0 ? 'don_right' : 'don_left'; showDrumHit(hitSide); } } else if (note.type === 'katsu') { if (isBigNoteTwoHands) { showDrumHit('katsu_left'); showDrumHit('katsu_right'); } else { const hitSide = autoPlayHitCounter % 2 === 0 ? 'katsu_right' : 'katsu_left'; showDrumHit(hitSide); } } autoPlayHitCounter++; handleJudgment('ryo', note, 0); } } }
         function showDrumHit(keyId) { const hitMap = { don_left: dom.drumDonLeft, don_right: dom.drumDonRight, katsu_left: dom.drumKatsuLeft, katsu_right: dom.drumKatsuRight, }; const element = hitMap[keyId]; if (!element) return; if (drumHitTimeouts[keyId]) { clearTimeout(drumHitTimeouts[keyId]); } element.classList.add('active'); drumHitTimeouts[keyId] = setTimeout(() => { element.classList.remove('active'); }, 60); }
         
         function handleKeydown(e) {
@@ -3785,7 +3792,7 @@
             pressedKeys.delete(e.key.toUpperCase());
         });
 
-        function checkMisses(elapsedTime) { for (let i = lastCheckedNoteIndex; i < hitObjects.length; i++) { const note = hitObjects[i]; if (note.judged || !isNoteActive(note)) { continue; } if (note.time > elapsedTime + HIT_WINDOW_BAD) break; if (note.type !== 'balloon' && note.type !== 'roll') { if (elapsedTime > note.time + HIT_WINDOW_BAD) { note.missed = true; handleJudgment('fuka', note); } } else { if (elapsedTime > note.endTime) { if (note.type === 'roll' && note.hitsMade > 0) rollCounterClearTime = elapsedTime + 100; note.passed = true; note.judged = true; } } } }
+        function checkMisses(elapsedTime) { for (let i = lastCheckedNoteIndex; i < hitObjects.length; i++) { const note = hitObjects[i]; if (note.judged || !isNoteActive(note)) { continue; } if (note.time > elapsedTime + HIT_WINDOW_BAD) break; if (note.type !== 'balloon' && note.type !== 'roll') { if (elapsedTime > note.time + HIT_WINDOW_BAD) { note.missed = true; handleJudgment('fuka', note); } } else { if (elapsedTime > note.endTime) { if (note.type === 'roll' && note.hitsMade > 0) rollCounterClearTime = note.endTime + 1000; note.passed = true; note.judged = true; } } } }
         // --- ノルマゲージ（Better-taiko-web の gamerules.js / game.js と同じ計算） ---
         // ・ゲージは 0〜10000。良/可/不可ごとの増減は「総音符数」と難易度から決まる（soulPoints）。
         // ・ゲージ表示は 1/50 刻み（floor(gauge/200)/50）、クリア判定もその値で行う。
@@ -4021,7 +4028,7 @@
             const P = getFxPoints();
             const dia = P.h * (isBig ? 0.5836 : 0.385);
             fxFlash(layer, P.jx, P.jy, dia * 1.9, judgement === 'ryo' ? 'rgba(255,215,90,0.8)' : 'rgba(255,255,255,0.6)');
-            const fill = type === 'don' ? '#F83838' : '#46B6B6';
+            const fill = ((type === 'don') !== optInvertNotes) ? '#F83838' : '#46B6B6';   // 跳ねる音符の色も見た目の反転に合わせる
             fxFly(layer, P, dia, fill, () => fxBurst(layer, P.sx, P.sy, isBig ? 1.25 : 1, isBig ? 10 : 7), isBig);
         }
         // 連打：その音符の大きさのまま魂へ飛ぶ（小連打は小音符サイズ、大連打は大音符サイズ）
@@ -4356,6 +4363,7 @@
                 dom.doronCheckbox.addEventListener('change', saveSettings);
                 dom.superDoronCheckbox.addEventListener('change', saveSettings);
                 dom.skipCheckbox.addEventListener('change', saveSettings);
+                dom.invertNotesCheckbox.addEventListener('change', saveSettings);
                 dom.individualOffsetInput.addEventListener('change', saveTaikoBeatmapSpecificSettings);
                 dom.saveSongToPcButton.addEventListener('click', saveSongToPc);
                 dom.resumeButton.addEventListener('click', togglePause);
