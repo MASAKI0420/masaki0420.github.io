@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://masaki0420.github.io/sitemap.xml
