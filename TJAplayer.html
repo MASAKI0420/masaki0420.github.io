@@ -6,7 +6,7 @@
     <!-- PWA設定 -->
     <meta name="theme-color" content="#1f2940">
     <link rel="manifest" href="manifest.json">
-    <title>太鼓さん次郎web</title>
+    <title>太鼓さん次郎web｜太鼓ウェブ（taikoweb）</title>
     <!-- SEO設定 -->
     <meta name="description" content="太鼓さん次郎web（太鼓ウェブ / 太鼓web / taikoweb）は、インストール不要でブラウザからTJA譜面を遊べる無料の太鼓の達人風リズムゲームプレイヤーです。">
     <meta name="keywords" content="太鼓さん次郎,太鼓さん次郎web,太鼓さん次郎_web,太鼓ウェブ,太鼓web,taikoweb,taiko web,TJA,TJAプレイヤー,太鼓の達人,ブラウザゲーム">
@@ -4046,7 +4046,7 @@
             const k = NOTE_UNIT / 137;
             const s = 155 * k * (big ? EXPLO_BIG_SIZE : EXPLO_SMALL_SIZE) / (big ? EXPLO_BIG_RING : EXPLO_SMALL_RING);   // 画像1pxが画面で何pxか
             const size = EXPLO_CELL * s, dur = EXPLO_COLS * EXPLO_MS, row = big ? 1 : 0;
-            const d = fxDiv(`width:${size}px;height:${size}px;background-size:${EXPLO_COLS * size}px ${2 * size}px;background-position:0 ${-row * size}px;transform:translate(${x - size / 2}px,${y - size / 2}px);`);
+            const d = fxDiv(`width:${size}px;height:${size}px;background-size:${EXPLO_COLS * size}px ${2 * size}px;background-position:0 ${-row * size}px;transform:translate(${x - size / 2}px,${y - size / 2}px);z-index:1;`);
             d.className = 'fx-explo';
             if (white) d.style.filter = EXPLO_WHITE_FILTER;
             layer.appendChild(d);
@@ -4059,7 +4059,7 @@
             // 大音符：光線（黄→白の順に重ねる）が広がりながら消える
             for (const cls of ['fx-explo-ry', 'fx-explo-rw']) {
                 const RAY_DY = s;   // 光線の画像は輪の花火より画像1px分(s px)上にずれているので、その分だけ下げて輪と中心をそろえる
-                const r = fxDiv(`width:${size}px;height:${size}px;transform:translate(${x - size / 2}px,${y - size / 2 + RAY_DY}px);`);
+                const r = fxDiv(`width:${size}px;height:${size}px;transform:translate(${x - size / 2}px,${y - size / 2 + RAY_DY}px);z-index:1;`);
                 r.className = cls;
                 if (white) r.style.filter = EXPLO_WHITE_FILTER;
                 layer.appendChild(r);
@@ -4198,7 +4198,6 @@
             if (dom.gameContainer.style.display === 'none') return;
             const layer = getFxLayer();
             const P = getFxPoints();
-            fxExplosion(layer, P.jx, P.jy, true);   // 風船が割れた時も判定枠で大きな花火
             fxFly(layer, P, P.h * 0.585, '#F83838', () => fxBurst(layer, P.sx, P.sy, 1.4, 12), true);
         }
         function handleJudgment(judgement, note, diff = null) {
