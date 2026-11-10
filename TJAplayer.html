@@ -6,10 +6,10 @@
     <!-- PWA設定 -->
     <meta name="theme-color" content="#1f2940">
     <link rel="manifest" href="manifest.json">
-    <title>太鼓さん次郎web</title>
+    <title>太鼓さん次郎web｜太鼓ウェブ（taikoweb）</title>
     <!-- SEO設定 -->
     <meta name="description" content="太鼓さん次郎web（太鼓ウェブ / 太鼓web / taikoweb）は、インストール不要でブラウザからTJA譜面を遊べる無料の太鼓の達人風リズムゲームプレイヤーです。">
-    <meta name="keywords" content="太鼓の達人,太鼓ウェブ,太鼓web,太鼓さん次郎,太鼓さん次郎web,太鼓さん次郎_web,太鼓ウェブ,太鼓web,taikoweb,taiko web,TJA,TJAプレイヤー,太鼓の達人,ブラウザゲーム">
+    <meta name="keywords" content="太鼓さん次郎,太鼓さん次郎web,太鼓さん次郎_web,太鼓ウェブ,太鼓web,taikoweb,taiko web,TJA,TJAプレイヤー,太鼓の達人,ブラウザゲーム">
     <link rel="canonical" href="https://masaki0420.github.io/TJAplayer.html">
     <meta name="robots" content="index, follow, max-snippet:-1, max-image-preview:large">
     <meta name="application-name" content="太鼓さん次郎web">
@@ -27,7 +27,7 @@
       "@context": "https://schema.org",
       "@type": "WebApplication",
       "name": "太鼓さん次郎web",
-      "alternateName": ["太鼓ウェブ", "太鼓web", "taikoweb", "taiko web","太鼓さん次郎_web", "太鼓ウェブ", "太鼓web", "taikoweb", "taiko web"],
+      "alternateName": ["太鼓さん次郎_web", "太鼓ウェブ", "太鼓web", "taikoweb", "taiko web"],
       "description": "ブラウザで遊べるTJA対応の太鼓リズムゲームプレイヤー",
       "applicationCategory": "GameApplication",
       "operatingSystem": "Any",
@@ -535,6 +535,7 @@
                                     <input type="file" id="se-zip-file" accept=".zip,application/zip,application/x-zip-compressed,application/x-zip,application/octet-stream" multiple>
                                     <button id="se-set-rename" class="control-button" style="padding:0;height:45px;font-size:0.85em;" disabled>名前変更</button>
                                     <button id="se-set-delete" class="control-button" style="padding:0;height:45px;font-size:0.85em;" disabled>削除</button>
+                                    <button id="se-set-save-pc" class="control-button" style="grid-column:1 / -1;padding:0;height:36px;font-size:0.85em;" title="選んでいるSEを dong / ka の音声入りZIPにしてPCへ保存します（そのまま「追加 (ZIP)」で読み込めます）" disabled>PCへ保存</button>
                                 </div>
                             </div>
                         </div>
@@ -817,6 +818,7 @@
             seSetSelect: root.querySelector('#se-set-select'),
             seSetRename: root.querySelector('#se-set-rename'),
             seSetDelete: root.querySelector('#se-set-delete'),
+            seSetSavePc: root.querySelector('#se-set-save-pc'),
             musicVolumeSlider: root.querySelector('#music-volume-slider-taiko'),
             musicVolumeLabel: root.querySelector('#music-volume-label-taiko'),
             seVolumeSlider: root.querySelector('#se-volume-slider-taiko'),
@@ -1513,6 +1515,7 @@
                         version: diffName,
                         difficulty: diffNum,
                         level: level,
+                        hasBranch: course.lines.some(l => /^\s*#BRANCHSTART/i.test(l)),   // 譜面分岐があるか
                         wave: globalHeaders['WAVE'] || '',
                         offset: parseFloat(globalHeaders['OFFSET']) || 0,
                         bpm: parseFloat(globalHeaders['BPM']) || 120,
@@ -1961,6 +1964,7 @@
             dom.seSetSelect.addEventListener('change', e => selectSeSet(e.target.value, true));
             dom.seSetRename.addEventListener('click', handleSeSetRename);
             dom.seSetDelete.addEventListener('click', handleSeSetDelete);
+            dom.seSetSavePc.addEventListener('click', handleSeSetSaveToPc);
             dom.beatmapSelector.addEventListener('change', handleBeatmapSelection);
             dom.savedSongsList.addEventListener('change', handleSavedSongSelect);
             dom.deleteSongButton.addEventListener('click', handleDeleteSong);
@@ -2067,6 +2071,7 @@
             const has = !!sel.value;
             dom.seSetRename.disabled = !has;
             dom.seSetDelete.disabled = !has;
+            dom.seSetSavePc.disabled = !has;
         }
         // ab があればその音に、null なら標準の音に戻す（次回起動時も使えるよう、使用中のSEとして保存）
         async function applySeBuffer(type, ab) {
@@ -2169,6 +2174,49 @@
             if (!name) return;
             try { await db.renameSELib(id, name); item.name = name; refreshSeLibraryUI(); }
             catch (err) { console.error(err); alert('名前の変更に失敗しました。'); }
+        }
+        // 音声データの先頭バイトから拡張子を判定（ZIPに入れるファイル名用）
+        function detectAudioExt(ab) {
+            const u = new Uint8Array(ab.slice(0, 12));
+            const t = (i, n) => String.fromCharCode(...u.slice(i, i + n));
+            if (t(0, 4) === 'RIFF' && t(8, 4) === 'WAVE') return '.wav';
+            if (t(0, 4) === 'OggS') return '.ogg';
+            if (t(0, 4) === 'fLaC') return '.flac';
+            if (t(4, 4) === 'ftyp') return '.m4a';
+            if (t(0, 3) === 'ID3' || (u[0] === 0xFF && (u[1] & 0xE0) === 0xE0)) return '.mp3';
+            return '.wav';
+        }
+        // 選んでいるSEを ZIP（dong.xxx＝ドン / ka.xxx＝カッ）にしてPCへ保存。そのまま「追加 (ZIP)」で読み込める
+        async function handleSeSetSaveToPc() {
+            const id = dom.seSetSelect.value;
+            const item = seLibrary.find(x => x.id === id);
+            if (!item) { alert('PCに保存するSEを選択してください。'); return; }
+            const btn = dom.seSetSavePc;
+            btn.textContent = '準備中...'; btn.disabled = true;
+            try {
+                const rec = await db.getSELibRec(id);
+                if (!rec || (!rec.don && !rec.katsu)) throw new Error('SE data not found in DB.');
+                const zip = new JSZip();
+                if (rec.don) zip.file('dong' + detectAudioExt(rec.don), rec.don);
+                if (rec.katsu) zip.file('ka' + detectAudioExt(rec.katsu), rec.katsu);
+                const blob = await zip.generateAsync({ type: 'blob' });
+                const fileName = (item.name.replace(/[\/:*?"<>|]/g, '_').trim() || 'SE') + '.zip';
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.style.display = 'none';
+                a.href = url;
+                a.download = fileName;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                setTimeout(() => URL.revokeObjectURL(url), 60000);
+            } catch (err) {
+                console.error('Failed to save SE zip:', err);
+                alert('SEの保存に失敗しました。');
+            } finally {
+                btn.textContent = 'PCへ保存';
+                btn.disabled = !dom.seSetSelect.value;
+            }
         }
         async function handleSeSetDelete() {
             const id = dom.seSetSelect.value;
@@ -2360,7 +2408,7 @@
                 dom.beatmapSelector.innerHTML = '<option value="">-- 難易度を選択 --</option>';
                 osz_beatmaps.sort((a, b) => a.info.difficulty - b.info.difficulty);
                 osz_beatmaps.forEach((beatmap, index) => {
-                    const levelText = beatmap.info.level ? ` (☆${beatmap.info.level})` : '';
+                    const levelText = (beatmap.info.level ? ` (☆${beatmap.info.level})` : '') + (beatmap.info.hasBranch ? ' ※譜面分岐' : '');   // 譜面分岐ありは☆の数字のあとに「※譜面分岐」を付ける
                     const optionText = `${beatmap.info.version}${levelText}`;
                     const option = new Option(optionText, index);
                     dom.beatmapSelector.appendChild(option);
@@ -3936,6 +3984,7 @@
             if (isRainbow && !rbRafId) { rbRafId = 1; rainbowTick(performance.now()); }
         }
         // 虹色を左から右へ流す（CSSアニメ/変数に頼らず、JSで背景位置を動かす＝ブラウザを選ばない）
+        const RAINBOW_LOOP_MS = 1100;   // 虹色が1周する時間(ms)。小さいほど速く流れる（元は2200）
         let rbLenPx = 1050, rbHotLeftPx = 0, rbRafId = 0;
         function rainbowTick(t) {
             if (!dom.normaGauge || !dom.normaGauge.classList.contains('rainbow')) {
@@ -3944,7 +3993,7 @@
                 if (dom.gaugeFillHot) dom.gaugeFillHot.style.backgroundPosition = '';
                 return;
             }
-            const x = ((t % 2200) / 2200) * rbLenPx;   // 2.2秒で1周
+            const x = ((t % RAINBOW_LOOP_MS) / RAINBOW_LOOP_MS) * rbLenPx;   // RAINBOW_LOOP_MS で1周
             dom.gaugeFill.style.backgroundPosition = x + 'px 0';
             dom.gaugeFillHot.style.backgroundPosition = (x - rbHotLeftPx) + 'px 0';
             rbRafId = requestAnimationFrame(rainbowTick);
@@ -4037,6 +4086,7 @@
         // 大きさ・速さを変えたいときは下の数字を変える（SIZE＝判定枠の外輪の直径に対する、花火の輪の大きさの倍率 / MS＝1コマの時間）
         const EXPLO_CELL = 260, EXPLO_COLS = 5, EXPLO_SMALL_RING = 172, EXPLO_BIG_RING = 200;   // 1コマの大きさ・コマ数・輪の直径（コマ内のpx）
         const EXPLO_SMALL_SIZE = 1.5, EXPLO_BIG_SIZE = 1.75, EXPLO_MS = 50;
+        const EXPLO_FRAME_MS = [25, 25, 50, 50, 50];   // 花火1コマごとの時間(ms)。前半（光る・広がる）だけ速く、後半（消えていく）は元の速さ(EXPLO_MS)のまま。コマ数(EXPLO_COLS)と同じ個数
         const EXPLO_OFFSET_X = 2, EXPLO_OFFSET_Y = -1;   // 花火の位置の微調整(px)。X：右へ＋/左へ− ・ Y：下へ＋/上へ−（判定枠の中心が0,0）
         const EXPLO_BIG_OFFSET_X = -2, EXPLO_BIG_OFFSET_Y = 0;   // 大音符の花火だけの位置の微調整(px)（上の値に足される。右へ＋/左へ− ・ 下へ＋/上へ−）
         const EXPLO_RAY_FROM = 0.75, EXPLO_RAY_TO = 1.25;   // 大音符の光線が広がる大きさ（花火の輪を1とした倍率の、始まり→終わり）
@@ -4045,15 +4095,15 @@
             x += EXPLO_OFFSET_X + (big ? EXPLO_BIG_OFFSET_X : -2); y += EXPLO_OFFSET_Y + (big ? EXPLO_BIG_OFFSET_Y : 0);   // 花火だけ位置をずらす（跳ねる音符の出発点は動かない）
             const k = NOTE_UNIT / 137;
             const s = 155 * k * (big ? EXPLO_BIG_SIZE : EXPLO_SMALL_SIZE) / (big ? EXPLO_BIG_RING : EXPLO_SMALL_RING);   // 画像1pxが画面で何pxか
-            const size = EXPLO_CELL * s, dur = EXPLO_COLS * EXPLO_MS, row = big ? 1 : 0;
+            const size = EXPLO_CELL * s, dur = EXPLO_FRAME_MS.reduce((a, b) => a + b, 0), row = big ? 1 : 0;
             const d = fxDiv(`width:${size}px;height:${size}px;background-size:${EXPLO_COLS * size}px ${2 * size}px;background-position:0 ${-row * size}px;transform:translate(${x - size / 2}px,${y - size / 2}px);z-index:1;`);
             d.className = 'fx-explo';
             if (white) d.style.filter = EXPLO_WHITE_FILTER;
             layer.appendChild(d);
-            const a = d.animate([
-                { backgroundPosition: `0px ${-row * size}px` },
-                { backgroundPosition: `${-EXPLO_COLS * size}px ${-row * size}px` }
-            ], { duration: dur, easing: `steps(${EXPLO_COLS})` });
+            let acc = 0;
+            const kfs = EXPLO_FRAME_MS.map((ms, i) => { const k = { backgroundPosition: `${-i * size}px ${-row * size}px`, offset: acc / dur, easing: 'steps(1)' }; acc += ms; return k; });
+            kfs.push({ backgroundPosition: `${-(EXPLO_COLS - 1) * size}px ${-row * size}px`, offset: 1 });
+            const a = d.animate(kfs, { duration: dur });
             a.onfinish = () => d.remove();
             if (!big) return;
             // 大音符：光線（黄→白の順に重ねる）が広がりながら消える
