@@ -4168,6 +4168,15 @@
                 }
             }
         }
+        // 画面をタッチしたらフルスクリーンにする（スマホだけ。ブラウザの仕様上、操作した瞬間にしか開始できない）
+        document.addEventListener('pointerup', e => {
+            if (e.pointerType === 'mouse' || !window.matchMedia('(pointer: coarse)').matches) return;   // スマホ（タッチ画面）だけ。PCのクリックでは切り替えない
+            const el = document.documentElement;
+            if (document.fullscreenElement || document.webkitFullscreenElement) return;
+            const req = el.requestFullscreen || el.webkitRequestFullscreen;
+            if (!req) return;
+            try { const r = req.call(el); if (r && r.catch) r.catch(() => {}); } catch (e) {}
+        }, true);
         // 左上の一時停止ボタン（プレイ中だけ表示）
         (function initIngamePauseButton() {
             const btn = root.querySelector('#taiko-ingame-pause-button'); if (!btn) return;
