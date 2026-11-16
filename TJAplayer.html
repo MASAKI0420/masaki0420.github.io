@@ -228,6 +228,10 @@
         #taiko-wrapper #roll-counter-display.visible { opacity: 1; }
         #taiko-wrapper #combo { font-size: calc(3.3em * var(--lane-scale)); line-height: 1; }
         #taiko-wrapper #combo-label { display: none; }
+        /* 数字は1桁ごとに固定幅のマスに入れて、どの数字でも位置・幅が変わらないようにする */
+        #taiko-wrapper #taiko-score, #taiko-wrapper #combo { font-variant-numeric: lining-nums tabular-nums; font-feature-settings: "lnum" 1, "tnum" 1; white-space: nowrap; }
+        #taiko-wrapper .fd { display: inline-block; position: relative; width: 0.61em; height: 1em; line-height: 1; vertical-align: top; text-align: left; }
+        #taiko-wrapper .fd > i { position: absolute; left: 50%; top: 0; font-style: normal; font-weight: inherit; line-height: 1; white-space: pre; transform: translateX(-50%); }
         #taiko-wrapper #taiko-judgment-text { position: absolute; top: calc(50% - 200px - 90px * (var(--lane-scale) - 1) - 44px * (var(--lane-scale) - 1) + var(--lane-shift) + var(--judgment-text-down, 20px)); left: calc(416px + var(--ui-offset-x)); transform: translateX(-50%); font-size: 3em; font-weight: bold; opacity: 0; z-index: 40; padding: 5px 20px; border-radius: 4px; color: white; text-align: center; text-shadow: 0 0 8px #000, 0 0 8px #000; animation: taiko-judgment-anim-new 0.4s ease-out; pointer-events: none; }
         @keyframes taiko-judgment-anim-new {
             0% { transform: translateX(-50%) translateY(5px); opacity: 1; }
@@ -373,6 +377,7 @@
         /* スマホ：プレイ中は画面の端に水色(ページ背景)の細い線がにじむので、ページ背景を黒にする（メニュー表示中は今まで通り） */
         #taiko-wrapper #taiko-game-container::before { content: ''; position: absolute; inset: 1px; background-color: #87ceeb; z-index: -1; pointer-events: none; }   /* 背景の動画・画像がないときの水色。ふちを1px内側にして、画面の端で水色が黒ににじまないようにする */
         #taiko-wrapper #taiko-game-container:has(#taiko-background-video[style*="display: block"], #taiko-background-image[style*="display: block"])::before { display: none; }   /* 背景の動画・画像があるときは黒のまま */
+        #taiko-wrapper #taiko-game-container.mac-fit:not(:has(#taiko-background-video[style*="display: block"], #taiko-background-image[style*="display: block"])) { background-color: #87ceeb; box-shadow: 0 0 0 10000px #87ceeb; }   /* Mac：背景の動画・画像がないときは、ステージの外側（余白）も水色で画面いっぱいに広げる */
         html.game-on, html.game-on body { background-color: #000; }   /* プレイ中は画面の外側を完全な黒にする（背景の水色がふちににじんで境界線に見えるのを防ぐ。PC・スマホ共通） */
         /* --- タッチ太鼓（タッチ画面のときだけ表示。中央＝ドン／外側のふち＝カッ、左右に分かれる） --- */
         #taiko-wrapper #touch-drum { opacity: var(--touch-drum-opacity, 1); display: none; position: absolute; left: 50%; bottom: -40px; width: 1120px; height: 560px; margin-left: -560px; z-index: 30; touch-action: none; -webkit-user-select: none; user-select: none; -webkit-tap-highlight-color: transparent; overflow: visible; }
@@ -414,7 +419,7 @@
                         <select id="song-genre-filter" class="control-button" title="ジャンルで絞り込みます">
                             <option value="">ジャンル：すべて</option>
                         <option value="1">J-POP</option><option value="2">アニメ</option><option value="3">キッズ</option><option value="4">ボーカロイド</option><option value="5">バラエティ</option><option value="6">クラシック</option><option value="7">ゲームミュージック</option><option value="8">ナムコオリジナル</option><option value="9">創作譜面</option></select>
-                        <select id="saved-songs-list" class="control-button"><option value="">-- 保存済み譜面を選択 --</option><option value="1794788322108-イヤイヤ星人 (2) (1).zip" data-genre="9" data-search="すとぷり - イヤイヤ星人">イヤイヤ星人</option><option value="1793590028537-ナイト・オブ・ナイツ (2).zip" data-genre="9" data-search="ナイト・オブ・ナイツ">ナイト・オブ・ナイツ</option></select>
+                        <select id="saved-songs-list" class="control-button"><option value="">-- 保存済み譜面を選択 --</option></select>
                         <div id="beatmap-actions" bis_skin_checked="1">
                              <label for="taiko-osz-file" id="osz-file-label" class="file-input-label control-button">追加 (ZIP)</label>
                              <button id="delete-song-button" class="control-button">削除</button>
@@ -426,11 +431,11 @@
                     <div class="control-group" bis_skin_checked="1">
                         <label>曲情報</label>
                         <div id="taiko-song-info" bis_skin_checked="1">
-                            <div id="taiko-song-title" bis_skin_checked="1">イヤイヤ星人</div>
-                            <div id="taiko-song-artist" style="font-size: 0.9em; color: #a0a8c0;" bis_skin_checked="1">すとぷり</div>
+                            <div id="taiko-song-title" bis_skin_checked="1">譜面を選択してください</div>
+                            <div id="taiko-song-artist" style="font-size: 0.9em; color: #a0a8c0;" bis_skin_checked="1"></div>
                         </div>
-                        <div id="taiko-beatmap-selector-container" style="display: block;" bis_skin_checked="1">
-                            <select id="taiko-beatmap-selector" class="control-button"><option value="">-- 難易度を選択 --</option><option value="0">おに (☆8)</option></select>
+                        <div id="taiko-beatmap-selector-container" style="display: none;" bis_skin_checked="1">
+                            <select id="taiko-beatmap-selector" class="control-button"></select>
                         </div>
                     </div>
                     <div class="control-group" id="taiko-key-config-group" bis_skin_checked="1">
@@ -641,7 +646,7 @@
                 <path class="td-outline" d="M0,560 A560,560 0 0 1 1120,560"></path>
             </svg>
             <div id="taiko-ui-panel" bis_skin_checked="1">
-                <div id="taiko-ingame-song-title" bis_skin_checked="1">イヤイヤ星人</div>
+                <div id="taiko-ingame-song-title" bis_skin_checked="1"></div>
                 <div id="taiko-score" bis_skin_checked="1">0</div>
                 <div id="taiko-accuracy-container" bis_skin_checked="1">
                     <canvas id="taiko-gameplay-progress-pie" width="24" height="24"></canvas>
@@ -680,7 +685,7 @@
         <div id="taiko-results-overlay" class="overlay" style="display: none;" bis_skin_checked="1">
             <div id="results-menu" class="overlay-menu" bis_skin_checked="1">
                 <h2>RESULTS</h2>
-                <div id="results-song-title" bis_skin_checked="1">イヤイヤ星人 - おに<div style="font-size: 0.8em; opacity: 0.85; font-weight: normal; white-space: nowrap;" bis_skin_checked="1">すとぷり</div></div>
+                <div id="results-song-title" bis_skin_checked="1"></div>
                 <div id="results-clear-status" bis_skin_checked="1" class="allperfect">ALLPERFECT</div>
                  <div class="results-main-stats" bis_skin_checked="1">
                     <div class="results-item" bis_skin_checked="1">
@@ -3090,10 +3095,23 @@
         // --- スマホ・小さい画面対応：プレイ画面を 1920x1080 の見た目のまま、画面に収まるよう丸ごと縮小する ---
         // （1920x1080以上の画面では今まで通り等倍。縮小するのは画面がそれより小さいときだけ）
         const STAGE_W = 1920, STAGE_H = 1080;
+        // Macのプレイ画面：どの画面・ウィンドウの大きさでも、ステージの横幅を画面の横幅にぴったり合わせる（いつも同じ構図）。縦は上に揃える。iPadのようにタッチできる端末は対象外
+        const IS_MAC_DESKTOP = /Mac/i.test((navigator.userAgentData && navigator.userAgentData.platform) || navigator.platform || '') && !(navigator.maxTouchPoints > 1);
+        const MAC_PLAY_ZOOM = 1.001;   // 1＝横幅ぴったり。大きくしたいときは 1.1 など（1.1＝10%拡大。左右が少し切れる）
         function fitGameStage() {
             const c = dom.gameContainer; if (!c) return;
+            c.classList.toggle('mac-fit', IS_MAC_DESKTOP);
+            if (IS_MAC_DESKTOP) {
+                const sMac = (window.innerWidth / STAGE_W) * MAC_PLAY_ZOOM;
+                c.style.width = STAGE_W + 'px'; c.style.height = STAGE_H + 'px';
+                c.style.left = '50%'; c.style.top = '0px';
+                c.style.transformOrigin = 'center top';
+                c.style.transform = `translate(-50%, 0) scale(${sMac})`;
+                invalidateFxPoints();
+                return;
+            }
             const s = Math.min(1, window.innerWidth / STAGE_W, window.innerHeight / STAGE_H);
-            if (s < 1) {
+            if (s !== 1) {
                 c.style.width = STAGE_W + 'px'; c.style.height = STAGE_H + 'px';
                 c.style.left = '50%'; c.style.top = '50%';
                 c.style.transformOrigin = 'center center';
@@ -3103,6 +3121,7 @@
             }
             invalidateFxPoints();
         }
+        
         // 小さい画面のメニュー：PCと同じ見た目のまま画面の幅に合わせて縮め、縦に入りきらないときはスクロールさせる
         function fitMenuPanel() {
             const z = Math.min(0.85, window.innerWidth / 1200);   // 0.85＝PCでの通常の縮小率、1200＝パネルの幅
@@ -3127,7 +3146,7 @@
             playAborted = false;
             judgmentCounts = { ryo: 0, ka: 0, fuka: 0 };
             accuracy = 100;
-            dom.scoreElement.textContent = score;
+            setFixedDigits(dom.scoreElement, score);
             dom.accuracyElement.textContent = `S 100.00%`;
              if (dom.errorBar) dom.errorBar.innerHTML = '';
             updateComboDisplay();
@@ -3691,7 +3710,7 @@
             }
             if (!isGoGoNow) prewarmGogoFireAhead(elapsedTime);
             renderScene(elapsedTime);
-            if (scoreDirty) { dom.scoreElement.textContent = Math.floor(score); scoreDirty = false; }
+            if (scoreDirty) { setFixedDigits(dom.scoreElement, Math.floor(score)); scoreDirty = false; }
             if (pendingRollFx.length) { const q = pendingRollFx; pendingRollFx = []; for (const p of q) spawnRollEffect(p.note, p.keyType); }   // 1打ごとに1個ずつ飛ばす（同一フレームに複数打っても全部出す）
             // SEの発音タイミングは譜面オフセット(共通＋個別)の影響を受けない：音楽の時刻そのもので鳴らす。ずらしたいときはSEオフセットだけを使う
             const seClockTime = getGameTime() - CODE_OFFSET_MS;
@@ -4280,7 +4299,7 @@
                 }
             }, 1500);
         }
-        function autoPlayHandler(elapsedTime) { const AUTO_HIT_INTERVAL = 25; for (const note of hitObjects) { if (note.judged || !isNoteActive(note)) continue; if (note.type === 'balloon' || note.type === 'roll') { if (elapsedTime >= note.time && elapsedTime <= note.endTime) { if (elapsedTime - (note.lastAutoHitTime || 0) > AUTO_HIT_INTERVAL) { if (note.type === 'roll') spawnRollEffect(note, 'don'); playHitSound('don'); const hitSide = autoPlayHitCounter % 2 === 0 ? 'don_right' : 'don_left'; showDrumHit(hitSide); autoPlayHitCounter++; score += 100; note.hitsMade++; totalRollHits++; if (note.type === 'roll') { activeRollHits = note.hitsMade; rollCounterClearTime = 0; } else if (note.type === 'balloon' && note.hitsMade >= note.hitsRequired) { note.judged = true; spawnBalloonBreakEffect(); } dom.scoreElement.textContent = Math.floor(score); note.lastAutoHitTime = elapsedTime; } } if (elapsedTime > note.endTime && !note.judged) { if (note.type === 'roll' && note.hitsMade > 0) rollCounterClearTime = note.endTime + 1000; note.passed = true; note.judged = true; } } else if (elapsedTime >= note.time) { const isBigNoteTwoHands = note.isBig && !isSingleHandBigNoteEnabled; if (note.type === 'don') { if (isBigNoteTwoHands) { showDrumHit('don_left'); showDrumHit('don_right'); } else { const hitSide = autoPlayHitCounter % 2 === 0 ? 'don_right' : 'don_left'; showDrumHit(hitSide); } } else if (note.type === 'katsu') { if (isBigNoteTwoHands) { showDrumHit('katsu_left'); showDrumHit('katsu_right'); } else { const hitSide = autoPlayHitCounter % 2 === 0 ? 'katsu_right' : 'katsu_left'; showDrumHit(hitSide); } } autoPlayHitCounter++; handleJudgment('ryo', note, 0); } } }
+        function autoPlayHandler(elapsedTime) { const AUTO_HIT_INTERVAL = 25; for (const note of hitObjects) { if (note.judged || !isNoteActive(note)) continue; if (note.type === 'balloon' || note.type === 'roll') { if (elapsedTime >= note.time && elapsedTime <= note.endTime) { if (elapsedTime - (note.lastAutoHitTime || 0) > AUTO_HIT_INTERVAL) { if (note.type === 'roll') spawnRollEffect(note, 'don'); playHitSound('don'); const hitSide = autoPlayHitCounter % 2 === 0 ? 'don_right' : 'don_left'; showDrumHit(hitSide); autoPlayHitCounter++; score += 100; note.hitsMade++; totalRollHits++; if (note.type === 'roll') { activeRollHits = note.hitsMade; rollCounterClearTime = 0; } else if (note.type === 'balloon' && note.hitsMade >= note.hitsRequired) { note.judged = true; spawnBalloonBreakEffect(); } setFixedDigits(dom.scoreElement, Math.floor(score)); note.lastAutoHitTime = elapsedTime; } } if (elapsedTime > note.endTime && !note.judged) { if (note.type === 'roll' && note.hitsMade > 0) rollCounterClearTime = note.endTime + 1000; note.passed = true; note.judged = true; } } else if (elapsedTime >= note.time) { const isBigNoteTwoHands = note.isBig && !isSingleHandBigNoteEnabled; if (note.type === 'don') { if (isBigNoteTwoHands) { showDrumHit('don_left'); showDrumHit('don_right'); } else { const hitSide = autoPlayHitCounter % 2 === 0 ? 'don_right' : 'don_left'; showDrumHit(hitSide); } } else if (note.type === 'katsu') { if (isBigNoteTwoHands) { showDrumHit('katsu_left'); showDrumHit('katsu_right'); } else { const hitSide = autoPlayHitCounter % 2 === 0 ? 'katsu_right' : 'katsu_left'; showDrumHit(hitSide); } } autoPlayHitCounter++; handleJudgment('ryo', note, 0); } } }
         function showDrumHit(keyId) { const hitMap = { don_left: dom.drumDonLeft, don_right: dom.drumDonRight, katsu_left: dom.drumKatsuLeft, katsu_right: dom.drumKatsuRight, }; const element = hitMap[keyId]; if (!element) return; if (drumHitTimeouts[keyId]) { clearTimeout(drumHitTimeouts[keyId]); } element.classList.add('active'); drumHitTimeouts[keyId] = setTimeout(() => { element.classList.remove('active'); }, 60); }
         
         function handleKeydown(e) {
@@ -4334,7 +4353,7 @@
                     totalRollHits++;
                     activeRollHits = activeLongNote.hitsMade;
                     rollCounterClearTime = 0;
-                    dom.scoreElement.textContent = Math.floor(score);   // スコアも即時表示
+                    setFixedDigits(dom.scoreElement, Math.floor(score));   // スコアも即時表示
                     scoreDirty = true;   // スコア文字は次の描画フレームで更新
                 } else if (activeLongNote.type === 'balloon') {
                     if (keyType === 'don') {
@@ -4840,7 +4859,47 @@
                 else if ((optMissMode === 'tokkun' && isMiss) || (optMissMode === 'chotokkun' && isNotPerfect)) retryGame();
             }
         }
-        function updateScore(points) { score += points; dom.scoreElement.textContent = Math.floor(score); }
+        // 各数字の「見た目の中心」を実測して、1桁ごとの固定マスの中心にそろえる（フォントやOSが違っても同じ位置になる）
+        const digitShiftCache = new Map();
+        function getDigitShifts(el) {
+            const cs = getComputedStyle(el);
+            const key = cs.fontStyle + ' ' + cs.fontWeight + ' ' + cs.fontFamily;
+            let r = digitShiftCache.get(key);
+            if (r) return r;
+            r = [];
+            try {
+                const c = document.createElement('canvas').getContext('2d');
+                c.font = `${cs.fontStyle} ${cs.fontWeight} 200px ${cs.fontFamily}`;
+                c.textAlign = 'left'; c.textBaseline = 'alphabetic';
+                for (let d = 0; d < 10; d++) {
+                    const m = c.measureText(String(d));
+                    const inkCenter = (m.actualBoundingBoxRight - m.actualBoundingBoxLeft) / 2;
+                    const v = -(inkCenter - m.width / 2) / 200;
+                    r.push(isFinite(v) ? v : 0);
+                }
+            } catch (e) { r = new Array(10).fill(0); }
+            digitShiftCache.set(key, r);
+            return r;
+        }
+        function setFixedDigits(el, v) {
+            const t = String(v);
+            if (el.__fd === t) return;
+            if (el.__fd === undefined) el.textContent = '';
+            el.__fd = t;
+            const shifts = getDigitShifts(el);
+            let n = el.children.length;
+            while (n > t.length) { el.removeChild(el.lastChild); n--; }
+            while (n < t.length) { const sp = document.createElement('span'); sp.className = 'fd'; sp.appendChild(document.createElement('i')); el.appendChild(sp); n++; }
+            for (let i = 0; i < t.length; i++) {
+                const inner = el.children[i].firstChild;
+                if (inner.textContent !== t[i]) {
+                    inner.textContent = t[i];
+                    const d = t.charCodeAt(i) - 48;
+                    inner.style.transform = `translateX(calc(-50% + ${(shifts[d] || 0).toFixed(4)}em))`;
+                }
+            }
+        }
+        function updateScore(points) { score += points; setFixedDigits(dom.scoreElement, Math.floor(score)); }
         function updateCombo(hit) { if (hit) { combo++; if (combo > maxCombo) maxCombo = combo; } else { combo = 0; } updateComboDisplay(); }
         function updateAccuracy() { const totalHits = judgmentCounts.ryo + judgmentCounts.ka + judgmentCounts.fuka; if (totalHits === 0) { accuracy = 100; } else { const accVal = (judgmentCounts.ryo * 300 + judgmentCounts.ka * 150) / (totalHits * 300); accuracy = accVal * 100; } let rank = 'S'; if (accuracy < 100) rank = 'S'; if (accuracy < 95) rank = 'A'; if (accuracy < 90) rank = 'B'; if (accuracy < 80) rank = 'C'; if (accuracy < 70) rank = 'D'; dom.accuracyElement.textContent = `${rank} ${accuracy.toFixed(2)}%`; }
         // 判定文字は画像で表示（元の画像の大きさ × JUDGMENT_IMG_SCALE）。大きさを変えたいときはこの倍率を変える
@@ -4875,7 +4934,7 @@
                 el.style.transform = `translateY(${(size / 2 - glyphCenterFromTop).toFixed(2)}px)`;
             } catch (e) { /* 補正できなくても表示には影響しない */ }
         }
-        function updateComboDisplay() { if (combo > 0) { dom.comboElement.textContent = combo; dom.comboDisplay.classList.add('visible'); } else { dom.comboDisplay.classList.remove('visible'); } }
+        function updateComboDisplay() { if (combo > 0) { setFixedDigits(dom.comboElement, combo); dom.comboDisplay.classList.add('visible'); } else { dom.comboDisplay.classList.remove('visible'); } }
         function updateResultsSelection() { const buttons = dom.resultsOverlay.querySelectorAll('.overlay-button'); buttons.forEach((btn, index) => { btn.classList.toggle('selected', index === selectedResultsIndex); }); }
         function updatePauseSelection() { const buttons = dom.pauseOverlay.querySelectorAll('.overlay-button'); buttons.forEach((btn, index) => { btn.classList.toggle('selected', index === selectedPauseIndex); }); }
         
