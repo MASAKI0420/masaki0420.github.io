@@ -5535,12 +5535,13 @@ html:not(:has(#taiko-game-container[style*="display: block"])) { background-colo
                 try {
                     // songs/index.json があればそれを使う。無ければ songs/ フォルダの一覧（簡易サーバーなどが出す一覧ページ）から探す
                     let list = [];
-                    const emb = window.TAIKO_SONGS;   // songs/songs.js（update_songs.bat が作る。HTMLを直接開いた場合もこれで読める）
-                    const res = emb ? null : await fetch('songs/index.json', { cache: 'no-cache' }).catch(() => null);
-                    if (emb) {
-                        list = emb.songs || [];
-                    } else if (res && res.ok) {
+                    const emb = window.TAIKO_SONGS;   // songs/songs.js（update_songs.bat が作る。HTMLを直接開いて index.json を読めないときだけ使う）
+                    // まず index.json（Web公開時はこちらが常に最新）。読めなければ songs.js
+                    const res = await fetch('songs/index.json?t=' + Date.now(), { cache: 'no-store' }).catch(() => null);
+                    if (res && res.ok) {
                         list = (await res.json()).songs || [];
+                    } else if (emb) {
+                        list = emb.songs || [];
                     } else {
                         const listDir = async (url) => {
                             const r = await fetch(url, { cache: 'no-cache' });
@@ -5559,14 +5560,15 @@ html:not(:has(#taiko-game-container[style*="display: block"])) { background-colo
                     const buildZipBlob = async (song) => {
                         const zip = new JSZip();
                         for (const f of song.files) {
+                            const r = await fetch('songs/' + encodeURIComponent(song.folder) + '/' + encodeURIComponent(f)).catch(() => null);
+                            if (r && r.ok) { zip.file(f, await r.arrayBuffer()); continue; }
                             if (emb && emb.data && emb.data[song.folder] && emb.data[song.folder][f] != null) { zip.file(f, emb.data[song.folder][f], { base64: true }); continue; }
-                            const r = await fetch('songs/' + encodeURIComponent(song.folder) + '/' + encodeURIComponent(f));
-                            if (!r.ok) throw new Error(song.folder + '/' + f + ' が見つかりません');
-                            zip.file(f, await r.arrayBuffer());
+                            throw new Error(song.folder + '/' + f + ' が見つかりません');
                         }
                         return zip.generateAsync({ type: 'blob', compression: 'STORE' });
                     };
                     let flags = {}; try { flags = JSON.parse(localStorage.getItem('taiko-builtin-added') || '{}'); } catch (_) {}
+                    if (/[?&]reset(=|&|$)/.test(location.search)) { flags = {}; try { localStorage.removeItem('taiko-builtin-added'); } catch (_) {} }   // URL の末尾に ?reset を付けて開くと、削除した曲も入れ直す
                     let dbOk = true, firstId = null, firstSong = null;
                     try {
                         let meta = await db.getSongsMeta();
