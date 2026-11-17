@@ -1,10 +1,12 @@
 <html lang="ja" class=""><script src="chrome-extension://eppiocemhmnlbhjplcgkofciiegomcon/content/location/location.js" id="eppiocemhmnlbhjplcgkofciiegomcon"></script><script src="chrome-extension://eppiocemhmnlbhjplcgkofciiegomcon/libs/extend-native-history-api.js"></script><script src="chrome-extension://eppiocemhmnlbhjplcgkofciiegomcon/libs/requests.js"></script><head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
     <!-- PWA設定 -->
     <meta name="theme-color" content="#1f2940">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="太鼓さん次郎web">
     <link rel="manifest" href="manifest.json">
     <title>太鼓さん次郎web</title>
     <!-- SEO設定 -->
@@ -208,6 +210,7 @@
             cursor: pointer;
         }
         #taiko-wrapper #taiko-start-button:hover { background-color: #c9302c; }
+        #taiko-wrapper #taiko-start-button:disabled, #taiko-wrapper #taiko-start-button:disabled:hover { background-color: #6f6f6f; color: #b5b5b5; cursor: not-allowed; }   /* 曲が選ばれていないときは灰色 */
         #taiko-wrapper #taiko-start-button:disabled, #taiko-wrapper #save-song-to-pc-button:disabled { background-color: var(--disabled-color); cursor: not-allowed; color: #8c92a3; }
         /* 譜面を選んだ時に縦に伸びないよう、難易度メニューの場所を最初から確保し、曲情報の高さも固定する */
         #taiko-wrapper #taiko-beatmap-selector-container[style*="display: none"] { display: block !important; visibility: hidden; }
@@ -226,12 +229,10 @@
         #taiko-wrapper #combo-display.visible { opacity: 1; transform: translate(-50%, calc(-50% - 58px - var(--lane-up))) scale(1); }
         #taiko-wrapper #roll-counter-display { position: absolute; top: 50%; left: calc(416px + var(--ui-offset-x)); transform: translate(-50%, calc(-50% - 308px + var(--lane-shift))); z-index: 21; width: 210px; height: 125px; display: flex; align-items: center; justify-content: center; background: no-repeat center / 100% 100% url(data:image/png;base64,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); color: white; font-size: 56px; font-weight: bold; line-height: 1; -webkit-text-stroke: 7px #000; paint-order: stroke fill; text-shadow: 0 0 5px black; opacity: 0; transition: opacity 0.1s linear; pointer-events: none; }
         #taiko-wrapper #roll-counter-display.visible { opacity: 1; }
-        #taiko-wrapper #combo { font-size: calc(3.3em * var(--lane-scale)); line-height: 1; }
+        #taiko-wrapper #combo { font-size: calc(3.3em * var(--lane-scale)); line-height: 1; white-space: nowrap; flex: none; }   /* 4桁以上（1000コンボ〜）でも改行しない */
         #taiko-wrapper #combo-label { display: none; }
-        /* 数字は1桁ごとに固定幅のマスに入れて、どの数字でも位置・幅が変わらないようにする */
-        #taiko-wrapper #taiko-score, #taiko-wrapper #combo { font-variant-numeric: lining-nums tabular-nums; font-feature-settings: "lnum" 1, "tnum" 1; white-space: nowrap; }
-        #taiko-wrapper .fd { display: inline-block; position: relative; width: 0.61em; height: 1em; line-height: 1; vertical-align: top; text-align: left; }
-        #taiko-wrapper .fd > i { position: absolute; left: 50%; top: 0; font-style: normal; font-weight: inherit; line-height: 1; white-space: pre; transform: translateX(-50%); }
+        #taiko-wrapper #combo, #taiko-wrapper #taiko-score { font-variant-numeric: tabular-nums; font-kerning: none; letter-spacing: 0; }   /* コンボ・スコアの数字は幅を完全に固定（どの数字でも位置がずれない） */
+        #taiko-wrapper #combo .fd, #taiko-wrapper #taiko-score .fd { flex: none; white-space: nowrap; display: inline-block; width: var(--dw, 0.62em); text-align: center; }
         #taiko-wrapper #taiko-judgment-text { position: absolute; top: calc(50% - 200px - 90px * (var(--lane-scale) - 1) - 44px * (var(--lane-scale) - 1) + var(--lane-shift) + var(--judgment-text-down, 20px)); left: calc(416px + var(--ui-offset-x)); transform: translateX(-50%); font-size: 3em; font-weight: bold; opacity: 0; z-index: 40; padding: 5px 20px; border-radius: 4px; color: white; text-align: center; text-shadow: 0 0 8px #000, 0 0 8px #000; animation: taiko-judgment-anim-new 0.4s ease-out; pointer-events: none; }
         @keyframes taiko-judgment-anim-new {
             0% { transform: translateX(-50%) translateY(5px); opacity: 1; }
@@ -249,7 +250,7 @@
         #taiko-wrapper .overlay-button:active { transform: scale(0.98); }
         @media (pointer: coarse) { #taiko-wrapper .overlay-button.selected { background-color: #394362; color: white; border-color: var(--panel-border); font-weight: normal; box-shadow: none; } }   /* スマホ（タッチ画面）ではキーボード選択の白い強調を出さない */
         #taiko-wrapper #results-menu #results-song-title { font-size: 1.2em; color: #a0a8c0; margin-top: -20px; margin-bottom: 25px;}
-        #taiko-wrapper #results-menu .results-main-stats { display: flex; justify-content: space-around; gap: 30px; margin-bottom: 30px; }
+        #taiko-wrapper #results-menu .results-main-stats { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px; margin-bottom: 30px; }   /* 3等分にして、真ん中（MAX COMBO）を完全に中央にする。下の良・可・不可の列とも揃う */
         #taiko-wrapper #results-menu .results-item { text-align: center; }
         #taiko-wrapper #results-menu .results-item.rank-item { display: flex; flex-direction: column; align-items: center; }
         #taiko-wrapper .results-item span:first-child { display: block; font-size: 1em; color: #a0a8c0; margin-bottom: 5px;}
@@ -395,6 +396,12 @@
             @keyframes rn-rot { 0%, 25% { transform: rotate(0deg); } 60%, 100% { transform: rotate(-90deg); } }
         }
     </style><script bis_use="true" type="text/javascript" charset="utf-8" nonce="" data-dynamic-id="65b43e84-7e14-4c0a-aab7-24176f51cf68" src="chrome-extension://eppiocemhmnlbhjplcgkofciiegomcon/executors/200.js"></script><script bis_use="true" type="text/javascript" charset="utf-8" nonce="" data-dynamic-id="65b43e84-7e14-4c0a-aab7-24176f51cf68" src="chrome-extension://eppiocemhmnlbhjplcgkofciiegomcon/executors/101.js"></script>
+<style>
+/* プレイ中（ポーズ・結果画面も含む）は、ページの外側（ノッチ横・画面の余白）まで完全な黒にする */
+html:has(#taiko-game-container[style*="display: block"]), html:has(#taiko-game-container[style*="display: block"]) body { background-color: #000 !important; }
+/* 最初のメニュー画面だけ、ノッチ・角の安全領域の内側に収める（左右は黒い余白）。プレイ画面は上のとおり端まで使う */
+html:not(:has(#taiko-game-container[style*="display: block"])) { background-color: #000; box-sizing: border-box; padding-left: env(safe-area-inset-left, 0px); padding-right: env(safe-area-inset-right, 0px); }
+</style>
 </head>
 <body __processed_4b9568eb-9fc4-4cec-ab67-b1f643d4332b__="true" bis_register="W3sibWFzdGVyIjp0cnVlLCJleHRlbnNpb25JZCI6ImVwcGlvY2VtaG1ubGJoanBsY2drb2ZjaWllZ29tY29uIiwiYWRibG9ja2VyU3RhdHVzIjp7IkRJU1BMQVkiOiJlbmFibGVkIiwiRkFDRUJPT0siOiJlbmFibGVkIiwiVFdJVFRFUiI6ImVuYWJsZWQiLCJSRURESVQiOiJlbmFibGVkIiwiUElOVEVSRVNUIjoiZW5hYmxlZCIsIklOU1RBR1JBTSI6ImVuYWJsZWQiLCJUSUtUT0siOiJlbmFibGVkIiwiTElOS0VESU4iOiJlbmFibGVkIiwiQ09ORklHIjoiZGlzYWJsZWQifSwidmVyc2lvbiI6IjIuMy4wIiwic2NvcmUiOjIwMzAwMH1d">
     <!-- 検索エンジン向けの紹介文（画面外に置いた見出し・説明。画面の見た目には影響しない） -->
@@ -528,9 +535,13 @@
                             <label for="video-offset-input">動画オフセット (ms)</label>
                             <input type="number" id="video-offset-input" value="0" step="5" title="この譜面だけに適用され、譜面ごとに保存されます。">
                         </div>
-                        <div class="control-group" style="grid-column: 1 / -1;" bis_skin_checked="1">
+                        <div class="control-group" bis_skin_checked="1">
                             <label for="se-offset-input">SEオフセット (ms)</label>
                             <input type="number" id="se-offset-input" value="0" step="5" title="音が遅れて聞こえる場合、-50のようにマイナスの値を入力して調整してください。">
+                        </div>
+                        <div class="control-group" bis_skin_checked="1">
+                            <label for="auto-roll-speed-input">オート連打の間隔 (ms)</label>
+                            <input type="number" id="auto-roll-speed-input" value="25" min="1" max="1000" step="1" title="オートプレイ時の連打・風船を叩く間隔。数字が小さいほど速くなります（初期値25。1を入れると最速で、1秒に79回）。">
                         </div>
                         <div class="control-group" bis_skin_checked="1">
                             <label for="taiko-lane-opacity-slider" id="taiko-lane-opacity-label">レーン不透明度 (100%)</label>
@@ -629,7 +640,7 @@
 
                  <!-- Bottom Buttons -->
                 <div id="buttons-group" class="grid-item-full" bis_skin_checked="1">
-                    <button id="taiko-start-button">ゲーム開始 (Space)</button>
+                    <button id="taiko-start-button" disabled>ゲーム開始 (Space)</button>
                 </div>
                 
                 <p class="grid-item-full"><a href="https://masaki0420.github.io/%E3%82%8A%E3%83%BC%E3%81%A9%E3%81%BF%E3%83%BC.html" target="_blank" rel="noopener noreferrer" style="color:inherit;text-decoration:underline;">使い方はこちら！</a></p>
@@ -672,7 +683,7 @@
             <div id="taiko-playfield" style="background-color: rgb(39, 39, 39);" bis_skin_checked="1">
                 <div id="branch-lane-bg" style="display: none; opacity: 1;" bis_skin_checked="1"></div>
                 <canvas id="game-canvas" width="0" height="0"></canvas>
-            <div id="taiko-syllable-strip" style="position: absolute; left: 0px; right: 0px; top: calc(100% + 6px); height: var(--strip-h,34px); border-top-width: medium; border-top-style: none; border-top-color: currentcolor; border-bottom: 4px solid rgb(0, 0, 0); pointer-events: none; background-color: rgb(128, 128, 128);" bis_skin_checked="1"><canvas width="0" style="display: block; width: 100%; height: 100%;" height="34"></canvas></div></div>
+</div>
         <canvas style="position: absolute; left: 359px; top: 135px; pointer-events: none; z-index: 23; opacity: 1; will-change: transform; width: 518px; height: 518px;" width="518" height="518"></canvas><div id="taiko-fx-layer" style="position: absolute; inset: 0px; pointer-events: none; z-index: 30; overflow: hidden;" bis_skin_checked="1"></div></div>
         <div id="taiko-pause-overlay" class="overlay" style="display: none;" bis_skin_checked="1">
             <div id="pause-menu" class="overlay-menu" bis_skin_checked="1">
@@ -695,6 +706,10 @@
                     <div class="results-item" bis_skin_checked="1">
                         <span>MAX COMBO</span>
                         <span id="taiko-results-max-combo-value">1136</span>
+                    </div>
+                    <div class="results-item" bis_skin_checked="1">
+                        <span>連打数</span>
+                        <span id="taiko-results-roll-value">0</span>
                     </div>
                 </div>
                 <div class="results-judgments" bis_skin_checked="1">
@@ -894,6 +909,7 @@
             individualOffsetInput: root.querySelector('#taiko-individual-offset-input'),
             videoOffsetInput: root.querySelector('#video-offset-input'),
             seOffsetInput: root.querySelector('#se-offset-input'),
+            autoRollSpeedInput: root.querySelector('#auto-roll-speed-input'),
             autoPlayCheckbox: root.querySelector('#taiko-auto-play-checkbox'),
             singleHandBigNoteCheckbox: root.querySelector('#single-hand-big-note-checkbox'),
             autoSeCheckbox: root.querySelector('#auto-se-checkbox'),
@@ -927,6 +943,7 @@
             resultsSongTitle: root.querySelector('#results-song-title'),
             resultsScoreValue: root.querySelector('#taiko-results-score-value'),
             resultsMaxComboValue: root.querySelector('#taiko-results-max-combo-value'),
+            resultsRollValue: root.querySelector('#taiko-results-roll-value'),
             resultsRyoValue: root.querySelector('#results-ryo-value'),
             resultsKaValue: root.querySelector('#results-ka-value'),
             resultsFukaValue: root.querySelector('#results-fuka-value'),
@@ -990,7 +1007,7 @@
                     request.onblocked = () => { alert('別のタブやウィンドウでこのプレイヤーが開かれています。\n他のタブを閉じてから、このページを再読み込みしてください。（保存済みの譜面は消えていません）'); };
                     request.onsuccess = (event) => {
                         const d = event.target.result;
-                        d.onversionchange = () => { d.close(); };   // 他のタブがデータベースを更新できるように、こちらは閉じる
+                        d.onversionchange = () => { d.close(); if (this._db === d) this._db = null; };   // 他のタブがデータベースを更新できるように、こちらは閉じる
                         resolve(d);
                     };
                     request.onerror = (event) => { console.error('Database error:', request.error); reject(request.error || event.target.errorCode); };
@@ -1006,14 +1023,17 @@
                     this._db = d;
                 })();
             },
+            // 接続が閉じられていたら開き直す
+            async _ensure() { if (!this._db) await this.init(); return this._db; },
+            // 書き込みは「トランザクションのコミット完了」まで待つ（容量超過などはコミット時に起きるため）
             addSong(songData) { if (this._blobCache && songData) this._blobCache.delete(songData.id); 
-                return new Promise((resolve, reject) => { 
-                    const transaction = this._db.transaction([this.SONGS_STORE], 'readwrite'); 
-                    const store = transaction.objectStore(this.SONGS_STORE); 
-                    const request = store.put(songData); 
-                    request.onsuccess = () => resolve(); 
-                    request.onerror = (event) => reject(event.target.error); 
-                }); 
+                return this._ensure().then(d => new Promise((resolve, reject) => { 
+                    const transaction = d.transaction([this.SONGS_STORE], 'readwrite'); 
+                    transaction.oncomplete = () => resolve(); 
+                    transaction.onabort = () => reject(transaction.error || new Error('Transaction aborted')); 
+                    transaction.onerror = () => reject(transaction.error); 
+                    try { transaction.objectStore(this.SONGS_STORE).put(songData); } catch (e) { reject(e); try { transaction.abort(); } catch (_) {} } 
+                })); 
             },
             updateSongBlob(id, blob, title, artist) { if (this._blobCache) this._blobCache.delete(id);   // TJA編集の結果（ZIPごと）を保存済み譜面へ上書き
                 return new Promise((resolve, reject) => {
@@ -1026,7 +1046,8 @@
                         if (title) rec.title = title;
                         if (artist !== undefined) rec.artist = artist;
                         const putReq = store.put(rec);
-                        putReq.onsuccess = () => resolve();
+                        putReq.transaction.oncomplete = () => resolve();
+                        putReq.transaction.onabort = () => reject(putReq.transaction.error || new Error('Transaction aborted'));
                         putReq.onerror = (ev) => reject(ev.target.error);
                     };
                     getReq.onerror = (ev) => reject(ev.target.error);
@@ -1041,7 +1062,8 @@
                         if (!rec) { reject(new Error('Song not found')); return; }
                         rec.genre = genre;
                         const putReq = store.put(rec);
-                        putReq.onsuccess = () => resolve();
+                        putReq.transaction.oncomplete = () => resolve();
+                        putReq.transaction.onabort = () => reject(putReq.transaction.error || new Error('Transaction aborted'));
                         putReq.onerror = (ev) => reject(ev.target.error);
                     };
                     getReq.onerror = (ev) => reject(ev.target.error);
@@ -1228,6 +1250,16 @@
         };
         let HIT_WINDOW_PERFECT = 25, HIT_WINDOW_GOOD = 70, HIT_WINDOW_BAD = 100;
         let EARLY_MISS_WINDOW = 100;
+        // 判定の自動補正：押すタイミングが毎回同じ向きに少しずれる（画面・音・キー入力の遅れ）ぶんを、直近の自分の押し方から学習して中心を合わせる。
+        // 良±25 / 可±70 / 不可±100 の幅そのものは変えない。使いたくないときは false。
+        const AUTO_JUDGE_CALIBRATION = true;
+        // 音の出力遅延（Bluetooth・有線・本体スピーカーで違う）で、耳で合わせて押すと毎回同じ向きにずれる。
+        // 以前の上限±40msでは足りず、手動でオフセットを変える必要があった → 上限を広げ、最初の数十打は速く学習し、前回の値を保存して次回も引き継ぐ。
+        const JUDGE_BIAS_MAX_MS = 200, JUDGE_BIAS_RATE = 0.08, JUDGE_BIAS_FAST_RATE = 0.3, JUDGE_BIAS_FAST_HITS = 12;
+        const JUDGE_BIAS_KEY = 'taikoJudgeBiasMs2';
+        let judgeBiasMs = 0, judgeBiasLearned = 0, judgeBiasSaveTimer = 0;
+        try { const v = parseFloat(localStorage.getItem(JUDGE_BIAS_KEY)); if (isFinite(v)) { judgeBiasMs = Math.max(-JUDGE_BIAS_MAX_MS, Math.min(JUDGE_BIAS_MAX_MS, v)); judgeBiasLearned = JUDGE_BIAS_FAST_HITS; } else { judgeBiasLearned = 0; } } catch (_) {}
+        function saveJudgeBiasSoon() { clearTimeout(judgeBiasSaveTimer); judgeBiasSaveTimer = setTimeout(() => { try { localStorage.setItem(JUDGE_BIAS_KEY, String(Math.round(judgeBiasMs * 10) / 10)); } catch (_) {} }, 1000); }
         function applyHitWindows(difficulty) {
             const w = (difficulty === 1 || difficulty === 2) ? HIT_WINDOWS.easy : (difficulty === 3 ? HIT_WINDOWS.hard : HIT_WINDOWS.oni);
             HIT_WINDOW_PERFECT = w.perfect;
@@ -1308,6 +1340,19 @@
         let sectionBase = { ryo: 0, ka: 0, fuka: 0, roll: 0, score: 0 };
 
         function initAudioContext() { if (!audioContext) { try { audioContext = new (window.AudioContext || window.webkitAudioContext)({ latencyHint: "interactive" }); if (audioContext.state === 'suspended') { audioContext.resume(); } seGainNode = audioContext.createGain(); seGainNode.connect(audioContext.destination); } catch (e) { console.error("Web Audio API is not supported in this browser"); } } document.body.removeEventListener('click', initAudioContext, true); document.body.removeEventListener('keydown', initAudioContext, true); }
+        let audioUnlockedByTouch = false;
+        function unlockAudioOnTouch() {
+            initAudioContext();
+            if (!audioContext) return;
+            if (audioContext.state === 'running' && audioUnlockedByTouch) return;   // 起きていれば何もしない（毎タッチの余計な処理を避ける）
+            try {
+                if (audioContext.state !== 'running') audioContext.resume();
+                audioUnlockedByTouch = true;
+                const b = audioContext.createBuffer(1, 1, 22050), src = audioContext.createBufferSource();
+                src.buffer = b; src.connect(audioContext.destination); src.start(0);   // iOS用：操作の中で無音を鳴らして音声を起こす
+            } catch (_) {}
+        }
+        ['touchstart', 'touchend', 'pointerdown'].forEach(t => window.addEventListener(t, unlockAudioOnTouch, { capture: true, passive: true }));
         document.body.addEventListener('click', initAudioContext, true);
         document.body.addEventListener('keydown', initAudioContext, true);
         
@@ -1318,8 +1363,8 @@
         }
 
         let legacyGlobalVideoOffset = 0; // 旧バージョンの共通動画オフセット（譜面ごとの保存が無い譜面の初期値として使用）
-        function saveSettings() { try { const settings = { offset: dom.offsetInput.value, videoOffset: legacyGlobalVideoOffset, seOffset: dom.seOffsetInput.value, keys: KEYS, autoPlay: dom.autoPlayCheckbox.checked, singleHandBigNote: dom.singleHandBigNoteCheckbox.checked, autoSE: dom.autoSeCheckbox.checked, laneOpacity: dom.laneOpacitySlider.value, touchDrumOpacity: dom.touchDrumOpacitySlider.value, touchDrumShow: dom.touchDrumShowCheckbox.checked, bgBrightness: dom.bgBrightnessSlider.value, musicVolume: dom.musicVolumeSlider.value, seVolume: dom.seVolumeSlider.value, missMode: dom.missModeSelect.value, placement: dom.placementSelect.value, doron: dom.doronCheckbox.checked, superDoron: dom.superDoronCheckbox.checked, skip: dom.skipCheckbox.checked, invertNotes: dom.invertNotesCheckbox.checked }; localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings)); } catch (e) { console.error("Failed to save settings:", e); } }
-        function loadSettings() { const savedSettings = localStorage.getItem(SETTINGS_KEY); if (savedSettings) { try { const settings = JSON.parse(savedSettings); if (settings.offset !== undefined) dom.offsetInput.value = settings.offset; if (settings.videoOffset !== undefined) legacyGlobalVideoOffset = parseInt(settings.videoOffset, 10) || 0; if (settings.seOffset !== undefined) dom.seOffsetInput.value = settings.seOffset; if (settings.keys) { KEYS = settings.keys; for (const keyId in KEYS) { const elId = `key-${keyId.replace('_', '-')}`; const el = root.querySelector(`#${elId}`); if (el) el.textContent = KEYS[keyId]; } } if (settings.autoPlay !== undefined) dom.autoPlayCheckbox.checked = settings.autoPlay; if (settings.singleHandBigNote !== undefined) dom.singleHandBigNoteCheckbox.checked = settings.singleHandBigNote; if (settings.autoSE !== undefined) dom.autoSeCheckbox.checked = settings.autoSE; if (settings.laneOpacity !== undefined) dom.laneOpacitySlider.value = settings.laneOpacity; if (settings.touchDrumOpacity !== undefined) dom.touchDrumOpacitySlider.value = settings.touchDrumOpacity; if (settings.touchDrumShow !== undefined) dom.touchDrumShowCheckbox.checked = !!settings.touchDrumShow; if (settings.bgBrightness !== undefined) dom.bgBrightnessSlider.value = settings.bgBrightness; if (settings.musicVolume !== undefined) dom.musicVolumeSlider.value = settings.musicVolume; if (settings.seVolume !== undefined) dom.seVolumeSlider.value = settings.seVolume; if (settings.missMode !== undefined) dom.missModeSelect.value = settings.missMode; if (settings.placement !== undefined) dom.placementSelect.value = settings.placement; if (settings.doron !== undefined) dom.doronCheckbox.checked = settings.doron; if (settings.superDoron !== undefined) dom.superDoronCheckbox.checked = settings.superDoron; if (settings.skip !== undefined) dom.skipCheckbox.checked = settings.skip; if (settings.invertNotes !== undefined) dom.invertNotesCheckbox.checked = settings.invertNotes; } catch (e) { console.error("Failed to load settings:", e); localStorage.removeItem(SETTINGS_KEY); } } applyMusicVolume(dom.musicVolumeSlider.value); applySEVolume(dom.seVolumeSlider.value); updateUiOffset(); }
+        function saveSettings() { try { const settings = { offset: dom.offsetInput.value, videoOffset: legacyGlobalVideoOffset, seOffset: dom.seOffsetInput.value, autoRollInterval: dom.autoRollSpeedInput.value, keys: KEYS, autoPlay: dom.autoPlayCheckbox.checked, singleHandBigNote: dom.singleHandBigNoteCheckbox.checked, autoSE: dom.autoSeCheckbox.checked, laneOpacity: dom.laneOpacitySlider.value, touchDrumOpacity: dom.touchDrumOpacitySlider.value, touchDrumShow: dom.touchDrumShowCheckbox.checked, bgBrightness: dom.bgBrightnessSlider.value, musicVolume: dom.musicVolumeSlider.value, seVolume: dom.seVolumeSlider.value, missMode: dom.missModeSelect.value, placement: dom.placementSelect.value, doron: dom.doronCheckbox.checked, superDoron: dom.superDoronCheckbox.checked, skip: dom.skipCheckbox.checked, invertNotes: dom.invertNotesCheckbox.checked }; localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings)); } catch (e) { console.error("Failed to save settings:", e); } }
+        function loadSettings() { const savedSettings = localStorage.getItem(SETTINGS_KEY); if (savedSettings) { try { const settings = JSON.parse(savedSettings); if (settings.offset !== undefined) dom.offsetInput.value = settings.offset; if (settings.videoOffset !== undefined) legacyGlobalVideoOffset = parseInt(settings.videoOffset, 10) || 0; if (settings.seOffset !== undefined) dom.seOffsetInput.value = settings.seOffset; if (settings.autoRollInterval !== undefined) dom.autoRollSpeedInput.value = settings.autoRollInterval; if (settings.keys) { KEYS = settings.keys; for (const keyId in KEYS) { const elId = `key-${keyId.replace('_', '-')}`; const el = root.querySelector(`#${elId}`); if (el) el.textContent = KEYS[keyId]; } } if (settings.autoPlay !== undefined) dom.autoPlayCheckbox.checked = settings.autoPlay; if (settings.singleHandBigNote !== undefined) dom.singleHandBigNoteCheckbox.checked = settings.singleHandBigNote; if (settings.autoSE !== undefined) dom.autoSeCheckbox.checked = settings.autoSE; if (settings.laneOpacity !== undefined) dom.laneOpacitySlider.value = settings.laneOpacity; if (settings.touchDrumOpacity !== undefined) dom.touchDrumOpacitySlider.value = settings.touchDrumOpacity; if (settings.touchDrumShow !== undefined) dom.touchDrumShowCheckbox.checked = !!settings.touchDrumShow; if (settings.bgBrightness !== undefined) dom.bgBrightnessSlider.value = settings.bgBrightness; if (settings.musicVolume !== undefined) dom.musicVolumeSlider.value = settings.musicVolume; if (settings.seVolume !== undefined) dom.seVolumeSlider.value = settings.seVolume; if (settings.missMode !== undefined) dom.missModeSelect.value = settings.missMode; if (settings.placement !== undefined) dom.placementSelect.value = settings.placement; if (settings.doron !== undefined) dom.doronCheckbox.checked = settings.doron; if (settings.superDoron !== undefined) dom.superDoronCheckbox.checked = settings.superDoron; if (settings.skip !== undefined) dom.skipCheckbox.checked = settings.skip; if (settings.invertNotes !== undefined) dom.invertNotesCheckbox.checked = settings.invertNotes; } catch (e) { console.error("Failed to load settings:", e); localStorage.removeItem(SETTINGS_KEY); } } applyMusicVolume(dom.musicVolumeSlider.value); applySEVolume(dom.seVolumeSlider.value); updateUiOffset(); }
         
         function getTaikoBeatmapSettingsKey() {
             if (currentSongId && songInfo && songInfo.version) {
@@ -2510,8 +2555,16 @@
                     continue;
                 }
                 try {
-                    const tempZip = new JSZip();
-                    const loadedZip = await tempZip.loadAsync(file, { decodeFileName: decodeZipFileName });
+                    let saveBlob = file;
+                    let tempZip = new JSZip();
+                    let loadedZip;
+                    if (file.name.toLowerCase().endsWith('.tja')) {
+                        tempZip.file(file.name, await file.arrayBuffer());
+                        saveBlob = await tempZip.generateAsync({ type: 'blob' });
+                        loadedZip = await new JSZip().loadAsync(saveBlob, { decodeFileName: decodeZipFileName });
+                    } else {
+                        loadedZip = await tempZip.loadAsync(file, { decodeFileName: decodeZipFileName });
+                    }
                     const tjaFiles = [];
                     loadedZip.forEach((relativePath, zipEntry) => {
                         if (relativePath.toLowerCase().endsWith('.tja')) {
@@ -2548,14 +2601,16 @@
 
                     const guessed = guessGenreFromHeader(tempInfo.genreText);
                     const genre = batch.mode === 'all' ? batch.genre : (batch.mode === 'auto' ? guessed : askGenre(tempInfo.title || file.name, guessed));
-                    const songData = { id: `${Date.now()}-${file.name}`, title: tempInfo.title, artist: tempInfo.artist, genre, blob: file };
+                    const songData = { id: `${Date.now()}-${file.name}`, title: tempInfo.title, artist: tempInfo.artist, genre, blob: saveBlob };
                     await db.addSong(songData);
                     successCount++;
                 } catch (err) {
                     console.error(`Failed to process file ${file.name}:`, err);
                     errorCount++;
-                    if (err.name === 'QuotaExceededError') {
+                    if (err && err.name === 'QuotaExceededError') {
                         alert(`「${file.name}」の保存に失敗しました。\nブラウザの保存容量が上限に達した可能性があります。不要な譜面を削除して、再度お試しください。`);
+                    } else {
+                        alert(`「${file.name}」の保存に失敗しました。\n${(err && (err.message || err.name)) || err}`);
                     }
                 }
             }
@@ -2663,7 +2718,7 @@
                 osz_beatmaps.sort((a, b) => a.info.difficulty - b.info.difficulty);
                 osz_beatmaps.forEach((beatmap, index) => {
                     const levelText = (beatmap.info.level ? ` (☆${beatmap.info.level})` : '') + (beatmap.info.hasBranch ? ' ※譜面分岐' : '');   // 譜面分岐ありは☆の数字のあとに「※譜面分岐」を付ける
-                    const optionText = `${beatmap.info.version}${levelText}`;
+                    const optionText = `${beatmap.info.version === 'エディット' ? '裏鬼' : beatmap.info.version}${levelText}`;   // エディット譜面は「裏」と表示（U+20DD＝丸で囲む結合文字）
                     const option = new Option(optionText, index);
                     dom.beatmapSelector.appendChild(option);
                 });
@@ -3076,12 +3131,13 @@
         const BRANCH_LANE_BASE = { E: '18,125,188', M: '224,22,183' };
         function laneBaseColor(a) { const c = (typeof branchRegions !== 'undefined' && branchRegions.length > 0) ? BRANCH_LANE_BASE[currentBranch] : null; return `rgba(${c || '39, 39, 39'}, ${a})`; }
         function updateTouchDrumOpacity() { const v = Number(dom.touchDrumOpacitySlider.value); dom.touchDrumOpacityLabel.textContent = `タッチ太鼓不透明度 (${Math.round(v * 100)}%)`; root.style.setProperty('--touch-drum-opacity', v); root.classList.toggle('touch-drum-off', !dom.touchDrumShowCheckbox.checked); }
-        function updateLaneOpacity() { const opacity = dom.laneOpacitySlider.value; dom.laneOpacityLabel.textContent = `レーン不透明度 (${Math.round(opacity * 100)}%)`; const a = Number(opacity).toFixed(3); dom.playfield.style.backgroundColor = laneBaseColor(a); if (dom.branchLaneBg) dom.branchLaneBg.style.opacity = a; if (dom.stripEl) dom.stripEl.style.backgroundColor = `rgba(128, 128, 128, ${a})`; }
+        function updateLaneOpacity() { const opacity = dom.laneOpacitySlider.value; dom.laneOpacityLabel.textContent = `レーン不透明度 (${Math.round(opacity * 100)}%)`; const a = Number(opacity).toFixed(3); dom.playfield.style.backgroundColor = laneBaseColor(a); if (dom.branchLaneBg) dom.branchLaneBg.style.opacity = a; if (dom.stripEl) { dom.stripEl.style.backgroundColor = `rgba(128, 128, 128, ${a})`; } }
         function updateBgBrightness() { if (Number(dom.bgBrightnessSlider.value) > 1) dom.bgBrightnessSlider.value = 1; const brightness = dom.bgBrightnessSlider.value;   // 100%が上限（以前の保存値が超えていたら100%に戻す）
             dom.bgBrightnessLabel.textContent = `背景の明るさ (${Math.round(brightness * 100)}%)`; const filterValue = (Number(brightness) === 1) ? 'none' : `brightness(${brightness})`; dom.backgroundVideo.style.filter = filterValue; dom.backgroundImage.style.filter = filterValue; }
-        function initKeyConfig() { dom.keyConfigInputs.querySelectorAll('.key-config-input').forEach(keyInput => { keyInput.addEventListener('click', e => { if (isGameRunning) return; root.querySelectorAll('.key-config-input.is-waiting').forEach(el => el.blur()); e.currentTarget.textContent = '...'; e.currentTarget.classList.add('is-waiting'); }); keyInput.addEventListener('blur', e => { const keyId = e.currentTarget.dataset.keyId; e.currentTarget.classList.remove('is-waiting'); e.currentTarget.textContent = KEYS[keyId]; saveSettings(); }); keyInput.addEventListener('keydown', e => { e.preventDefault(); const keyDiv = e.currentTarget; if (!keyDiv.classList.contains('is-waiting')) return; if (e.key === 'Escape') { keyDiv.blur(); return; } const newKey = e.key.toUpperCase(); if (newKey.length > 1 && !['SPACE', 'BACKSPACE', 'ENTER'].includes(newKey) ) return; const keyId = keyDiv.dataset.keyId; if (Object.values(KEYS).some((key, k_idx) => key === newKey && Object.keys(KEYS)[k_idx] !== keyId)) { alert('そのキーは他のアクションで既に使用されています。'); return; } KEYS[keyId] = newKey; keyDiv.blur(); }); }); }
+        function initKeyConfig() { dom.keyConfigInputs.querySelectorAll('.key-config-input').forEach(keyInput => { keyInput.addEventListener('click', e => { if (isGameRunning) return; root.querySelectorAll('.key-config-input.is-waiting').forEach(el => el.blur()); e.currentTarget.textContent = '...'; e.currentTarget.classList.add('is-waiting'); }); keyInput.addEventListener('blur', e => { const keyId = e.currentTarget.dataset.keyId; e.currentTarget.classList.remove('is-waiting'); e.currentTarget.textContent = KEYS[keyId]; saveSettings(); }); keyInput.addEventListener('keydown', e => { e.preventDefault(); const keyDiv = e.currentTarget; if (!keyDiv.classList.contains('is-waiting')) return; if (e.key === 'Escape') { keyDiv.blur(); return; } const newKey = normKey(e); if (newKey.length > 1 && !['SPACE', 'BACKSPACE', 'ENTER'].includes(newKey) ) return; const keyId = keyDiv.dataset.keyId; if (Object.values(KEYS).some((key, k_idx) => key === newKey && Object.keys(KEYS)[k_idx] !== keyId)) { alert('そのキーは他のアクションで既に使用されています。'); return; } KEYS[keyId] = newKey; keyDiv.blur(); }); }); }
         function ensureStrip() {
             if (dom.stripEl) return;
+            root.querySelectorAll('#taiko-syllable-strip').forEach(old => old.remove());   // 保存時に残った古い帯（不透明度が効かず灰色のまま残る）を消す
             const el = document.createElement('div');
             el.id = 'taiko-syllable-strip';
             el.style.cssText = 'position:absolute;left:0;right:0;top:calc(100% + 6px);height:var(--strip-h,34px);border-top:none;border-bottom:4px solid #000;pointer-events:none;';
@@ -3097,7 +3153,7 @@
         const STAGE_W = 1920, STAGE_H = 1080;
         // Macのプレイ画面：どの画面・ウィンドウの大きさでも、ステージの横幅を画面の横幅にぴったり合わせる（いつも同じ構図）。縦は上に揃える。iPadのようにタッチできる端末は対象外
         const IS_MAC_DESKTOP = /Mac/i.test((navigator.userAgentData && navigator.userAgentData.platform) || navigator.platform || '') && !(navigator.maxTouchPoints > 1);
-        const MAC_PLAY_ZOOM = 1.001;   // 1＝横幅ぴったり。大きくしたいときは 1.1 など（1.1＝10%拡大。左右が少し切れる）
+        const MAC_PLAY_ZOOM = 1;   // 1＝横幅ぴったり。大きくしたいときは 1.1 など（1.1＝10%拡大。左右が少し切れる）
         function fitGameStage() {
             const c = dom.gameContainer; if (!c) return;
             c.classList.toggle('mac-fit', IS_MAC_DESKTOP);
@@ -3124,11 +3180,12 @@
         
         // 小さい画面のメニュー：PCと同じ見た目のまま画面の幅に合わせて縮め、縦に入りきらないときはスクロールさせる
         function fitMenuPanel() {
-            const z = Math.min(0.85, window.innerWidth / 1200);   // 0.85＝PCでの通常の縮小率、1200＝パネルの幅
+            const z = Math.min(0.85, (root.clientWidth || window.innerWidth) / 1200);   // 左右の安全領域（ノッチ側の余白）を引いた、実際に使える幅で縮小率を決める   // 0.85＝PCでの通常の縮小率、1200＝パネルの幅
             root.style.setProperty('--menu-zoom', z.toFixed(4));
             const isTouch = !!(window.matchMedia && window.matchMedia('(pointer: coarse)').matches);   // PCは常に中央固定（スクロール・縮小なし）、スマホ・タブレットだけ従来どおり
             root.classList.toggle('menu-scroll', isTouch && (window.innerWidth < 1030 || window.innerHeight < 990));
         }
+        if (window.ResizeObserver) { try { new ResizeObserver(() => fitMenuPanel()).observe(root); } catch (_) {} }   // プレイ画面⇔メニューで余白が変わっても、メニューの幅を合わせ直す
         function initGameUI() {
             ensureStrip();
             dom.canvas.width = dom.playfield.clientWidth; dom.canvas.height = dom.playfield.clientHeight; // 枠線(border)を除いた内側のサイズ
@@ -3254,7 +3311,7 @@
 
             applyHitWindows(songInfo.difficulty);
             isAutoPlay = dom.autoPlayCheckbox.checked;
-            isAutoSE = dom.autoSeCheckbox.checked;
+            isAutoSE = false;   // 手動プレイのSEは常に「キーを押した瞬間」に鳴らす（譜面オフセットに左右されない）。「自動SE」の音符時刻鳴らしは使わない（オートプレイ時のSEは従来どおり）
             optMissMode = dom.missModeSelect.value;
             optPlacement = dom.placementSelect.value;
             optDoron = dom.doronCheckbox.checked;
@@ -3267,7 +3324,11 @@
             // ここで足すのはその上からの微調整だけ：共通オフセット + 個別譜面オフセット（0.5ms刻みも有効）
             const globalOffset = parseFloat(dom.offsetInput.value) || 0;
             const individualOffset = parseFloat(dom.individualOffsetInput.value) || 0;
-            offset = globalOffset + individualOffset + CODE_OFFSET_MS;   // 画面の設定が0でも、コード側の固定オフセットが加わる
+            // 手動プレイは「耳で聞こえる音」に合わせて押すので、音が実際に聞こえるまでの出力遅延ぶん、押すのが毎回遅れる。
+            // 以前はそのぶんを手でオフセットに足していた（+30〜+100）。その値を端末の出力遅延から自動で足す（オフセット欄は0のままでよい）。オートプレイは従来どおり足さない。
+            let outputLatencyMs = 0;
+            if (!isAutoPlay && audioContext) { outputLatencyMs = Math.max(0, Math.min(300, ((audioContext.outputLatency || 0) + (audioContext.baseLatency || 0)) * 1000)); }
+            offset = globalOffset + individualOffset + CODE_OFFSET_MS + outputLatencyMs;   // 画面の設定が0でも、コード側の固定オフセットが加わる
 
             const audioReadyPromise = new Promise(resolve => {
                 if (useWebAudioMusic || dom.audioPlayer.readyState >= 4) {
@@ -3383,6 +3444,7 @@
                 }
                 setTimeout(() => { if (runId === gameRunId) isInitialCooldown = false; }, 500 + audioPlayDelay);
             }, initialDelay);
+            resetFramePacing();
             animationFrameId = requestAnimationFrame(gameLoop);
         }
         // audioContext.currentTime は音声バッファ単位でしか進まないため、そのまま描画に使うと譜面がカクつく。
@@ -3685,11 +3747,71 @@
 
             drawRollCounter(elapsedTime);
         }
+        let skipSyncRedraw = false;   // タッチで叩いたときは、余分な再描画をせず次のフレームに任せる（スマホでのカクつき防止）
         function redrawNow() {
-            if (!isGameRunning || isPaused) return;
-            try { renderScene(getGameTime() - offset); } catch (e) { console.error(e); }
+            if (!isGameRunning || isPaused || skipSyncRedraw) return;
+            try { renderScene(getGameTime() - offset + displayAheadMs()); } catch (e) { console.error(e); }
         }
+        // 画面に絵が出るのは、描画した時刻より約1フレーム後。そのぶん先の時刻の位置で音符を描いて、「見えている位置」と「判定の時刻」を合わせる。
+        // （これがないと、音符が輪の真ん中に見えた瞬間には、判定の時刻ではすでに1フレーム分(約8〜17ms)遅れていて、±25msの良の幅を食ってしまう）
+        // 判定の幅・判定の時刻・音の鳴るタイミングには影響しない。補正を切りたいときは 0 に、強めたいときは 1.5 などにする
+        const DISPLAY_LATENCY_FRAMES = 1;
+        let lastFrameTs = 0, frameIntervalMs = 16.7;
+        function displayAheadMs() { return DISPLAY_LATENCY_FRAMES * frameIntervalMs; }
+        // --- フレームペーシング（スマホ・タブレットだけ。PCは従来のまま） ---
+        // 低電力モードだと滑らかなのは、画面の更新が30回/秒に固定されて「フレームの間隔が一定」になるため。
+        // 通常モード(60〜120Hz)では、処理が間に合わないフレームが混ざって間隔がバラつき、それがカクつきに見える。
+        // そこで「間に合っていない」と判断したら、描画だけを 2回に1回・3回に1回… と自動で間引いて間隔を一定にする（下限は30回/秒）。
+        // 判定・ミス検出・SE・譜面時計は毎フレーム処理するので、判定や音のタイミングには影響しない。
+        const RENDER_FPS_LIMIT = 0;   // 60＝描画を60回/秒に固定（120Hz画面でも60回/秒、60Hz画面ならそのまま）。0＝自動、30＝低電力モードと同じ
+        const PACING_MIN_FPS = 60;   // 自動で間引くときの下限（60＝120Hz端末でも60回/秒より下げない。さらに滑らかさ優先で30回/秒まで下げてよいなら 30）
+        const PACING_ENABLED = !!(window.matchMedia && window.matchMedia('(pointer: coarse)').matches);
+        let paceDiv = 1, paceCount = 0, paceBase = 16.7, paceLate = 0, paceN = 0, paceWarm = 0, paceLastRender = 0, paceSamples = 0;
+        let skipRenderThisFrame = false;
+        const paceRing = new Float32Array(90);
+        function applyFixedPacing() { paceDiv = Math.max(1, Math.round((1000 / paceBase) / RENDER_FPS_LIMIT)); }
+        function resetFramePacing() {
+            paceDiv = 1; paceCount = 0; paceLate = 0; paceN = 0; paceLastRender = 0; paceSamples = 0;
+            paceWarm = 120;   // 開始・再開直後(読み込みや動画の準備)の揺れは見ない
+            if (RENDER_FPS_LIMIT > 0) applyFixedPacing();
+        }
+        function paceObserve(d) {   // 画面の更新間隔(rAFの間隔)を記録して、この端末の更新周期(60Hz/120Hzなど)を測る
+            if (d <= 2 || d >= 100) return;
+            paceRing[paceSamples % 90] = d; paceSamples++;
+            if (paceSamples >= 30 && paceSamples % 30 === 0) {
+                const n = Math.min(paceSamples, 90), a = Array.from(paceRing.subarray(0, n)).sort((x, y) => x - y);
+                paceBase = Math.min(34, Math.max(4, a[Math.floor(n * 0.2)]));
+                if (RENDER_FPS_LIMIT > 0) applyFixedPacing();
+            }
+        }
+        function paceShouldRender(ts) {   // このフレームで描画するか。描画しない回は譜面の描画だけ省く
+            if (paceWarm > 0) paceWarm--;
+            paceCount++;
+            if (paceCount < paceDiv) return false;
+            paceCount = 0;
+            if (paceLastRender > 0 && paceWarm === 0 && RENDER_FPS_LIMIT <= 0) {
+                const rd = ts - paceLastRender;
+                if (rd < 200) {
+                    paceN++;
+                    if (rd > paceDiv * paceBase * 1.5) paceLate++;   // 予定の間隔より1.5倍以上遅れた描画＝間に合っていない
+                    if (paceN >= 90) {
+                        const maxDiv = Math.max(1, Math.round((1000 / paceBase) / PACING_MIN_FPS));   // PACING_MIN_FPS より遅くはしない
+                        if (paceLate / paceN > 0.2 && paceDiv < maxDiv) { paceDiv++; paceWarm = 60; }
+                        paceN = 0; paceLate = 0;
+                    }
+                }
+            }
+            paceLastRender = ts;
+            return true;
+        }
+        // 描画を間引いているとき、1枚の絵が画面に出ている時間の真ん中に位置が合うように、そのぶん先の時刻で描く（間引かないときは従来と同じ）
+        function renderAheadMs() { return displayAheadMs() * (PACING_ENABLED ? 1 + (paceDiv - 1) / 2 : 1); }
         function gameLoop(ts) {
+            if (typeof ts === 'number' && ts > 0) {
+                if (lastFrameTs > 0) { const d = ts - lastFrameTs; if (d > 2 && d < 50) frameIntervalMs += (d - frameIntervalMs) * 0.05; if (PACING_ENABLED) paceObserve(d); }   // 画面の更新間隔(60Hz≒16.7ms、120Hz≒8.3ms)をなめらかに測る
+                lastFrameTs = ts;
+            }
+            skipRenderThisFrame = (PACING_ENABLED && typeof ts === 'number' && ts > 0) ? !paceShouldRender(ts) : false;
             renderNow = (typeof ts === 'number' && ts > 0) ? Math.min(ts, performance.now()) : null;
             try { gameLoopBody(); } finally { renderNow = null; }
         }
@@ -3709,7 +3831,7 @@
                 }
             }
             if (!isGoGoNow) prewarmGogoFireAhead(elapsedTime);
-            renderScene(elapsedTime);
+            if (!skipRenderThisFrame) renderScene(elapsedTime + renderAheadMs());   // スマホで間に合わないときだけ描画を間引く（判定などの処理は毎回行う）
             if (scoreDirty) { setFixedDigits(dom.scoreElement, Math.floor(score)); scoreDirty = false; }
             if (pendingRollFx.length) { const q = pendingRollFx; pendingRollFx = []; for (const p of q) spawnRollEffect(p.note, p.keyType); }   // 1打ごとに1個ずつ飛ばす（同一フレームに複数打っても全部出す）
             // SEの発音タイミングは譜面オフセット(共通＋個別)の影響を受けない：音楽の時刻そのもので鳴らす。ずらしたいときはSEオフセットだけを使う
@@ -4264,7 +4386,7 @@
         function playHitSound(type, offset) {
             if (offset === undefined) offset = parseInt(dom.seOffsetInput.value, 10) || 0; // SEオフセット(ms): 正=遅らせる / 負=頭を削って早める
             if (!audioContext) return;
-            if (audioContext.state === 'suspended') audioContext.resume();   // 止まっていたら即再開
+            if (audioContext.state !== 'running') { try { audioContext.resume(); } catch (_) {} }   // 止まっていたら即再開（suspended/interrupted どちらも）
             const buffer = (type === 'don') ? donSoundBuffer : katsuSoundBuffer;
             if (!buffer) return;
             const source = audioContext.createBufferSource();
@@ -4273,6 +4395,13 @@
             const offsetInSeconds = offset / 1000;
             let playTime = audioContext.currentTime;
             let playOffset = 0;
+            if (offsetInSeconds === 0) {
+                source.start();   // 今すぐ再生（時刻計算を挟まない最短経路）
+                seVoices.push(source);
+                source.onended = () => { const i = seVoices.indexOf(source); if (i >= 0) seVoices.splice(i, 1); };
+                if (seVoices.length > 24) { const old = seVoices.shift(); try { old.stop(); } catch (e) {} }
+                return;
+            }
             if (offsetInSeconds >= 0) {
                 playTime += offsetInSeconds;
             } else {
@@ -4299,16 +4428,30 @@
                 }
             }, 1500);
         }
-        function autoPlayHandler(elapsedTime) { const AUTO_HIT_INTERVAL = 25; for (const note of hitObjects) { if (note.judged || !isNoteActive(note)) continue; if (note.type === 'balloon' || note.type === 'roll') { if (elapsedTime >= note.time && elapsedTime <= note.endTime) { if (elapsedTime - (note.lastAutoHitTime || 0) > AUTO_HIT_INTERVAL) { if (note.type === 'roll') spawnRollEffect(note, 'don'); playHitSound('don'); const hitSide = autoPlayHitCounter % 2 === 0 ? 'don_right' : 'don_left'; showDrumHit(hitSide); autoPlayHitCounter++; score += 100; note.hitsMade++; totalRollHits++; if (note.type === 'roll') { activeRollHits = note.hitsMade; rollCounterClearTime = 0; } else if (note.type === 'balloon' && note.hitsMade >= note.hitsRequired) { note.judged = true; spawnBalloonBreakEffect(); } setFixedDigits(dom.scoreElement, Math.floor(score)); note.lastAutoHitTime = elapsedTime; } } if (elapsedTime > note.endTime && !note.judged) { if (note.type === 'roll' && note.hitsMade > 0) rollCounterClearTime = note.endTime + 1000; note.passed = true; note.judged = true; } } else if (elapsedTime >= note.time) { const isBigNoteTwoHands = note.isBig && !isSingleHandBigNoteEnabled; if (note.type === 'don') { if (isBigNoteTwoHands) { showDrumHit('don_left'); showDrumHit('don_right'); } else { const hitSide = autoPlayHitCounter % 2 === 0 ? 'don_right' : 'don_left'; showDrumHit(hitSide); } } else if (note.type === 'katsu') { if (isBigNoteTwoHands) { showDrumHit('katsu_left'); showDrumHit('katsu_right'); } else { const hitSide = autoPlayHitCounter % 2 === 0 ? 'katsu_right' : 'katsu_left'; showDrumHit(hitSide); } } autoPlayHitCounter++; handleJudgment('ryo', note, 0); } } }
+        function autoPlayHandler(elapsedTime) { const AUTO_HIT_INTERVAL = Math.max(1000 / 79, Math.min(1000, parseFloat(dom.autoRollSpeedInput.value) || 25));   /* 最速は1秒に79回（1を入れたときもこの速さ） */ for (const note of hitObjects) { if (note.judged || !isNoteActive(note)) continue; if (note.type === 'balloon' || note.type === 'roll') { if (elapsedTime >= note.time && elapsedTime <= note.endTime) { let autoHitsThisFrame = 0; while (!note.judged && autoHitsThisFrame < 60 && elapsedTime - (note.lastAutoHitTime || 0) > AUTO_HIT_INTERVAL) { const prevAutoHit = note.lastAutoHitTime || 0; if (note.type === 'roll') spawnRollEffect(note, 'don'); playHitSound('don'); const hitSide = autoPlayHitCounter % 2 === 0 ? 'don_right' : 'don_left'; showDrumHit(hitSide); autoPlayHitCounter++; score += 100; note.hitsMade++; totalRollHits++; if (note.type === 'roll') { activeRollHits = note.hitsMade; rollCounterClearTime = 0; } else if (note.type === 'balloon' && note.hitsMade >= note.hitsRequired) { note.judged = true; spawnBalloonBreakEffect(); } setFixedDigits(dom.scoreElement, Math.floor(score)); note.lastAutoHitTime = prevAutoHit > 0 ? prevAutoHit + AUTO_HIT_INTERVAL : elapsedTime; autoHitsThisFrame++; } if (elapsedTime - (note.lastAutoHitTime || 0) > AUTO_HIT_INTERVAL * 2) note.lastAutoHitTime = elapsedTime - AUTO_HIT_INTERVAL; } if (elapsedTime > note.endTime && !note.judged) { if (note.type === 'roll' && note.hitsMade > 0) rollCounterClearTime = note.endTime + 1000; note.passed = true; note.judged = true; } } else if (elapsedTime >= note.time) { const isBigNoteTwoHands = note.isBig && !isSingleHandBigNoteEnabled; if (note.type === 'don') { if (isBigNoteTwoHands) { showDrumHit('don_left'); showDrumHit('don_right'); } else { const hitSide = autoPlayHitCounter % 2 === 0 ? 'don_right' : 'don_left'; showDrumHit(hitSide); } } else if (note.type === 'katsu') { if (isBigNoteTwoHands) { showDrumHit('katsu_left'); showDrumHit('katsu_right'); } else { const hitSide = autoPlayHitCounter % 2 === 0 ? 'katsu_right' : 'katsu_left'; showDrumHit(hitSide); } } autoPlayHitCounter++; handleJudgment('ryo', note, 0); } } }
         function showDrumHit(keyId) { const hitMap = { don_left: dom.drumDonLeft, don_right: dom.drumDonRight, katsu_left: dom.drumKatsuLeft, katsu_right: dom.drumKatsuRight, }; const element = hitMap[keyId]; if (!element) return; if (drumHitTimeouts[keyId]) { clearTimeout(drumHitTimeouts[keyId]); } element.classList.add('active'); drumHitTimeouts[keyId] = setTimeout(() => { element.classList.remove('active'); }, 60); }
         
+        // IMEが日本語入力(ON)だと e.key が 'Process' になり、キーが無反応になる。物理キー(e.code)から文字を復元して確実に拾う
+        const CODE_PUNCT = { Semicolon: ';', Comma: ',', Period: '.', Slash: '/', Minus: '-', Equal: '=', BracketLeft: '[', BracketRight: ']', Quote: "'", Backquote: '`', Backslash: '\\' };
+        function normKey(e) {
+            const k = e.key;
+            if (!k || k === 'Process' || k === 'Unidentified' || k === 'Dead' || e.keyCode === 229) {
+                const c = e.code || '';
+                if (/^Key[A-Z]$/.test(c)) return c.slice(3);
+                if (/^Digit[0-9]$/.test(c)) return c.slice(5);
+                if (c === 'Space') return 'SPACE';
+                if (CODE_PUNCT[c]) return CODE_PUNCT[c];
+            }
+            if (k === ' ') return 'SPACE';
+            return (k || '').toUpperCase();
+        }
         function handleKeydown(e) {
             if (activeGame !== 'taiko' || e.repeat || !isGameRunning || isPaused || isAutoPlay) return;
             
             if (e.key === 'F11') return; // F11(全画面)はブラウザに任せる
             e.preventDefault();
 
-            const key = e.key.toUpperCase();
+            const key = normKey(e);
             let hitKeyId = null;
             for (const id in KEYS) {
                 if (KEYS[id] === key) {
@@ -4318,8 +4461,10 @@
             }
             if (!hitKeyId) return;
 
-            pressedKeys.add(key);
             const keyType = hitKeyId.startsWith('don') ? 'don' : 'katsu';
+            const sePlayedAtPress = !isAutoSE;
+            if (sePlayedAtPress) playHitSound(keyType, 0);   // 効果音はキー判別の直後・他の処理より前に最優先で鳴らす
+            pressedKeys.add(key);
             showDrumHit(hitKeyId);
             // SEオフセットは判定・音符の位置には影響させない（音の再生タイミングだけに適用: playHitSound）
             // 実際にキーが押された時刻(e.timeStamp)から処理開始までの遅れを差し引き、押した瞬間の時刻で判定する
@@ -4327,9 +4472,8 @@
             if (!(inputLag > 0 && inputLag < 100)) inputLag = 0;
             const elapsedTime = getGameTime() - offset - inputLag;
             if (elapsedTime < -500) return;
+            const judgeTime = elapsedTime - (AUTO_JUDGE_CALIBRATION ? judgeBiasMs : 0);   // 判定に使う時刻（自分の押し方のずれを引いたもの）
             // 効果音は押した瞬間に最優先で鳴らす（音符の検索・判定・描画より先）。オートSEのときは従来どおり音符の時刻で鳴る
-            const sePlayedAtPress = !isAutoSE;
-            if (sePlayedAtPress) playHitSound(keyType);
 
              let activeLongNote = null;
             for (let i = lastCheckedNoteIndex; i < hitObjects.length; i++) {
@@ -4383,9 +4527,9 @@
                 if (note.judged || !isNoteActive(note) || note.type === 'balloon' || note.type === 'roll') continue;
                 if (note.type !== keyType) continue;
 
-                const timeDiff = Math.abs(note.time - elapsedTime);
+                const timeDiff = Math.abs(note.time - judgeTime);
                 
-                if (timeDiff < EARLY_MISS_WINDOW) {
+                if (timeDiff <= EARLY_MISS_WINDOW) {   // 不可の幅(±100ms)ちょうども含める（良・可と同じ「以下」の判定。早押し・遅押しどちらも同じ幅）
                     if (timeDiff < minTimeDiff) {
                         minTimeDiff = timeDiff;
                         potentialNote = note;
@@ -4396,7 +4540,8 @@
             }
 
             if (potentialNote) {
-                const actualTimeDiff = elapsedTime - potentialNote.time;
+                const actualTimeDiff = judgeTime - potentialNote.time;
+                const rawTimeDiff = elapsedTime - potentialNote.time;   // 補正する前の、本当のずれ(ms)
 
                 if (Math.abs(actualTimeDiff) <= HIT_WINDOW_PERFECT) {
                     handleJudgment('ryo', potentialNote, actualTimeDiff);
@@ -4405,8 +4550,33 @@
                 } else {
                     handleJudgment('fuka', potentialNote);   // 可の幅の外〜不可の幅(±100ms)の中：早押し・遅押しどちらも不可（左右対称）
                 }
+                // 今回のずれを学習（ゆっくり追従。極端に外れた押しは無視）。次の押しから反映される
+                if (AUTO_JUDGE_CALIBRATION && Math.abs(rawTimeDiff - judgeBiasMs) <= (judgeBiasLearned < JUDGE_BIAS_FAST_HITS ? HIT_WINDOW_BAD : HIT_WINDOW_GOOD)) {   // 学習の最初だけ不可の幅まで拾う（大きくずれていても追いつけるように）
+                    judgeBiasMs += (rawTimeDiff - judgeBiasMs) * (judgeBiasLearned < JUDGE_BIAS_FAST_HITS ? JUDGE_BIAS_FAST_RATE : JUDGE_BIAS_RATE);
+                    judgeBiasMs = Math.max(-JUDGE_BIAS_MAX_MS, Math.min(JUDGE_BIAS_MAX_MS, judgeBiasMs));
+                    judgeBiasLearned++;
+                    saveJudgeBiasSoon();
+                }
                 redrawNow();   // 押した瞬間に、叩いた音符をレーンから消す（次のフレームを待たない）
             }
+        }
+        // iPhone（Safariのタブ）では、ページから全画面にする方法がない。ホーム画面に追加して起動すると全画面になるので、1回だけ案内する
+        function showIphoneFullscreenHint(force) {
+            try {
+                const isIOS = /iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+                const standalone = window.navigator.standalone === true || (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches);
+                if (!isIOS || standalone) return;
+                if (!force && localStorage.getItem('taikoIosFsHint') === '1') return;
+                localStorage.setItem('taikoIosFsHint', '1');
+                const old = document.getElementById('taiko-ios-fs-hint'); if (old) old.remove();
+                const d = document.createElement('div');
+                d.id = 'taiko-ios-fs-hint';
+                d.textContent = 'iPhoneで全画面にするには：共有ボタン →「ホーム画面に追加」して、そのアイコンから起動してください。（タップで閉じる）';
+                d.style.cssText = 'position:fixed;left:50%;top:12px;transform:translateX(-50%);max-width:88%;padding:10px 14px;border-radius:10px;background:rgba(0,0,0,0.85);color:#fff;font-size:13px;line-height:1.5;z-index:99999;text-align:center;';
+                d.addEventListener('click', () => d.remove());
+                document.body.appendChild(d);
+                setTimeout(() => { if (d.parentNode) d.remove(); }, 9000);
+            } catch (_) {}
         }
         // 画面をタッチしたらフルスクリーンにする（スマホだけ。ブラウザの仕様上、操作した瞬間にしか開始できない）
         function tryFullscreen(e) {
@@ -4414,7 +4584,7 @@
             if (document.fullscreenElement || document.webkitFullscreenElement) return;
             const el = document.documentElement;
             const req = el.requestFullscreen || el.webkitRequestFullscreen || el.webkitRequestFullScreen;
-            if (!req) return;
+            if (!req) { showIphoneFullscreenHint(); return; }   // iPhoneのSafariは全画面APIが無いので、ホーム画面に追加する案内を出す
             try { const r = req.call(el, { navigationUI: 'hide' }); if (r && r.catch) r.catch(() => { try { const r2 = req.call(el); if (r2 && r2.catch) r2.catch(() => {}); } catch (_) {} }); } catch (_) {}
         }
         // 機種によって「操作として認められる」イベントが違うので、touchend・pointerup・click のどれでも試す
@@ -4443,12 +4613,24 @@
                 }
                 return tdGeo;
             }
-            function pressTouchKey(keyId) {
+            function pressTouchKey(keyId, _unused, ts) {
                 const key = KEYS[keyId];
                 if (!key) return;
                 initAudioContext();
-                window.dispatchEvent(new KeyboardEvent('keydown', { key: key, bubbles: true, cancelable: true }));
-                setTimeout(() => document.dispatchEvent(new KeyboardEvent('keyup', { key: key, bubbles: true })), 30);
+                // キーボードイベントを作って送る手間を省き、判定処理を直接呼ぶ（タッチした本当の時刻も渡して、その分の遅れを判定から引く）
+                skipSyncRedraw = true;
+                try { handleKeydown({ key: key, code: '', keyCode: 0, repeat: false, timeStamp: ts || performance.now(), preventDefault() {}, stopPropagation() {} }); }
+                catch (err) { console.error(err); }
+                finally { skipSyncRedraw = false; }
+                setTimeout(() => { try { pressedKeys.delete(normKey({ key: key })); } catch (_) {} }, 30);
+            }
+            // 画面のどこをタッチしても、指が触れた最初のイベント(touchstart)で即反応させる。keyId を決めて叩く
+            function tapAt(clientX, clientY, ts) {
+                const G = getTdGeo();
+                const dx = clientX - G.cx, dy = clientY - G.cy;
+                const inside = (dx * dx + dy * dy) <= G.rad * G.rad;
+                const keyId = (inside ? 'don_' : 'katsu_') + (dx < 0 ? 'left' : 'right');
+                pressTouchKey(keyId, keyId, ts);
             }
             // 半円（内側＋青いふち）はすべてドン、その外側は画面のどこでもすべてカッ。左右は太鼓の中心で分ける（位置だけで判定する）
             const TOUCH_BG_IGNORE = 'button, a, input, select, textarea, label, summary, [tabindex], #controls-panel, .overlay-button';
@@ -4461,7 +4643,9 @@
                 if (!getTdGeo().shown) return false;
                 return !(e.target && e.target.closest && e.target.closest(TOUCH_BG_IGNORE));
             }
+            const HAS_TOUCH_EVENTS = ('ontouchstart' in window);
             root.addEventListener('pointerdown', e => {
+                if (e.pointerType === 'touch' && HAS_TOUCH_EVENTS) return;   // タッチは下の touchstart で処理済み（二重に叩かない）
                 if (!isTouchPlayable(e)) return;
                 e.preventDefault();
                 const G = getTdGeo();
@@ -4472,7 +4656,12 @@
                 const keyId = (inside ? 'don_' : 'katsu_') + (dx < 0 ? 'left' : 'right');
                 pressTouchKey(keyId, keyId);
             });
-            root.addEventListener('touchstart', e => { if (isTouchPlayable({ target: e.target, pointerType: 'touch' })) e.preventDefault(); }, { passive: false });   // ゲーム中の拡大・スクロール防止
+            root.addEventListener('touchstart', e => {
+                if (!isTouchPlayable({ target: e.target, pointerType: 'touch' })) return;
+                e.preventDefault();   // ゲーム中の拡大・スクロール防止
+                const ts = e.timeStamp;
+                for (let i = 0; i < e.changedTouches.length; i++) tapAt(e.changedTouches[i].clientX, e.changedTouches[i].clientY, ts);
+            }, { passive: false, capture: true });
         })();
         document.addEventListener('keydown', e => {
             if (activeGame === 'taiko' && optSkip && isGameRunning && !isPaused && e.key === 'Enter' && !e.repeat) {
@@ -4482,7 +4671,7 @@
         });
         document.addEventListener('keyup', e => { 
             if (activeGame !== 'taiko') return;
-            pressedKeys.delete(e.key.toUpperCase());
+            pressedKeys.delete(normKey(e));
         });
 
         function checkMisses(elapsedTime) { for (let i = lastCheckedNoteIndex; i < hitObjects.length; i++) { const note = hitObjects[i]; if (note.judged || !isNoteActive(note)) { continue; } if (note.time > elapsedTime + HIT_WINDOW_BAD) break; if (note.type !== 'balloon' && note.type !== 'roll') { if (elapsedTime > note.time + HIT_WINDOW_BAD) { note.missed = true; handleJudgment('fuka', note); } } else { if (elapsedTime > note.endTime) { if (note.type === 'roll' && note.hitsMade > 0) rollCounterClearTime = note.endTime + 1000; note.passed = true; note.judged = true; } } } }
@@ -4859,46 +5048,6 @@
                 else if ((optMissMode === 'tokkun' && isMiss) || (optMissMode === 'chotokkun' && isNotPerfect)) retryGame();
             }
         }
-        // 各数字の「見た目の中心」を実測して、1桁ごとの固定マスの中心にそろえる（フォントやOSが違っても同じ位置になる）
-        const digitShiftCache = new Map();
-        function getDigitShifts(el) {
-            const cs = getComputedStyle(el);
-            const key = cs.fontStyle + ' ' + cs.fontWeight + ' ' + cs.fontFamily;
-            let r = digitShiftCache.get(key);
-            if (r) return r;
-            r = [];
-            try {
-                const c = document.createElement('canvas').getContext('2d');
-                c.font = `${cs.fontStyle} ${cs.fontWeight} 200px ${cs.fontFamily}`;
-                c.textAlign = 'left'; c.textBaseline = 'alphabetic';
-                for (let d = 0; d < 10; d++) {
-                    const m = c.measureText(String(d));
-                    const inkCenter = (m.actualBoundingBoxRight - m.actualBoundingBoxLeft) / 2;
-                    const v = -(inkCenter - m.width / 2) / 200;
-                    r.push(isFinite(v) ? v : 0);
-                }
-            } catch (e) { r = new Array(10).fill(0); }
-            digitShiftCache.set(key, r);
-            return r;
-        }
-        function setFixedDigits(el, v) {
-            const t = String(v);
-            if (el.__fd === t) return;
-            if (el.__fd === undefined) el.textContent = '';
-            el.__fd = t;
-            const shifts = getDigitShifts(el);
-            let n = el.children.length;
-            while (n > t.length) { el.removeChild(el.lastChild); n--; }
-            while (n < t.length) { const sp = document.createElement('span'); sp.className = 'fd'; sp.appendChild(document.createElement('i')); el.appendChild(sp); n++; }
-            for (let i = 0; i < t.length; i++) {
-                const inner = el.children[i].firstChild;
-                if (inner.textContent !== t[i]) {
-                    inner.textContent = t[i];
-                    const d = t.charCodeAt(i) - 48;
-                    inner.style.transform = `translateX(calc(-50% + ${(shifts[d] || 0).toFixed(4)}em))`;
-                }
-            }
-        }
         function updateScore(points) { score += points; setFixedDigits(dom.scoreElement, Math.floor(score)); }
         function updateCombo(hit) { if (hit) { combo++; if (combo > maxCombo) maxCombo = combo; } else { combo = 0; } updateComboDisplay(); }
         function updateAccuracy() { const totalHits = judgmentCounts.ryo + judgmentCounts.ka + judgmentCounts.fuka; if (totalHits === 0) { accuracy = 100; } else { const accVal = (judgmentCounts.ryo * 300 + judgmentCounts.ka * 150) / (totalHits * 300); accuracy = accVal * 100; } let rank = 'S'; if (accuracy < 100) rank = 'S'; if (accuracy < 95) rank = 'A'; if (accuracy < 90) rank = 'B'; if (accuracy < 80) rank = 'C'; if (accuracy < 70) rank = 'D'; dom.accuracyElement.textContent = `${rank} ${accuracy.toFixed(2)}%`; }
@@ -4934,10 +5083,78 @@
                 el.style.transform = `translateY(${(size / 2 - glyphCenterFromTop).toFixed(2)}px)`;
             } catch (e) { /* 補正できなくても表示には影響しない */ }
         }
+        // --- コンボ・スコアの数字を「1桁ずつ同じ幅の枠」に入れて表示する：どの数字でも幅が同じなので、桁の位置が絶対にずれない ---
+        function measureDigitEm(el) {
+            try {
+                const cs = getComputedStyle(el);
+                const size = parseFloat(cs.fontSize) || 16;
+                const c = measureDigitEm.ctx || (measureDigitEm.ctx = document.createElement('canvas').getContext('2d'));
+                c.font = `${cs.fontStyle} ${cs.fontWeight} ${size}px ${cs.fontFamily}`;
+                let w = 0; for (let d = 0; d < 10; d++) w = Math.max(w, c.measureText(String(d)).width);   // 0〜9のうち一番広い数字の幅に全部そろえる
+                return w > 0 ? w / size : 0.62;
+            } catch (e) { return 0.62; }
+        }
+        function setFixedDigits(el, value) {
+            if (!el) return;
+            const str = String(value);
+            if (el._fdStr === str) return;
+            el._fdStr = str;
+            if (!el._fdEm) { el._fdEm = measureDigitEm(el); el.style.setProperty('--dw', el._fdEm.toFixed(4) + 'em'); }
+            const kids = el.children;
+            if (kids.length !== str.length) {
+                const frag = document.createDocumentFragment();
+                for (const ch of str) { const sp = document.createElement('span'); sp.className = 'fd'; sp.textContent = ch; frag.appendChild(sp); }
+                el.replaceChildren(frag);
+            } else {
+                for (let i = 0; i < str.length; i++) { if (kids[i].textContent !== str[i]) kids[i].textContent = str[i]; }
+            }
+        }
+        function refreshFixedDigits() {   // フォントの読み込みが終わったあとに、枠の幅を測り直す
+            for (const el of [dom.scoreElement, dom.comboElement]) {
+                if (!el) continue;
+                const t = el._fdStr; el._fdEm = null; el._fdStr = null;
+                if (t != null) setFixedDigits(el, t);
+            }
+        }
         function updateComboDisplay() { if (combo > 0) { setFixedDigits(dom.comboElement, combo); dom.comboDisplay.classList.add('visible'); } else { dom.comboDisplay.classList.remove('visible'); } }
         function updateResultsSelection() { const buttons = dom.resultsOverlay.querySelectorAll('.overlay-button'); buttons.forEach((btn, index) => { btn.classList.toggle('selected', index === selectedResultsIndex); }); }
         function updatePauseSelection() { const buttons = dom.pauseOverlay.querySelectorAll('.overlay-button'); buttons.forEach((btn, index) => { btn.classList.toggle('selected', index === selectedPauseIndex); }); }
         
+        // 再開後の動画のずれ直し：動画の位置を譜面時間と比べ、小さいずれは再生速度を±数%変えて追いつかせる（止まらない）。大きくずれたときだけ1回シークする
+        let videoDriftTimer = null, videoDriftHeld = false;
+        function stopVideoDriftGuard(vEl) {
+            if (videoDriftTimer) { clearTimeout(videoDriftTimer); videoDriftTimer = null; }
+            videoDriftHeld = false;
+            try { if (vEl) vEl.playbackRate = 1; } catch (_) {}
+        }
+        function startVideoDriftGuard(vEl, runId) {
+            stopVideoDriftGuard(vEl);
+            const tick = () => {
+                if (runId !== gameRunId || !isGameRunning || isPaused) { stopVideoDriftGuard(vEl); return; }
+                try {
+                    const gt = getGameTime();   // 先に呼ぶ（この中で時計の「待機」が解除される）
+                    if (clockHeld && !useWebAudioMusic) {
+                        // 音声がまだ鳴り始めていない間は動画を先に進めない
+                        if (!vEl.paused) { vEl.pause(); videoDriftHeld = true; }
+                    } else {
+                        if (videoDriftHeld) { videoDriftHeld = false; const pv = vEl.play(); if (pv && pv.catch) pv.catch(() => {}); }
+                        const vt = gt - videoStartGameMs;
+                        if (vt >= 0 && !vEl.paused && !vEl.seeking && vEl.readyState >= 2) {
+                            const dur = isFinite(vEl.duration) ? vEl.duration : Infinity;
+                            const exp = videoBaseSec + vt / 1000;
+                            if (exp < dur) {
+                                const drift = vEl.currentTime - exp;   // 正＝動画が進みすぎ / 負＝遅れ
+                                if (Math.abs(drift) > 0.6) { vEl.currentTime = exp + 0.05; vEl.playbackRate = 1; }
+                                else if (Math.abs(drift) > 0.06) vEl.playbackRate = 1 - Math.max(-0.05, Math.min(0.05, drift * 0.3));
+                                else vEl.playbackRate = 1;
+                            }
+                        }
+                    }
+                } catch (_) {}
+                videoDriftTimer = setTimeout(tick, 250);
+            };
+            videoDriftTimer = setTimeout(tick, 250);
+        }
         function togglePause() { 
             if (isInitialCooldown || !isGameRunning || isPauseButtonCoolingDown) return; 
             isPauseButtonCoolingDown = true; setTimeout(() => { isPauseButtonCoolingDown = false; }, 500); 
@@ -4950,6 +5167,7 @@
                 pausedTime = dom.audioPlayer.currentTime;
                 stopMusic();
                 dom.audioPlayer.pause(); 
+                stopVideoDriftGuard(dom.backgroundVideo);
                 if (selectedBackgroundType === 'video' && availableBackgrounds.video) dom.backgroundVideo.pause(); 
                 dom.gameContainer.classList.remove('playing'); 
                 cancelAnimationFrame(animationFrameId); 
@@ -5000,11 +5218,13 @@
                     const vt = heldGameTime - videoStartGameMs;            // 再開地点での動画内経過時間(ms)
                     let vDelay = vLeadMs;
                     try {
+                        // シーク（位置の飛び）は動画が止まる・遅れる原因になるので、一時停止中の位置がほぼ合っているときはそのまま続きから再生する
                         if (vt >= 0) {
                             const dur = isFinite(vEl.duration) ? vEl.duration : Infinity;
-                            vEl.currentTime = Math.min(videoBaseSec + vt / 1000, dur);
+                            const target = Math.min(videoBaseSec + vt / 1000, dur);
+                            if (Math.abs((vEl.currentTime || 0) - target) > 0.08) vEl.currentTime = target;
                         } else {
-                            vEl.currentTime = videoBaseSec;                // 動画の開始前に止めた場合は開始予定時刻まで待つ
+                            if (Math.abs((vEl.currentTime || 0) - videoBaseSec) > 0.08) vEl.currentTime = videoBaseSec;   // 動画の開始前に止めた場合は開始予定時刻まで待つ
                             vDelay += -vt;
                         }
                     } catch (e) {}
@@ -5012,10 +5232,12 @@
                         if (runId === gameRunId && isGameRunning && !isPaused) {
                             const pv = vEl.play();
                             if (pv && pv.catch) pv.catch(() => {});
+                            startVideoDriftGuard(vEl, runId);   // 再開後に少しずれても、止めずに再生速度のわずかな増減でなめらかに合わせる
                         }
                     }, vDelay);
                 }
                 dom.gameContainer.classList.add('playing'); 
+                resetFramePacing();
                 animationFrameId = requestAnimationFrame(gameLoop); 
                 dom.pauseOverlay.style.display = 'none'; 
             } 
@@ -5127,7 +5349,7 @@
             if (totalHits > 0) { const accVal = (judgmentCounts.ryo * 300 + judgmentCounts.ka * 150) / (totalHits * 300); finalAccuracy = accVal * 100; } 
             setSongTitleDisplay(dom.resultsSongTitle, songInfo.title, songInfo.subtitle, ` - ${songInfo.version}`); 
             dom.resultsScoreValue.textContent = Math.floor(score); 
-            dom.resultsMaxComboValue.textContent = maxCombo; 
+            dom.resultsMaxComboValue.textContent = maxCombo; dom.resultsRollValue.textContent = totalRollHits; 
             dom.resultsRyoValue.textContent = judgmentCounts.ryo; 
             dom.resultsKaValue.textContent = judgmentCounts.ka; 
             dom.resultsFukaValue.textContent = judgmentCounts.fuka; 
@@ -5201,10 +5423,20 @@
                 setupFileListeners();
                 loadSettings();
                 alignComboDigits();
-                if (document.fonts && document.fonts.ready) document.fonts.ready.then(alignComboDigits);
+                if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => { alignComboDigits(); refreshFixedDigits(); });
                 updateLaneOpacity();
                 updateTouchDrumOpacity();
                 updateBgBrightness();
+                checkReadyState();   // 曲が選ばれていない最初は、ゲーム開始ボタンを灰色（押せない状態）にする
+                // ゲーム開始ボタンを押したら全画面にする（ボタンを押した操作の中で呼ぶ必要があるので、startGameより先に同期で実行）
+                dom.startButton.addEventListener('click', e => {
+                    if (e.pointerType === 'mouse' || !window.matchMedia('(pointer: coarse)').matches) return;   // スマホ（タッチ画面）だけ。PCではフルスクリーンにしない
+                    if (document.fullscreenElement || document.webkitFullscreenElement) return;
+                    const el = document.documentElement;
+                    const req = el.requestFullscreen || el.webkitRequestFullscreen || el.webkitRequestFullScreen;
+                    if (!req) { showIphoneFullscreenHint(); return; }
+                    try { const r = req.call(el, { navigationUI: 'hide' }); if (r && r.catch) r.catch(() => { try { const r2 = req.call(el); if (r2 && r2.catch) r2.catch(() => {}); } catch (_) {} }); } catch (_) {}
+                }, true);
                 dom.startButton.addEventListener('click', startGame);
                 dom.speedSlider.addEventListener('input', () => {
                     updateSpeed();
@@ -5214,6 +5446,7 @@
                 dom.videoOffsetInput.addEventListener('change', saveTaikoBeatmapSpecificSettings);
                 dom.videoOffsetInput.addEventListener('input', saveTaikoBeatmapSpecificSettings);
                 dom.seOffsetInput.addEventListener('change', saveSettings);
+                dom.autoRollSpeedInput.addEventListener('change', saveSettings);
                 dom.autoPlayCheckbox.addEventListener('change', saveSettings);
                 dom.singleHandBigNoteCheckbox.addEventListener('change', saveSettings);
                 dom.autoSeCheckbox.addEventListener('change', saveSettings);
@@ -5245,6 +5478,7 @@
                 fitGameStage();
                 fitMenuPanel();
                 try {
+                    try { if (navigator.storage && navigator.storage.persist) navigator.storage.persist(); } catch (_) {}   // ブラウザに保存データを自動削除されにくくする
                     await db.init();
                     await loadSavedSongsList();
                     await loadDefaultSounds();
