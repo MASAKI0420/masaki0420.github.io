@@ -1,4 +1,36 @@
-<html lang="ja" class=""><script src="chrome-extension://eppiocemhmnlbhjplcgkofciiegomcon/content/location/location.js" id="eppiocemhmnlbhjplcgkofciiegomcon"></script><script src="chrome-extension://eppiocemhmnlbhjplcgkofciiegomcon/libs/extend-native-history-api.js"></script><script src="chrome-extension://eppiocemhmnlbhjplcgkofciiegomcon/libs/requests.js"></script><head>
+<html lang="ja" class=""><meta charset="UTF-8"><style>
+        #taiko-loading { position: fixed; inset: 0; z-index: 2147483000; display: flex; align-items: center; justify-content: center; background: #8fd8f7 url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22400%22 height=%22400%22 viewBox=%220 0 400 400%22%3E%3Crect width=%22400%22 height=%22400%22 fill=%22%238fd8f7%22/%3E%3Cg fill=%22none%22 stroke=%22%236cc6ee%22 stroke-width=%228%22%3E%3Ccircle cx=%22100%22 cy=%22100%22 r=%2262%22 fill=%22%236cc6ee%22 fill-opacity=%22.55%22/%3E%3Ccircle cx=%22100%22 cy=%22100%22 r=%2248%22/%3E%3C/g%3E%3Cg fill=%22%23fff%22 fill-opacity=%22.9%22%3E%3Ccircle cx=%2280%22 cy=%2295%22 r=%2210%22/%3E%3Ccircle cx=%22120%22 cy=%2295%22 r=%2210%22/%3E%3C/g%3E%3Cpath d=%22M85 118q15 12 30 0%22 stroke=%22%23fff%22 stroke-width=%224%22 fill=%22none%22 stroke-linecap=%22round%22/%3E%3Cg fill=%22%236cc6ee%22%3E%3Ccircle cx=%22300%22 cy=%22100%22 r=%2244%22 fill-opacity=%22.5%22/%3E%3Cpath d=%22M300 70l8 22 22 8-22 8-8 22-8-22-22-8 22-8z%22/%3E%3Ccircle cx=%22300%22 cy=%2244%22 r=%225%22/%3E%3Ccircle cx=%22300%22 cy=%22156%22 r=%225%22/%3E%3Ccircle cx=%22244%22 cy=%22100%22 r=%225%22/%3E%3Ccircle cx=%22356%22 cy=%22100%22 r=%225%22/%3E%3C/g%3E%3Cg fill=%22%237ccdf1%22%3E%3Cpath d=%22M100 250c14-40 40-10 48 8 24-20 38 14 18 32 24 18 0 48-24 34-6 30-38 22-36-6-30 6-38-26-12-36-20-20 0-46 6-32z%22 transform=%22translate%28-4 -4%29 scale%281.02%29%22/%3E%3C/g%3E%3Cg stroke=%22%236cc6ee%22 stroke-width=%228%22 fill=%22%236cc6ee%22 fill-opacity=%22.5%22%3E%3Cpath d=%22M300 240l44 25v50l-44 25-44-25v-50z%22/%3E%3C/g%3E%3Cg stroke=%22%23fff%22 stroke-opacity=%22.85%22 stroke-width=%227%22 stroke-linecap=%22round%22%3E%3Cpath d=%22M280 275l40 40M320 275l-40 40%22/%3E%3C/g%3E%3C/svg%3E") 0 0 / 280px 280px repeat; transition: opacity .2s ease; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Hiragino Sans', 'Yu Gothic', Meiryo, sans-serif; }
+        #taiko-loading.hide { opacity: 0; pointer-events: none; }
+        #taiko-loading .tl-bar { position: relative; width: 90vw; height: clamp(44px, 10vh, 96px); background: #5a2c1c; border: 1px solid #000; overflow: hidden; box-sizing: border-box; }
+        #taiko-loading .tl-fill { position: absolute; left: 0; top: 0; bottom: 0; width: 0; background: #a3282a; }
+        #taiko-loading .tl-fill::after { content: ""; position: absolute; right: 0; top: 0; bottom: 0; width: 18px; background: #5a2c1c; }
+        #taiko-loading .tl-text { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; color: #fff; font-size: clamp(22px, 5vh, 48px); text-shadow: 0 1px 2px rgba(0,0,0,.35); }
+</style>
+<body>    <div id="taiko-loading"><div class="tl-bar"><div class="tl-fill"></div><div class="tl-text">0%</div></div></div>
+    <script>
+    (function () {
+        var el = document.getElementById('taiko-loading'), fill = el.querySelector('.tl-fill'), txt = el.querySelector('.tl-text');
+        var real = 0, creep = 0, shown = 0, finished = false, closing = false;
+        // 読み込みが始まった瞬間から少しずつ進める（実際の進み具合が来たらそれに合わせて加速する）
+        function frame() {
+            if (!finished) creep += (90 - creep) * 0.012;                     // 自動で90%に向かってゆっくり進む
+            var target = finished ? 100 : Math.max(creep, real * 0.97);
+            shown += (target - shown) * (finished ? 0.4 : 0.12);
+            if (target - shown < 0.3) shown = target;
+            fill.style.width = shown + '%'; txt.textContent = Math.floor(shown) + '%';
+            if (finished && shown >= 100) {
+                if (!closing) { closing = true; setTimeout(function () { el.classList.add('hide'); setTimeout(function () { el.remove(); }, 300); }, 80); }
+                return;
+            }
+            requestAnimationFrame(frame);
+        }
+        requestAnimationFrame(frame);
+        window.__taikoLoad = function (p) { real = Math.max(real, Math.min(100, p)); };
+        window.__taikoLoadDone = function () { finished = true; };
+        setTimeout(function () { finished = true; }, 30000);   // 万一止まっても30秒で閉じる
+    })();
+    </script>
+<script src="chrome-extension://eppiocemhmnlbhjplcgkofciiegomcon/content/location/location.js" id="eppiocemhmnlbhjplcgkofciiegomcon"></script><script src="chrome-extension://eppiocemhmnlbhjplcgkofciiegomcon/libs/extend-native-history-api.js"></script><script src="chrome-extension://eppiocemhmnlbhjplcgkofciiegomcon/libs/requests.js"></script><head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
     <!-- PWA設定 -->
@@ -38,7 +70,7 @@
       "offers": {"@type": "Offer", "price": "0", "priceCurrency": "JPY"}
     }
     </script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script defer src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <style>
         /* --- Global Styles --- */
         html, body {
@@ -402,6 +434,7 @@ html:has(#taiko-game-container[style*="display: block"]), html:has(#taiko-game-c
 /* 最初のメニュー画面だけ、ノッチ・角の安全領域の内側に収める（左右は黒い余白）。プレイ画面は上のとおり端まで使う */
 html:not(:has(#taiko-game-container[style*="display: block"])) { background-color: #000; box-sizing: border-box; padding-left: env(safe-area-inset-left, 0px); padding-right: env(safe-area-inset-right, 0px); }
 </style>
+<script defer src="songs/songs.js" onerror="void 0"></script>
 </head>
 <body __processed_4b9568eb-9fc4-4cec-ab67-b1f643d4332b__="true" bis_register="W3sibWFzdGVyIjp0cnVlLCJleHRlbnNpb25JZCI6ImVwcGlvY2VtaG1ubGJoanBsY2drb2ZjaWllZ29tY29uIiwiYWRibG9ja2VyU3RhdHVzIjp7IkRJU1BMQVkiOiJlbmFibGVkIiwiRkFDRUJPT0siOiJlbmFibGVkIiwiVFdJVFRFUiI6ImVuYWJsZWQiLCJSRURESVQiOiJlbmFibGVkIiwiUElOVEVSRVNUIjoiZW5hYmxlZCIsIklOU1RBR1JBTSI6ImVuYWJsZWQiLCJUSUtUT0siOiJlbmFibGVkIiwiTElOS0VESU4iOiJlbmFibGVkIiwiQ09ORklHIjoiZGlzYWJsZWQifSwidmVyc2lvbiI6IjIuMy4wIiwic2NvcmUiOjIwMzAwMH1d">
     <!-- 検索エンジン向けの紹介文（画面外に置いた見出し・説明。画面の見た目には影響しない） -->
@@ -2801,7 +2834,8 @@ html:not(:has(#taiko-game-container[style*="display: block"])) { background-colo
                     // 音声が見つかったら読み込む
                     if (audioFileEntry) {
                         try {
-                            const audioBlob = await audioFileEntry.async('blob');
+                            const audioExt = audioFileEntry.name.toLowerCase().split('.').pop();
+                            const audioBlob = new Blob([await audioFileEntry.async('blob')], { type: { mp3: 'audio/mpeg', ogg: 'audio/ogg', wav: 'audio/wav' }[audioExt] || '' });   // 種類を付けておく（付いていないと再生できないブラウザがある）
                             if (audioSrc) URL.revokeObjectURL(audioSrc);
                             audioSrc = URL.createObjectURL(audioBlob);
                             dom.audioPlayer.src = audioSrc;
@@ -5292,6 +5326,12 @@ html:not(:has(#taiko-game-container[style*="display: block"])) { background-colo
                             e.preventDefault();
                             break;
                     }
+                } else if (!isGameRunning && e.shiftKey && !e.ctrlKey && !e.altKey && !e.metaKey && /^(Digit|Numpad)[0-4]$/.test(e.code) && osz_beatmaps.length > 0 && dom.beatmapSelectorContainer.style.display !== 'none') {
+                    // Shift+0〜4で難易度を切り替える（0=かんたん 1=ふつう 2=むずかしい 3=おに 4=エディット）。その難易度が無い曲では何もしない
+                    e.preventDefault();
+                    const want = parseInt(e.code.slice(-1), 10) + 1;
+                    const opt = Array.from(dom.beatmapSelector.options).find(o => o.value !== '' && osz_beatmaps[parseInt(o.value, 10)] && osz_beatmaps[parseInt(o.value, 10)].info.difficulty === want);
+                    if (opt && dom.beatmapSelector.value !== opt.value) { dom.beatmapSelector.value = opt.value; handleBeatmapSelection(); }
                 } else if (isGameRunning && e.code === 'Space') {
                     e.preventDefault();
                 } else if (!isGameRunning && e.code === 'Space' && !dom.startButton.disabled) {
@@ -5479,16 +5519,74 @@ html:not(:has(#taiko-game-container[style*="display: block"])) { background-colo
                 fitMenuPanel();
                 try {
                     try { if (navigator.storage && navigator.storage.persist) navigator.storage.persist(); } catch (_) {}   // ブラウザに保存データを自動削除されにくくする
-                    await db.init();
-                    await loadSavedSongsList();
-                    await loadDefaultSounds();
-                    await loadSeLibrary();
-                    await loadBackgroundLibrary();
+                    const LP = window.__taikoLoad || (() => {});
+                    LP(5);
+                    await db.init(); LP(20);
+                    await loadSavedSongsList(); LP(35);
+                    await loadDefaultSounds(); LP(50);
+                    await loadSeLibrary(); LP(60);
+                    await loadBackgroundLibrary(); LP(70);
                 } catch (e) {
                     console.error('Application initialization failed:', e);
                     alert('データベースの初期化に失敗しました。保存機能は利用できません。');
                 }
+                // 最初から入っている譜面：songs/index.json に書かれた「songs/曲名フォルダ/（tjaと音源）」を読み込む。
+                // 保存済み譜面に1回だけ追加して、起動時は先頭の曲を選んだ状態にする（削除したら次回から追加しない）
+                try {
+                    // songs/index.json があればそれを使う。無ければ songs/ フォルダの一覧（簡易サーバーなどが出す一覧ページ）から探す
+                    let list = [];
+                    const emb = window.TAIKO_SONGS;   // songs/songs.js（update_songs.bat が作る。HTMLを直接開いた場合もこれで読める）
+                    const res = emb ? null : await fetch('songs/index.json', { cache: 'no-cache' }).catch(() => null);
+                    if (emb) {
+                        list = emb.songs || [];
+                    } else if (res && res.ok) {
+                        list = (await res.json()).songs || [];
+                    } else {
+                        const listDir = async (url) => {
+                            const r = await fetch(url, { cache: 'no-cache' });
+                            if (!r.ok) return [];
+                            const doc = new DOMParser().parseFromString(await r.text(), 'text/html');
+                            return Array.from(doc.querySelectorAll('a[href]')).map(a => a.getAttribute('href')).filter(h => h && !/^([?#\/]|[a-z]+:)/i.test(h) && !h.startsWith('..')).map(h => decodeURIComponent(h));
+                        };
+                        try { for (const d of (await listDir('songs/')).filter(h => h.endsWith('/'))) {
+                            const folder = d.replace(/\/$/, '');
+                            const files = (await listDir('songs/' + encodeURIComponent(folder) + '/')).filter(h => !h.endsWith('/'));
+                            if (files.some(f => /\.tja$/i.test(f))) list.push({ folder, title: folder, files, version: files.length });
+                        } } catch (_) {}
+                    }
+                    if (window.__taikoLoad) window.__taikoLoad(75);
+                    if (list.length === 0) throw new Error('songs フォルダに曲が見つかりません');
+                    const buildZipBlob = async (song) => {
+                        const zip = new JSZip();
+                        for (const f of song.files) {
+                            if (emb && emb.data && emb.data[song.folder] && emb.data[song.folder][f] != null) { zip.file(f, emb.data[song.folder][f], { base64: true }); continue; }
+                            const r = await fetch('songs/' + encodeURIComponent(song.folder) + '/' + encodeURIComponent(f));
+                            if (!r.ok) throw new Error(song.folder + '/' + f + ' が見つかりません');
+                            zip.file(f, await r.arrayBuffer());
+                        }
+                        return zip.generateAsync({ type: 'blob', compression: 'STORE' });
+                    };
+                    let flags = {}; try { flags = JSON.parse(localStorage.getItem('taiko-builtin-added') || '{}'); } catch (_) {}
+                    let dbOk = true, firstId = null, firstSong = null;
+                    try {
+                        let meta = await db.getSongsMeta();
+                        let added = false;
+                        for (const song of list) {
+                            const id = 'builtin:' + song.folder + ':v' + (song.version || 1);
+                            for (const m of meta) { if (m.id !== id && (m.id.startsWith('builtin:' + song.folder + ':') || m.id === 'builtin:' + song.folder || m.id === 'builtin-yugen-no-ran')) { try { await db.deleteSong(m.id); } catch (_) {} } }   // 古い版の入っている譜面は消して入れ替える
+                            if (!firstId) { firstId = id; firstSong = song; }
+                            if (flags[id] || meta.some(m => m.id === id)) continue;
+                            await db.addSong({ id, title: song.title || song.folder, artist: song.artist || '', genre: DEFAULT_GENRE, blob: await buildZipBlob(song) });
+                            flags[id] = 1; added = true;
+                        }
+                        try { localStorage.setItem('taiko-builtin-added', JSON.stringify(flags)); } catch (_) {}
+                        if (added) { await loadSavedSongsList(); meta = await db.getSongsMeta(); }
+                        dom.savedSongsList.value = '';   // 曲は一覧に入れるだけ。「-- 保存済み譜面を選択 --」の状態で始める
+                    } catch (e) { dbOk = false; console.warn('保存済み譜面に入れられませんでした。保存を使わずに直接読み込みます:', e); }
+                    if (!dbOk && firstSong) await processOszBlob(await buildZipBlob(firstSong));   // ブラウザの保存機能が使えない環境でも最初の譜面は読み込む
+                } catch (e) { console.warn('最初の譜面の読み込みに失敗:', e); }
                 initializeShortcutKeySetup('taiko-shortcut-retry', 'taiko-shortcut-menu');
+                if (window.__taikoLoadDone) window.__taikoLoadDone();   // 100%になったらローディングを閉じて選択画面へ
             },
             togglePauseExternal: togglePause,
             retryGameExternal: function() {
