@@ -1548,7 +1548,7 @@
                 if (match) {
                     const key = match[1].toUpperCase();
                     const val = match[2].trim();
-                    if (key === 'TITLE' || key === 'SUBTITLE' || key === 'TITLEJA' || key === 'SUBTITLEJA' || key === 'ARTIST' || key === 'WAVE' || key === 'OFFSET' || key === 'BPM' || key === 'DEMOSTART' || key === 'BGIMAGE' || key === 'COVER' || key === 'BGMOVIE' || key === 'MOVIEOFFSET') {
+                    if (key === 'TITLE' || key === 'SUBTITLE' || key === 'TITLEJA' || key === 'SUBTITLEJA' || key === 'ARTIST' || key === 'WAVE' || key === 'OFFSET' || key === 'BPM' || key === 'DEMOSTART' || key === 'BGIMAGE' || key === 'COVER' || key === 'BGMOVIE' || key === 'MOVIEOFFSET' || key === 'MOVIENOTESOFFSET') {
                         globalHeaders[key] = val;
                     } else if (key === 'COURSE') {
                         currentCourse = {
@@ -1606,6 +1606,9 @@
                         cover: globalHeaders['COVER'] || '',   // COVER:画像ファイル名（BGIMAGEが無い/見つからない時の背景画像に使う）
                         bgmovie: globalHeaders['BGMOVIE'] || '',
                         movieoffset: parseFloat(globalHeaders['MOVIEOFFSET']) || 0,
+                        // MOVIENOTESOFFSET(秒)：OFFSETと同じ向きでノーツ側の時間をずらす。マイナス＝ノーツが遅れて流れる / プラス＝早く流れる
+                        // （COURSE以降に書かれていてもコース側の値を拾う）
+                        movienotesoffset: parseFloat(globalHeaders['MOVIENOTESOFFSET'] !== undefined ? globalHeaders['MOVIENOTESOFFSET'] : course.headers['MOVIENOTESOFFSET']) || 0,
                     },
                     globalHeaders: globalHeaders,
                     courseData: course
@@ -1679,7 +1682,7 @@
                     const out = { notes: [], bars: [], gogos: [], regions: [], sections: [], levelholds: [], endStates: [] };
 
                     let currentBPM = beatmapObj.info.bpm || 120;
-                    const tjaOffset = (beatmapObj.info.offset || 0) * 1000;
+                    const tjaOffset = ((beatmapObj.info.offset || 0) + (beatmapObj.info.movienotesoffset || 0)) * 1000;   // OFFSET + MOVIENOTESOFFSET（負の値でノーツが遅れる）
                     const baseBPM = currentBPM; // 基準となるBPM
 
                     let measureRatio = 1.0;
