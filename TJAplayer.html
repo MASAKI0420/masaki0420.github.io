@@ -1653,7 +1653,7 @@
                         level: level,
                         hasBranch: course.lines.some(l => /^\s*#BRANCHSTART/i.test(l)),   // 譜面分岐があるか
                         wave: globalHeaders['WAVE'] || '',
-                        offset: parseFloat(globalHeaders['OFFSET']) || 0,
+                        offset: parseOffsetNum(globalHeaders['OFFSET']) || 0,
                         bpm: parseFloat(globalHeaders['BPM']) || 120,
                         bgimage: globalHeaders['BGIMAGE'] || '',
                         cover: globalHeaders['COVER'] || '',   // COVER:画像ファイル名（BGIMAGEが無い/見つからない時の背景画像に使う）
@@ -1661,7 +1661,8 @@
                         movieoffset: parseFloat(globalHeaders['MOVIEOFFSET']) || 0,
                         // MOVIENOTESOFFSET(秒)：OFFSETと同じ向きでノーツ側の時間をずらす。マイナス＝ノーツが遅れて流れる / プラス＝早く流れる
                         // （COURSE以降に書かれていてもコース側の値を拾う）
-                        movienotesoffset: parseFloat(globalHeaders['MOVIENOTESOFFSET'] !== undefined ? globalHeaders['MOVIENOTESOFFSET'] : course.headers['MOVIENOTESOFFSET']) || 0,
+                        movienotesoffset: parseOffsetNum(globalHeaders['MOVIENOTESOFFSET'] !== undefined ? globalHeaders['MOVIENOTESOFFSET'] : course.headers['MOVIENOTESOFFSET']) || 0,
+                        movienotesoffsetSet: !isNaN(parseOffsetNum(globalHeaders['MOVIENOTESOFFSET'] !== undefined ? globalHeaders['MOVIENOTESOFFSET'] : course.headers['MOVIENOTESOFFSET'])),   // MOVIENOTESOFFSETが書かれているか
                     },
                     globalHeaders: globalHeaders,
                     courseData: course
@@ -1669,7 +1670,20 @@
             });
         }
 
+        // 背景が動画のときはMOVIENOTESOFFSETだけを使う（画像・背景なしのときはOFFSETだけ）
+        // オフセット値の全角マイナス（ー − － など）・全角数字・全角小数点を半角にしてから数値にする（日本語入力のまま「ー0.5」と書いても負の値として読む）
+        function parseOffsetNum(v) {
+            if (v === undefined || v === null) return NaN;
+            const t = String(v).trim()
+                .replace(/[ー−－‐‑‒–—―]/g, '-')
+                .replace(/[０-９]/g, c => String.fromCharCode(c.charCodeAt(0) - 0xFEE0))
+                .replace(/[．。]/g, '.');
+            return parseFloat(t);
+        }
+        let parsedWithMovieNotes = null;
+        function useMovieNotesOffset() { return !!(selectedBackgroundType === 'video' && availableBackgrounds.video); }
         function parseTjaCourse(beatmapObj) {
+            parsedWithMovieNotes = useMovieNotesOffset();
             chartBaseBPM = beatmapObj.info.bpm || 120;
             try {
                 hitObjects = [];
@@ -1735,7 +1749,7 @@
                     const out = { notes: [], bars: [], gogos: [], regions: [], sections: [], levelholds: [], endStates: [] };
 
                     let currentBPM = beatmapObj.info.bpm || 120;
-                    const tjaOffset = ((beatmapObj.info.offset || 0) + (beatmapObj.info.movienotesoffset || 0)) * 1000;   // OFFSET + MOVIENOTESOFFSET（負の値でノーツが遅れる）
+                    const tjaOffset = ((useMovieNotesOffset() && beatmapObj.info.movienotesoffsetSet) ? (beatmapObj.info.movienotesoffset || 0) : (beatmapObj.info.offset || 0)) * 1000;   // 背景が動画のときは MOVIENOTESOFFSET だけ（書かれていなければ OFFSET）、画像・背景なしのときは OFFSET だけ（負の値でノーツが遅れる）
                     const baseBPM = currentBPM; // 基準となるBPM
 
                     let measureRatio = 1.0;
@@ -3373,6 +3387,11 @@
             if (isGameRunning || !beatmapLoaded || !audioLoaded) return;
             if (bgRandomMode) { try { await applyRandomBackground(); } catch (e) { console.warn(e); } }   // 開始のたびに背景をランダム変更
             saveTaikoBeatmapSpecificSettings(); // 開始時点の動画オフセットなどをこの譜面用に保存
+            // 背景の種類（動画／画像／なし）に合わせて、ノーツのオフセット（MOVIENOTESOFFSETを使うか）を決め直す
+            {   // 開始のたびに、今の背景の種類と、今のTJA（編集で更新された内容）から譜面を必ず読み直す（MOVIENOTESOFFSET／OFFSETの変更を確実に反映）
+                const bm = osz_beatmaps[parseInt(dom.beatmapSelector.value, 10)];
+                if (bm) { const oldInfo = songInfo; if (parseTjaCourse(bm)) songInfo = Object.assign({}, oldInfo, { movieOffset: songInfo.movieOffset }); }
+            }
             if (audioSrc && dom.audioPlayer.currentSrc !== audioSrc) {
                 dom.audioPlayer.src = audioSrc;
             }
@@ -3470,8 +3489,15 @@
                     if (dom.backgroundSelect) dom.backgroundSelect.value = 'none';
                 }
                 applyPlayBgColor();
+                // 動画が使えず画像・背景なしに切り替わった場合は、MOVIENOTESOFFSETを外してOFFSETのみで譜面を読み込み直す
+                if (parsedWithMovieNotes !== useMovieNotesOffset()) {
+                    const bm2 = osz_beatmaps[parseInt(dom.beatmapSelector.value, 10)];
+                    if (bm2) { const oldInfo2 = songInfo; if (parseTjaCourse(bm2)) songInfo = Object.assign({}, oldInfo2, { movieOffset: songInfo.movieOffset }); }
+                }
             }
 
+            videoSoundOn = !!(selectedBackgroundType === 'video' && availableBackgrounds.video && videoResult !== 'video_error');
+            applyBgAudio();
             isStartingGame = false;
             isGameRunning = true;
             isPaused = false;
@@ -3526,7 +3552,7 @@
                 }, audioPlayDelay);
                 if (selectedBackgroundType === 'video' && availableBackgrounds.video && videoResult !== 'video_error') {
                     setTimeout(() => {
-                        if (runId === gameRunId && isGameRunning && !isPaused) dom.backgroundVideo.play();
+                        if (runId === gameRunId && isGameRunning && !isPaused) playBgVideo(dom.backgroundVideo);
                     }, videoPlayDelay);
                 }
                 setTimeout(() => { if (runId === gameRunId) isInitialCooldown = false; }, 500 + audioPlayDelay);
@@ -3621,7 +3647,7 @@
         async function getMusicBuffer() {
             if (!musicGainNode) {
                 musicGainNode = audioContext.createGain();
-                musicGainNode.gain.value = parseFloat(dom.musicVolumeSlider.value);
+                musicGainNode.gain.value = videoSoundOn ? 0 : parseFloat(dom.musicVolumeSlider.value);
                 musicGainNode.connect(audioContext.destination);
             }
             if (musicBuffer && musicBufferSrc === audioSrc) return musicBuffer;
@@ -3898,6 +3924,7 @@
             animationFrameId = requestAnimationFrame(gameLoop);
             if (isPaused) return;
             correctClockDrift();
+            syncBgVideoToClock(getGameTime());
             const elapsedTime = getGameTime() - offset;
             updateBranches(elapsedTime);
             isGoGoNow = false;
@@ -5149,8 +5176,7 @@
                     } catch (e) {}
                     setTimeout(() => {
                         if (runId === gameRunId && isGameRunning && !isPaused) {
-                            const pv = vEl.play();
-                            if (pv && pv.catch) pv.catch(() => {});
+                            playBgVideo(vEl);
                         }
                     }, vDelay);
                 }
@@ -5248,6 +5274,7 @@
                 dom.backgroundVideo.load();
                 dom.backgroundVideo.currentTime = 0;
             }
+            videoSoundOn = false; applyBgAudio();   // 試聴など、ゲーム外では音声ファイルの音楽を通常の音量に戻す
             dom.pauseOverlay.style.display = 'none';
             dom.resultsOverlay.style.display = 'none';
             dom.gameContainer.classList.remove('playing');
@@ -5321,10 +5348,56 @@
                 dom.saveSongToPcButton.disabled = !dom.savedSongsList.value;
             }
         }
+        // 背景が動画のとき：音声ファイルの音楽は音量0（譜面の時計としては動かし続ける）にして、動画の音を流す。
+        // 背景が画像・なしのとき：音声ファイルの音楽を流し、動画は消音。曲の音量スライダーは、鳴らす側（動画 or 音楽）に効く。
+        let videoSoundOn = false;
+        function applyBgAudio() {
+            const v = parseFloat(dom.musicVolumeSlider.value);
+            const vol = isNaN(v) ? 1 : Math.max(0, Math.min(1, v));
+            const musicVol = videoSoundOn ? 0 : vol;
+            dom.audioPlayer.volume = musicVol;
+            if (musicGainNode) musicGainNode.gain.value = musicVol;
+            if (dom.backgroundVideo) {
+                dom.backgroundVideo.volume = vol;
+                dom.backgroundVideo.muted = !videoSoundOn;
+            }
+        }
+        // 背景動画（＝流れている音）を、譜面の時計に常に合わせ続ける。
+        // 動画の再生開始は setTimeout と動画デコーダの立ち上がりで毎回数十〜数百msずれるため、放っておくとプレイのたびに音符との合い方が変わる。
+        // 動画の再生位置が「あるべき位置」からずれたら、再生速度をごくわずかに変えて滑らかに追従させる（大きくずれた時だけシーク）。
+        let lastVideoSyncPerf = 0;
+        function syncBgVideoToClock(gameMs) {
+            if (!videoSoundOn) return;
+            const vEl = dom.backgroundVideo;
+            if (!vEl || vEl.paused || vEl.ended || vEl.seeking || vEl.readyState < 2) return;
+            const nowP = performance.now();
+            if (nowP - lastVideoSyncPerf < 60) return;
+            lastVideoSyncPerf = nowP;
+            const vt = gameMs - videoStartGameMs;                      // 動画が始まってからの譜面時間(ms)
+            if (vt < 150) return;                                      // 開始直後の立ち上がり中は触らない
+            const expected = videoBaseSec + vt / 1000;
+            const dur = isFinite(vEl.duration) ? vEl.duration : Infinity;
+            if (expected > dur - 0.3) return;
+            const drift = vEl.currentTime - expected;                  // マイナス＝動画が遅れている
+            const ad = Math.abs(drift);
+            if (ad > 0.25) { try { vEl.currentTime = expected + 0.05; } catch (e) {} vEl.playbackRate = 1; return; }
+            if (ad < 0.012) { if (vEl.playbackRate !== 1) vEl.playbackRate = 1; return; }
+            const rate = 1 - Math.max(-0.06, Math.min(0.06, drift * 1.2));
+            vEl.playbackRate = rate;
+        }
+        function playBgVideo(vEl) {
+            vEl.playbackRate = 1;
+            vEl.muted = !videoSoundOn;
+            let p;
+            try { p = vEl.play(); } catch (e) { return; }
+            if (p && p.catch) p.catch(() => {
+                // 音ありの再生をブラウザに拒否された場合は、消音で再生して映像だけは止めない
+                if (!vEl.muted) { vEl.muted = true; try { const p2 = vEl.play(); if (p2 && p2.catch) p2.catch(() => {}); } catch (e) {} }
+            });
+        }
         function applyMusicVolume(value) {
-            dom.audioPlayer.volume = value;
-            if (musicGainNode) musicGainNode.gain.value = value;
             dom.musicVolumeLabel.textContent = Math.round(value * 100);
+            applyBgAudio();
         }
         function applySEVolume(value) {
             if (seGainNode) {
