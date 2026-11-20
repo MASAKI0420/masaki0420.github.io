@@ -165,9 +165,11 @@
         #taiko-wrapper #taiko-game-container.bars-open #taiko-fx-layer { overflow: visible !important; }
         /* 左右の黒い帯（画面が横に長いときの余白）を最前面にする：ステージの左右の外側を黒で覆い、はみ出した物（レーン・ゲージ・音符・演出など）が帯の上に出ないようにする */
         #taiko-wrapper #taiko-game-container::before, #taiko-wrapper #taiko-game-container::after { content: ''; position: absolute; top: -10000px; bottom: -10000px; width: 10000px; background: #000; z-index: 2147483000; pointer-events: none; }
-        #taiko-wrapper #taiko-game-container::before { right: 100%; }
-        #taiko-wrapper #taiko-game-container::after { left: 100%; }
-        #taiko-wrapper #taiko-playfield { position: absolute; top: 50%; left: 0; right: 0; height: var(--lane-body-h); transform: translateY(calc(-50% - 58px - var(--lane-up))); background-color: rgba(255, 255, 255, 0.36); border-top: 4px solid #000; border-bottom: 6px solid #000; z-index: 10; box-shadow: 0 5px 25px rgba(0,0,0,0.3); border-radius: 0; }
+        #taiko-wrapper #taiko-game-container::before { right: calc(100% - 1px); }   /* 1pxだけステージに重ねて、境目の隙間（端数のすき間）を黒で隠す */
+        #taiko-wrapper #taiko-game-container::after { left: calc(100% - 1px); }   /* 横16:9の範囲だけ見せる：延ばしたレーン(--ext-r)とゲージの上に、黒い帯を被せる。1pxだけ重ねて隙間を隠す */
+        #taiko-wrapper #taiko-playfield { position: absolute; top: 50%; left: 0; right: calc(var(--ext-r, 0px) * -1); height: var(--lane-body-h); transform: translateY(calc(-50% - 58px - var(--lane-up))); background-color: rgba(255, 255, 255, 0.36); border-top: 4px solid #000; border-bottom: 6px solid #000; z-index: 10; box-shadow: 0 5px 25px rgba(0,0,0,0.3); border-radius: 0; }
+        /* 左側も右と同じ：レーンを左の余白（黒い帯の下）まで延ばしておき、境目に隙間が出ないようにする。キャンバスの座標は動かさない（見た目だけの延長） */
+        #taiko-wrapper #taiko-playfield::before { content: ''; position: absolute; right: 100%; top: -4px; bottom: -6px; width: var(--ext-l, 0px); box-sizing: border-box; background: inherit; border-top: 4px solid #000; border-bottom: 6px solid #000; pointer-events: none; }
         #taiko-wrapper #game-canvas { display: block; width: 100%; height: 100%; position: relative; z-index: 1; }
         /* 譜面分岐：レール(レーン)の背景に分岐ごとの画像を敷く。画像は縦横比を保って右端に置き、左側は同じ色で埋める */
         #taiko-wrapper #branch-lane-bg { position: absolute; inset: 0; pointer-events: none; background-repeat: no-repeat; background-position: right center; background-size: auto 100%; }
@@ -3269,6 +3271,16 @@
                 c.classList.toggle('bars-open', barPx > 1);   // 上下の黒い余白まで、飛ぶ音符などを切らずに表示する
                 if (barPx > 1) { td.style.bottom = (-40 - barPx / s) + 'px'; c.style.overflow = 'visible'; td.style.transformOrigin = '50% 100%'; td.style.transform = `scale(${drumFitScale(barPx, s)})`; }
                 else { td.style.bottom = ''; c.style.overflow = ''; td.style.transformOrigin = ''; td.style.transform = ''; }
+            }
+            // 横長の端末：ステージの左右に余白（黒い帯）ができるとき、レーンを右の余白の下まで延ばしておき、その上に黒い帯を被せる（見えるのは横16:9の範囲だけ）。
+            // レーンがステージの端で終わらず帯の下まで続くので、境目に隙間が出ない。--ext-r（ステージ座標のpx）ぶんだけレーン(#taiko-playfield)の右端を広げる。
+            // レーン幅が変わるので、譜面キャンバスの幅は initGameUI() が playfield.clientWidth から取り直す（音符は右端から出てくる）。
+            {
+                const sideBar = (s < 1) ? (window.innerWidth - STAGE_W * s) / 2 : 0;
+                if (sideBar > 1 && !c.classList.contains('bars-open')) {
+                    c.style.setProperty('--ext-r', Math.ceil(sideBar / s) + 'px'); c.style.setProperty('--ext-l', Math.ceil(sideBar / s) + 'px');
+                    c.style.overflowX = 'visible'; c.style.overflowY = 'clip';   // 横だけ枠の外へ描く（縦は今までどおり枠で切る）
+                } else { c.style.removeProperty('--ext-r'); c.style.removeProperty('--ext-l'); }
             }
             // タブレット：背景（動画・画像）の枠を黒い余白ぶんまで縦に広げる。4:3など縦長寄りの背景は画面の縦いっぱいに、16:9は今まで通り（横幅いっぱい）になる
             {
