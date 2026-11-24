@@ -712,7 +712,7 @@
             </div>
         </div>
         <div id="taiko-game-container" class="game-container" style="display: none;">
-            <video id="taiko-background-video" preload="auto" muted="" loop="" playsinline="" controlslist="nodownload noremoteplayback nofullscreen" disablepictureinpicture disableremoteplayback style="display: none;"></video>
+            <video id="taiko-background-video" preload="auto" muted="" playsinline="" controlslist="nodownload noremoteplayback nofullscreen" disablepictureinpicture disableremoteplayback style="display: none;"></video>
             <div id="bg-dim"></div>
             <img id="taiko-background-image" style="display: none;">
             <button id="taiko-ingame-pause-button">||</button>
@@ -1641,7 +1641,11 @@
                 if (match) {
                     const key = match[1].toUpperCase();
                     const val = match[2].trim();
-                    if (key === 'TITLE' || key === 'SUBTITLE' || key === 'TITLEJA' || key === 'SUBTITLEJA' || key === 'ARTIST' || key === 'WAVE' || key === 'OFFSET' || key === 'BPM' || key === 'DEMOSTART' || key === 'BGIMAGE' || key === 'COVER' || key === 'BGMOVIE' || key === 'MOVIEOFFSET' || key === 'MOVIENOTESOFFSET') {
+                    if (key === 'MOVIENOTESOFFSET' && currentCourse) {
+                        // COURSE以降に書かれたMOVIENOTESOFFSETは、そのコースだけの値にする（以前は全コース共通の欄に上書きされ、最後に書かれた値が全コースに使われて数値がバラバラになっていた）
+                        // 編集画面の MOVIENOTESOFFSET[ ] 欄に出る先頭の値（COURSEより前）があれば、それを常に優先する
+                        currentCourse.headers[key] = val;
+                    } else if (key === 'TITLE' || key === 'SUBTITLE' || key === 'TITLEJA' || key === 'SUBTITLEJA' || key === 'ARTIST' || key === 'WAVE' || key === 'OFFSET' || key === 'BPM' || key === 'DEMOSTART' || key === 'BGIMAGE' || key === 'COVER' || key === 'BGMOVIE' || key === 'MOVIEOFFSET' || key === 'MOVIENOTESOFFSET') {
                         globalHeaders[key] = val;
                     } else if (key === 'COURSE') {
                         currentCourse = {
@@ -3803,6 +3807,7 @@
             };
             try {
                 videoEl.muted = true;
+                videoEl.style.opacity = '';   // 前回の終了で消していた映像を戻す
                 videoEl.style.visibility = 'hidden';
                 const p = videoEl.play();
                 const start = () => {
@@ -5591,29 +5596,30 @@
         // 背景動画（＝流れている音）を、譜面の時計に常に合わせ続ける。
         // 動画の再生開始は setTimeout と動画デコーダの立ち上がりで毎回数十〜数百msずれるため、放っておくとプレイのたびに音符との合い方が変わる。
         // 動画の再生位置が「あるべき位置」からずれたら、再生速度をごくわずかに変えて滑らかに追従させる（大きくずれた時だけシーク）。
-        let lastVideoSyncPerf = 0, lastVideoSeekPerf = 0;
+        let lastVideoSyncPerf = 0, lastVideoSeekPerf = 0, videoPlayStartPerf = 0;   // videoPlayStartPerf：動画の再生を始めた時刻。始めの数秒は素早く合わせる
         function syncBgVideoToClock(gameMs) {
             if (!videoSoundOn && !videoSyncMuted) return;
             const vEl = dom.backgroundVideo;
             if (!vEl || vEl.paused || vEl.ended || vEl.seeking || vEl.readyState < 2) return;
             const nowP = performance.now();
-            if (nowP - lastVideoSyncPerf < 400) return;               // スマホで重くならないよう、確認は0.4秒に1回だけ
+            const young = nowP - videoPlayStartPerf < 8000;            // 再生開始から8秒間は、動画の立ち上がり遅れ（数十〜数百ms）を素早く追い込む
+            if (nowP - lastVideoSyncPerf < (young ? 120 : 400)) return;   // 通常は0.4秒に1回（スマホで重くならないように）。開始直後だけ細かく確認
             lastVideoSyncPerf = nowP;
             const vt = gameMs - videoStartGameMs;                      // 動画が始まってからの譜面時間(ms)
-            if (vt < 400) return;                                      // 開始直後の立ち上がり中は触らない
+            if (vt < (young ? 150 : 400)) return;                      // 開始直後の立ち上がり中は触らない
             const expected = videoBaseSec + vt / 1000;
             const dur = isFinite(vEl.duration) ? vEl.duration : Infinity;
             if (expected > dur - 0.5) return;
             const drift = vEl.currentTime - expected;                  // マイナス＝動画が遅れている
             const ad = Math.abs(drift);
             // 大きくずれた時だけシーク（シークはスマホでは重いので、間隔をあけて、本当に大きい時だけ）
-            if (ad > 0.6 && nowP - lastVideoSeekPerf > 3000) { lastVideoSeekPerf = nowP; try { vEl.currentTime = expected + 0.08; } catch (e) {} vEl.playbackRate = 1; return; }
+            if (ad > (young ? 0.25 : 0.6) && nowP - lastVideoSeekPerf > (young ? 1200 : 3000)) { lastVideoSeekPerf = nowP; try { vEl.currentTime = expected + 0.08; } catch (e) {} vEl.playbackRate = 1; return; }
             // 小さなずれは再生速度を段階的に（1.00 / ±3% / ±6%）変えて寄せる。細かく変え続けると音声処理が重くなるので、段階だけにする
             // 滑らかさ優先：速度の変更は映像のコマ送りを乱すので、変えるのは「はっきりずれた時」だけにして、変え幅もごく小さくする。
             // 一度変えたら、ずれが十分小さくなる（20ms未満）まで同じ速度を保つ（行ったり来たりしない）
             let rate = 1;
-            if (ad >= 0.15) rate = drift < 0 ? 1.04 : 0.96;
-            else if (ad >= 0.05) rate = drift < 0 ? 1.02 : 0.98;
+            if (ad >= 0.15) rate = drift < 0 ? (young ? 1.08 : 1.04) : (young ? 0.92 : 0.96);
+            else if (ad >= 0.05) rate = drift < 0 ? (young ? 1.04 : 1.02) : (young ? 0.96 : 0.98);
             else if (vEl.playbackRate !== 1 && ad >= 0.02 && (vEl.playbackRate > 1) === (drift < 0)) rate = vEl.playbackRate > 1 ? 1.02 : 0.98;
             if (vEl.playbackRate !== rate) vEl.playbackRate = rate;
         }
@@ -5676,7 +5682,11 @@
             }
         }
         function playBgVideo(vEl) {
+            vEl.loop = false;   // 動画が終わったらループしない
+            if (!vEl._endBlackHook) { vEl._endBlackHook = true; vEl.addEventListener('ended', () => { vEl.style.opacity = '0'; }); }   // 終わったら映像を消して、後ろの黒い画面にする
+            vEl.style.opacity = '';
             vEl.playbackRate = 1;
+            videoPlayStartPerf = performance.now(); lastVideoSyncPerf = 0;
             bgqGraceUntil = performance.now() + 2500;
             vEl.muted = !videoSoundOn;
             let p;
