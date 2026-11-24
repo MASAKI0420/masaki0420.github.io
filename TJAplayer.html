@@ -5325,7 +5325,7 @@
         function updatePauseSelection() { const buttons = dom.pauseOverlay.querySelectorAll('.overlay-button'); buttons.forEach((btn, index) => { btn.classList.toggle('selected', index === selectedPauseIndex); }); }
         
         function togglePause() { 
-            if (isInitialCooldown || !isGameRunning || isPauseButtonCoolingDown) return; 
+            if (startLoadingActive || isStartingGame || isInitialCooldown || !isGameRunning || isPauseButtonCoolingDown) return;   // 読み込み中はEsc・ポーズボタンを無視（読み込みの途中で止まって壊れるのを防ぐ）
             isPauseButtonCoolingDown = true; setTimeout(() => { isPauseButtonCoolingDown = false; }, 500); 
             if (!isPaused) { 
                 // 停止した瞬間の譜面時間をそのまま保持（音声の currentTime には依存しない）
@@ -5781,11 +5781,13 @@
             },
             togglePauseExternal: togglePause,
             retryGameExternal: function() {
+                if (startLoadingActive || isStartingGame) return;   // 読み込み中は無視
                 if (isGameRunning || isPaused || dom.resultsOverlay.style.display === 'flex') {
                     retryGame();
                 }
             },
             returnToControlsExternal: function() { 
+                if (startLoadingActive || isStartingGame) return;   // 読み込み中は無視
                 if (isGameRunning || isPaused || dom.resultsOverlay.style.display === 'flex') {
                     returnToControls();
                 }
