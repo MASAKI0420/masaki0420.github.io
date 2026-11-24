@@ -77,6 +77,15 @@
             --lane-body-h: 185px; /* レーンの太さ。分岐表示など上辺に付くパーツも一緒に動く。大音符(約148px)が収まる160px以上を推奨 */
             --lane-shift: calc((180px * var(--lane-scale) - var(--lane-body-h)) / 2 - var(--lane-up)); /* レーンの高さ変更と上げた分、上辺に付くパーツを動かす量 */
         }
+        #taiko-wrapper #start-loading { position: fixed; inset: 0; z-index: 2147483647; align-items: center; justify-content: center; background: #121827; color: #e8ecf8; opacity: 1; transition: opacity .2s ease; touch-action: none; }
+        #taiko-wrapper #start-loading.sl-hide { opacity: 0; pointer-events: none; }
+        #taiko-wrapper #start-loading .sl-box { width: min(86vw, 380px); text-align: center; }
+        #taiko-wrapper #start-loading .sl-spinner { width: 44px; height: 44px; margin: 0 auto 18px; border: 4px solid rgba(255,255,255,.18); border-top-color: #ff6b4a; border-radius: 50%; animation: sl-spin .9s linear infinite; }   /* transformのアニメーションなので、準備で処理が重くても止まりにくい */
+        @keyframes sl-spin { to { transform: rotate(360deg); } }
+        #taiko-wrapper #start-loading .sl-title { font-size: 1.05em; font-weight: bold; margin-bottom: 14px; }
+        #taiko-wrapper #start-loading .sl-bar { height: 8px; border-radius: 4px; background: rgba(255,255,255,.14); overflow: hidden; }
+        #taiko-wrapper #start-loading .sl-bar-fill { height: 100%; width: 0%; border-radius: 4px; background: linear-gradient(90deg, #ff6b4a, #ffb04a); transition: width .15s linear; }
+        #taiko-wrapper #start-loading .sl-text { margin-top: 10px; font-size: .85em; color: #a0a8c0; min-height: 1.3em; }
         #taiko-wrapper #taiko-background-video {
             position: fixed;
             top: 50%;
@@ -383,7 +392,7 @@
         /* フォーカス時の白い縁(アウトライン)を非表示 */
         button, select, a, summary, [tabindex], input[type="checkbox"], input[type="range"] { outline: none !important; -webkit-tap-highlight-color: transparent; }
         /* スマホ：タッチしたときに出る青い（半透明の）ハイライト・選択表示を全体で消す */
-        html, body, #taiko-wrapper, #taiko-wrapper * { -webkit-tap-highlight-color: transparent; }
+        html, body, #taiko-wrapper, #taiko-wrapper * { -webkit-tap-highlight-color: transparent; touch-action: manipulation; }   /* ダブルタップ判定待ち(約300ms)をなくす。#touch-drum等のnone指定はIDで上書きされるので影響なし */
         #taiko-wrapper #taiko-game-container, #taiko-wrapper #taiko-game-container * { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; outline: none; }
         #taiko-wrapper #taiko-game-container ::selection, #taiko-wrapper #taiko-game-container::selection { background: transparent; color: inherit; }
         button:focus, button:focus-visible, select:focus, select:focus-visible, a:focus-visible, [tabindex]:focus-visible { outline: none !important; }
@@ -445,6 +454,15 @@
     <!-- Container for osu!taiko Game -->
     <div id="rotate-notice"><div class="rn-icon"></div><div style="font-size:1.2em;font-weight:bold;">端末を横向きにしてください</div><div style="font-size:0.9em;color:#a0a8c0;">このプレイヤーは横向き専用です</div><button type="button" id="rotate-btn" class="rn-btn">タップで横画面にする</button><div id="rotate-hint" class="rn-hint">自動で回転できませんでした。端末の「画面の向きのロック」を解除して、端末を横向きにしてください。</div></div>
     <div id="taiko-wrapper" class="game-wrapper" style="--ui-offset-x: 202px;">
+        <!-- 曲を始める前の読み込み画面：音・動画・画面の準備がそろうまでここに表示し、準備が終わってからカウントダウンを始める（曲の頭でカクつかないように） -->
+        <div id="start-loading" role="status" aria-live="polite" style="display:none;">
+            <div class="sl-box">
+                <div class="sl-spinner"></div>
+                <div class="sl-title">読み込み中…</div>
+                <div class="sl-bar"><div class="sl-bar-fill" id="sl-bar-fill"></div></div>
+                <div class="sl-text" id="sl-text">準備しています</div>
+            </div>
+        </div>
         <div id="app-container">
             <div id="controls-panel">
                 <h2 class="grid-item-full">Taiko Player</h2>
@@ -2258,9 +2276,9 @@
             catch (err) { console.error(err); alert('TJAを読み込めませんでした。'); return; }
 
             const el = document.createElement('div');
-            el.style.cssText = 'position:fixed;inset:0;z-index:100000;background:rgba(0,0,0,0.7);display:flex;align-items:center;justify-content:center;font-family:sans-serif;';
+            el.style.cssText = 'position:fixed;inset:0;z-index:100000;background:rgba(0,0,0,0.7);font-family:sans-serif;overflow:hidden;overscroll-behavior:contain;-webkit-text-size-adjust:100%;text-size-adjust:100%;';
             const box = document.createElement('div');
-            box.style.cssText = 'width:min(960px,94vw);height:min(760px,92vh);background:#1b2234;color:#e8ecf8;border:1px solid #3a4666;border-radius:10px;display:flex;flex-direction:column;gap:8px;padding:14px;box-sizing:border-box;';
+            box.style.cssText = 'position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);min-width:0;overflow:hidden;background:#1b2234;color:#e8ecf8;border:1px solid #3a4666;border-radius:10px;display:flex;flex-direction:column;gap:8px;padding:14px;box-sizing:border-box;';
             const head = document.createElement('div');
             head.style.cssText = 'display:flex;align-items:center;gap:10px;flex-wrap:wrap;';
             const title = document.createElement('div');
@@ -2268,7 +2286,7 @@
             title.style.cssText = 'font-size:1.2em;font-weight:bold;';
             head.appendChild(title);
             const sel = document.createElement('select');
-            sel.style.cssText = 'flex:1;min-width:200px;padding:4px;background:#2a344d;color:#e8ecf8;border:1px solid #3a4666;border-radius:4px;';
+            sel.style.cssText = 'flex:1 1 140px;min-width:0;max-width:100%;padding:4px;background:#2a344d;color:#e8ecf8;border:1px solid #3a4666;border-radius:4px;';
             paths.forEach(p => sel.appendChild(new Option(p.split('/').pop(), p)));
             sel.value = curPath;
             sel.style.display = paths.length > 1 ? '' : 'none';
@@ -2278,16 +2296,16 @@
             ta.value = initialText;
             ta.spellcheck = false;
             ta.wrap = 'off';
-            ta.style.cssText = 'flex:1;width:100%;box-sizing:border-box;resize:none;background:#10151f;color:#e8ecf8;border:1px solid #3a4666;border-radius:6px;padding:8px;font-family:Consolas,"Courier New",monospace;font-size:14px;line-height:1.4;white-space:pre;overflow:auto;tab-size:4;';
+            ta.style.cssText = 'flex:1;width:100%;min-width:0;max-width:100%;min-height:0;box-sizing:border-box;resize:none;background:#10151f;color:#e8ecf8;border:1px solid #3a4666;border-radius:6px;padding:8px;font-family:Consolas,"Courier New",monospace;font-size:14px;line-height:1.4;white-space:pre;overflow:auto;tab-size:4;';
             box.appendChild(ta);
             // --- MOVIENOTESOFFSET[ ▢ ]：TJAの先頭（COURSEより前）にある「MOVIENOTESOFFSET:」の行を、ここから直接書き換える ---
             const mnField = document.createElement('div');
-            mnField.style.cssText = 'display:flex;align-items:center;gap:4px;font-size:0.95em;font-weight:600;white-space:nowrap;';
+            mnField.style.cssText = 'display:flex;align-items:center;flex-wrap:wrap;gap:4px;font-size:0.95em;font-weight:600;max-width:100%;min-width:0;';   // 狭い画面（スマホ）でははみ出さず折り返す
             const mnInput = document.createElement('input');
             mnInput.type = 'text';
             mnInput.placeholder = 'オフセットを記入';
             mnInput.spellcheck = false;
-            mnInput.style.cssText = 'width:150px;padding:4px 10px;background:#10151f;color:#e8ecf8;border:1px solid #a0a8c0;border-radius:8px;font-size:0.95em;font-weight:400;outline:none;';
+            mnInput.style.cssText = 'width:150px;max-width:100%;min-width:0;box-sizing:border-box;padding:4px 10px;background:#10151f;color:#e8ecf8;border:1px solid #a0a8c0;border-radius:8px;font-size:0.95em;font-weight:400;outline:none;';
             mnField.append(document.createTextNode('MOVIENOTESOFFSET['), mnInput, document.createTextNode(']'));
             head.insertBefore(mnField, sel);
             const MN_KEY = 'MOVIENOTESOFFSET';
@@ -2347,13 +2365,48 @@
             el.appendChild(box);
             document.body.appendChild(el);
             tjaEditorEl = el;
+            // 編集画面の大きさは、「端末の画面そのものの大きさ」を基準に 横94%（最大960px）×縦92%（最大760px）で固定する。
+            // ブラウザの表示領域は、バーやナビゲーションバーの出し入れで64pxほど狭くなる（背景のメニューも一緒に縮む）ことがあるので、
+            // 表示領域の大きさ（innerWidth）ではなく画面の大きさ（screen）を基準にして、表示領域に収まらない時だけ、収まる最大の大きさまで下げる。
+            // キーボードの表示や拡大率の変化では大きさを変えない。表示領域の幅が変わった時（回転・バーの出し入れ）だけ取り直す。
+            let lastFixedW = 0, lastLand = null;
+            const isPhone = !!(window.matchMedia && window.matchMedia('(pointer: coarse)').matches);
+            const fixBoxSize = () => {
+                const iw = window.innerWidth, ih = window.innerHeight;
+                const sw = (window.screen && window.screen.width) || iw, sh = (window.screen && window.screen.height) || ih;
+                const land = iw >= ih;                                       // 画面の向きに合わせて、長い辺・短い辺を割り当てる
+                if (isPhone) {
+                    // スマホ：向き（縦・横）が変わった時以外は、大きさを一切変えない。
+                    // 画面そのものの大きさだけで決める（ブラウザのバーで表示領域が狭くなっても、キーボードが出ても、拡大率が変わっても同じ大きさ）
+                    if (lastLand === land) return;
+                    lastLand = land;
+                    box.style.width = Math.round((land ? Math.max(sw, sh) : Math.min(sw, sh)) * 0.94) + 'px';
+                    box.style.height = Math.round((land ? Math.min(sw, sh) : Math.max(sw, sh)) * 0.92) + 'px';
+                    return;
+                }
+                if (lastFixedW && Math.abs(iw - lastFixedW) < 40) return;   // 幅がほぼ同じ＝キーボード等による高さだけの変化なので、そのまま
+                lastFixedW = iw;
+                const refW = Math.max(iw, land ? Math.max(sw, sh) : Math.min(sw, sh));
+                const refH = Math.max(ih, land ? Math.min(sw, sh) : Math.max(sw, sh));
+                box.style.width = Math.max(200, Math.min(960, Math.round(refW * 0.94), iw - 8)) + 'px';
+                box.style.height = Math.max(160, Math.min(760, Math.round(refH * 0.92), ih - 8)) + 'px';
+            };
+            fixBoxSize();
+            window.addEventListener('resize', fixBoxSize);
+            el._fixBoxSize = fixBoxSize;
+            // スマホで編集画面が勝手に横に縮む（ブラウザが画面に収まるよう拡大率を下げる）のを防ぐ：編集中だけ拡大率を1倍に固定する
+            try {
+                const vp = document.querySelector('meta[name="viewport"]');
+                if (vp) { el._vpOld = vp.getAttribute('content'); vp.setAttribute('content', 'width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover'); }
+                if (window.matchMedia && window.matchMedia('(pointer: coarse)').matches) { ta.style.fontSize = '16px'; mnInput.style.fontSize = '16px'; }   // iOSは16px未満の入力欄を触ると画面が拡大されるため
+            } catch (e) {}
             // 常に1行目の先頭から表示・編集できるようにする
             const goTop = () => { try { ta.setSelectionRange(0, 0); } catch (e) {} ta.scrollTop = 0; ta.scrollLeft = 0; };
             ta.focus({ preventScroll: true });
             goTop();
             requestAnimationFrame(goTop);
 
-            const close = () => { if (tjaEditorEl) { tjaEditorEl.remove(); tjaEditorEl = null; } };
+            const close = () => { if (tjaEditorEl) { try { window.removeEventListener('resize', tjaEditorEl._fixBoxSize); } catch (e) {} try { const vp = document.querySelector('meta[name="viewport"]'); if (vp && tjaEditorEl._vpOld != null) vp.setAttribute('content', tjaEditorEl._vpOld); } catch (e) {} tjaEditorEl.remove(); tjaEditorEl = null; } };
             el.addEventListener('keydown', e => { e.stopPropagation(); if (e.key === 'Escape') close(); if (e.key === 'Enter' && e.shiftKey && !e.isComposing) { e.preventDefault(); btnApply.click(); } });   // 入力中のキーをゲームの操作に渡さない
             el.addEventListener('keyup', e => e.stopPropagation());
             btnClose.addEventListener('click', close);
@@ -3441,10 +3494,40 @@
                 srcs.forEach(s => { if (s) { const im = new Image(); im.src = s; keep.push(im); touch(im); } });
             } catch (e) { console.warn('warmUpImages', e); }
         }
+        // --- 曲の開始前の読み込み画面 ---
+        function startLoadingSet(pct, text) {
+            const f = document.getElementById('sl-bar-fill'), t = document.getElementById('sl-text');
+            if (f) f.style.width = Math.max(0, Math.min(100, pct)) + '%';
+            if (t && text !== undefined) t.textContent = text;
+        }
+        let startLoadingActive = false;   // 読み込み画面を出している間は true。この間は太鼓を叩けない（SEも鳴らさない・判定もしない）
+        function startLoadingShow() {
+            const el = document.getElementById('start-loading'); if (!el) return;
+            startLoadingActive = true;
+            el.classList.remove('sl-hide'); el.style.display = 'flex'; startLoadingSet(0, '準備しています');
+        }
+        function startLoadingHide() {
+            startLoadingActive = false;
+            const el = document.getElementById('start-loading'); if (!el || el.style.display === 'none') return;
+            el.classList.add('sl-hide');
+            setTimeout(() => { if (el.classList.contains('sl-hide')) el.style.display = 'none'; }, 250);
+        }
+        // 画面の描画を n 回ぶん待つ（レイアウト・ラスタライズ・GPU転送を、読み込み画面の裏で一通り済ませるため）。タブが裏でも止まらないよう上限つき
+        function waitFrames(n) {
+            return new Promise(resolve => {
+                let k = 0, done = false;
+                const fin = () => { if (!done) { done = true; resolve(); } };
+                const step = () => { if (done) return; if (++k >= n) fin(); else requestAnimationFrame(step); };
+                requestAnimationFrame(step);
+                setTimeout(fin, 120 * n);
+            });
+        }
         async function startGame() {
             if (isGameRunning || !beatmapLoaded || !audioLoaded) return;
             isStartingGame = true;   // 開始ボタンを押した瞬間から、読み込み中もキーを押したらSEが鳴る
-            try { await startGameInner(); } finally { isStartingGame = false; }
+            startLoadingShow();
+            await waitFrames(1);     // 読み込み画面を先に1回描かせてから、重い準備に入る
+            try { await startGameInner(); } finally { isStartingGame = false; startLoadingHide(); }
         }
         async function startGameInner() {
             if (isGameRunning || !beatmapLoaded || !audioLoaded) return;
@@ -3468,6 +3551,7 @@
                 try { useWebAudioMusic = !!(await getMusicBuffer()); }
                 catch (e) { console.warn('Web Audio decode failed, falling back to <audio>:', e); useWebAudioMusic = false; }
             }
+            startLoadingSet(25, '音を読み込みました');
             resetGame();
             dom.appContainer.style.display = 'none';
             dom.gameContainer.style.display = 'block';
@@ -3537,8 +3621,9 @@
                 dom.backgroundImage.style.display = 'block';
             }
 
-            const loadResults = await Promise.all([audioReadyPromise, videoReadyPromise, Promise.race([preloadPlayAssets(), new Promise(r => setTimeout(r, 2500))])]);
+            const loadResults = await Promise.all([audioReadyPromise, videoReadyPromise, Promise.race([preloadPlayAssets(), new Promise(r => setTimeout(r, 6000))])]);   // 画像・効果音の準備は途中で打ち切らず、しっかり待つ（上限6秒）
             const videoResult = loadResults[1];
+            startLoadingSet(55, '動画・画像・効果音を読み込みました');
 
             if (videoResult === 'video_error') {
                 alert("動画の読み込みに失敗しました。背景を画像に切り替えます。");
@@ -3598,8 +3683,30 @@
             videoBaseSec = dom.backgroundVideo.currentTime || 0;
             videoStartGameMs = videoPlayDelay;
             if (selectedBackgroundType === 'video' && availableBackgrounds.video && videoResult !== 'video_error') {
-                prerollBackgroundVideo(dom.backgroundVideo, dom.backgroundVideo.currentTime);
+                startLoadingSet(65, '動画を準備しています');
+                // 動画の準備（フレームを実際に描画させて温める）が終わるまで待つ。以前はカウントダウンと並行していたので、間に合わないと曲の頭でカクついていた
+                await Promise.race([prerollBackgroundVideo(dom.backgroundVideo, dom.backgroundVideo.currentTime), new Promise(r => setTimeout(r, 4000))]);
             }
+            startLoadingSet(85, '画面を準備しています');
+            await waitFrames(8);
+            {   // 追加ウォームアップ：読み込み画面の裏で、プレイ中に最初に起きる処理（描画・判定文字・花火・効果音）を一通り先に実行しておく。最低でもLOAD_MIN_MS（ミリ秒）は読み込み画面を出す
+                const LOAD_MIN_MS = 3000, t0 = performance.now();
+                startLoadingSet(88, '描画・効果音・演出を温めています');
+                let n = 0;
+                while (performance.now() - t0 < LOAD_MIN_MS && runId === gameRunId) {
+                    try { renderScene(getGameTime() - offset); } catch (e) {}
+                    if (n === 0 || n === 8 || n === 16) {
+                        try { warmUpSeAndFx(); } catch (e) {}
+                        try { showJudgment('良'); showJudgment('可'); showJudgment('不可'); } catch (e) {}
+                    }
+                    await waitFrames(3); n++;
+                    startLoadingSet(88 + 11 * Math.min(1, (performance.now() - t0) / LOAD_MIN_MS));
+                }
+                try { dom.judgmentTextElement.replaceChildren(); } catch (e) {}
+                try { dom.ctx.clearRect(0, 0, dom.canvas.width, dom.canvas.height); } catch (e) {}
+            }   // 画面を数フレームぶん実際に描画させて、最初のフレームの引っかかりを読み込み画面の裏で済ませる
+            startLoadingSet(100, '完了');
+            gameStartTime = performance.now() + initialDelay;   // 準備にかかった時間ぶんを引かないよう、開始時刻をここで取り直す（カウントダウンは準備のあとに3秒）
             audioClockOffsetMs = audioPlayDelay;
             heldGameTime = -initialDelay;
             if (useWebAudioMusic) {
@@ -3680,8 +3787,9 @@
         function prerollBackgroundVideo(videoEl, startSec) {
             // 実際にフレームを何枚か描画させて、デコーダ・GPUへの転送経路を温めてから、開始位置へ戻して「その位置のフレームが用意できる」まで待つ
             // （以前は120ms再生して戻すだけで、開始位置のシーク後にデコーダが冷えた状態になり、曲の頭でカクついていた）
-            let done = false;
-            const restore = () => { videoEl.style.visibility = ''; };
+            let done = false, resolvePre;
+            const pre = new Promise(r => { resolvePre = r; });
+            const restore = () => { videoEl.style.visibility = ''; resolvePre(); };
             const settle = () => {   // 開始位置へ戻し、シーク完了（＝最初のフレーム準備完了）を待つ
                 if (done) return; done = true;
                 try { videoEl.pause(); } catch (e) {}
@@ -3708,6 +3816,7 @@
                 if (p && typeof p.then === 'function') p.then(start).catch(restore);
                 else start();
             } catch (e) { restore(); }
+            return pre;
         }
         function stopMusic() {
             if (musicSource) {
@@ -3996,8 +4105,10 @@
         // 60Hz以下の画面では何も変わらない。時刻ベースで刻むので、144Hzのように60で割り切れない画面でも平均60回/秒に揃う。
         const MAX_FPS = 60, CAP_STEP_MS = 1000 / MAX_FPS;
         let capNextDraw = 0;
+        let forceDrawOnce = false;   // キー/タッチを押した直後の1フレームは、60FPS上限や間引きに関係なく必ず描く（どのPC・画面でも、押した次の画面更新で反応が出る）
         function paceShouldDraw() {
             const t = renderNow !== null ? renderNow : performance.now();
+            if (forceDrawOnce) { forceDrawOnce = false; capNextDraw = t + CAP_STEP_MS; return true; }
             if (t < capNextDraw - 2) return false;                                      // 次の描画時刻にまだ早い（2msは画面更新時刻のぶれの許容）
             capNextDraw = (capNextDraw > 0 && t - capNextDraw < CAP_STEP_MS * 2) ? capNextDraw + CAP_STEP_MS : t + CAP_STEP_MS;   // 遅れが大きいときは刻み直す
             return true;
@@ -4567,6 +4678,7 @@
         let touchEventTs = 0;
         let isStartingGame = false;   // ゲーム開始ボタンを押してから、カウントダウンが始まるまで（読み込み中）
         function handleKeydown(e) {
+            if (startLoadingActive) return;   // 読み込み中は太鼓を叩けない（キー・タッチとも。SEも鳴らさず、叩いた表示も出さない）
             if (isStartingGame && !isGameRunning && activeGame === 'taiko' && !e.repeat && !(e.target && e.target.closest && e.target.closest('input, textarea, select'))) {
                 // 読み込み中：判定はせず、押したキーのSEだけ即座に鳴らす（オートプレイ・自動SEのときは鳴らさない）
                 if (e.key === 'F11' || dom.autoPlayCheckbox.checked || dom.autoSeCheckbox.checked) return;
@@ -4592,6 +4704,7 @@
             if (!hitKeyId) return;
 
             pressedKeys.add(key);
+            forceDrawOnce = true;
             const keyType = hitKeyId.startsWith('don') ? 'don' : 'katsu';
             showDrumHit(hitKeyId);
             // SEオフセットは判定・音符の位置には影響させない（音の再生タイミングだけに適用: playHitSound）
@@ -4685,9 +4798,10 @@
             }
         }
         // 画面をタッチしたらフルスクリーンにする（スマホだけ。ブラウザの仕様上、操作した瞬間にしか開始できない）
+        let IS_COARSE_POINTER_FS = null;
         function tryFullscreen(e) {
-            if (e.pointerType === 'mouse' || !window.matchMedia('(pointer: coarse)').matches) return;   // スマホ（タッチ画面）だけ。PCのクリックでは切り替えない
             if (document.fullscreenElement || document.webkitFullscreenElement) return;
+            if (e.pointerType === 'mouse' || !(IS_COARSE_POINTER_FS = IS_COARSE_POINTER_FS === null ? window.matchMedia('(pointer: coarse)').matches : IS_COARSE_POINTER_FS)) return;   // スマホ（タッチ画面）だけ。PCのクリックでは切り替えない
             const el = document.documentElement;
             const req = el.requestFullscreen || el.webkitRequestFullscreen || el.webkitRequestFullScreen;
             if (!req) return;
@@ -4700,19 +4814,24 @@
         // ポーズボタン非表示のとき：レーンより上の画面ぜんぶをタッチするとポーズ画面を出す
         (function initTopAreaPause() {
             const gc = dom.gameContainer; if (!gc) return;
+            let tpRects = null, tpRun = -1;
+            window.addEventListener('resize', () => { tpRects = null; }); window.addEventListener('orientationchange', () => { tpRects = null; });
             gc.addEventListener('pointerdown', e => {
                 if (e.pointerType === 'mouse') return;
                 if (activeGame !== 'taiko' || !dom.hidePauseCheckbox.checked || !isGameRunning || isPaused) return;
                 if (e.target.closest && e.target.closest('#touch-drum, button')) return;
                 // ノルマゲージ（と魂）をタッチしたときはポーズ画面を出さない
                 if (e.target.closest && e.target.closest('#norma-gauge, #norma-soul')) return;
-                for (const g of [dom.normaGauge, dom.normaSoul]) {
-                    if (!g) continue;
-                    const r = g.getBoundingClientRect();
+                if (!tpRects || tpRun !== gameRunId) {   // 位置は1プレイ中ほぼ変わらないので、プレイごと・画面サイズ変更時だけ測り直す
+                    tpRects = { g: [dom.normaGauge, dom.normaSoul].map(g => g ? g.getBoundingClientRect() : null), top: dom.playfield ? dom.playfield.getBoundingClientRect().top : null };
+                    tpRun = gameRunId;
+                }
+                for (const r of tpRects.g) {
+                    if (!r) continue;
                     if (e.clientX >= r.left && e.clientX <= r.right && e.clientY >= r.top && e.clientY <= r.bottom) return;
                 }
-                const pf = dom.playfield; if (!pf) return;
-                if (e.clientY < pf.getBoundingClientRect().top) { e.preventDefault(); togglePause(); }
+                if (tpRects.top === null) return;
+                if (e.clientY < tpRects.top) { e.preventDefault(); togglePause(); }
             });
         })();
         (function initIngamePauseButton() {
