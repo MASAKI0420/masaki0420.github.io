@@ -269,6 +269,48 @@
             flex-shrink: 0;
         }
         .settings-area.locked { pointer-events: none; }
+        .settings-area.locked .board-theme-btn,
+        .settings-area.locked #board-color-picker { pointer-events: auto; }
+        /* 虹色の盤（左から右へ流れる） */
+        /* 虹は transform で動かす：CPUの思考中にメインスレッドが重くなっても止まらない */
+        html.rainbow-board .board { overflow: hidden; }
+        html.rainbow-board .board::before {
+            content: "";
+            position: absolute;
+            top: 0; left: 0;
+            width: 400%; height: 100%;
+            z-index: 0;
+            pointer-events: none;
+            background-image: linear-gradient(90deg,
+                hsl(0,75%,45%), hsl(30,80%,45%), hsl(55,80%,42%), hsl(120,60%,36%),
+                hsl(180,70%,38%), hsl(220,75%,48%), hsl(275,65%,48%), hsl(320,70%,46%), hsl(0,75%,45%));
+            background-size: 50% 100%;
+            background-repeat: repeat-x;
+            will-change: transform;
+            animation: rainbow-flow 4s linear infinite;
+        }
+        html.rainbow-board .cell {
+            background-color: transparent;
+            border-color: rgba(0,0,0,0.35);
+        }
+        @keyframes rainbow-flow {
+            from { transform: translate3d(-50%, 0, 0); }
+            to   { transform: translate3d(0, 0, 0); }
+        }
+        /* 画像の盤：引き伸ばさず縦横比を保って全体を表示し、余白は緑にする */
+        html.image-board .board {
+            background-image: var(--board-image);
+            background-color: #2e7d32;
+            background-size: contain;
+            background-position: center;
+            background-repeat: no-repeat;
+            overflow: hidden;
+        }
+        html.image-board .cell {
+            background-color: transparent;
+            border-color: rgba(0,0,0,0.35);
+        }
+        .board-theme-btn.active { background: transparent; color: #fff !important; box-shadow: 0 0 0 2px #fff inset; }
 
         .selector-group { 
             display: flex; 
@@ -496,6 +538,15 @@
                 <button class="btn" id="btn-pvp" onclick="setDiff('pvp')" style="border-color:#e040fb; color:#e040fb;">2人</button>
                 <button class="btn" id="btn-online" onclick="setDiff('online')" style="border-color:#00e5ff; color:#00e5ff;">オンライン対戦</button>
             </div>
+
+            <div class="selector-group">
+                <span class="label-text">盤の色:</span>
+                <button class="btn board-theme-btn" data-theme="green" onclick="setBoardTheme('green')" style="border-color:#2e7d32; color:#66bb6a;">緑</button>
+                <button class="btn board-theme-btn" data-theme="rainbow" onclick="setBoardTheme('rainbow')" style="border-image: linear-gradient(90deg,#f44336,#ffeb3b,#4caf50,#2196f3,#9c27b0) 1; color:#fff;">虹</button>
+                <input type="color" id="board-color-picker" value="#2e7d32" title="好きな色を選ぶ" oninput="setBoardColorCustom(this.value)" style="width:34px; height:30px; padding:0; border:2px solid #fff; border-radius:6px; background:none; cursor:pointer;">
+                <button class="btn board-theme-btn" data-theme="image" onclick="document.getElementById('board-image-input').click()" style="border-color:#ffb300; color:#ffca28;">画像</button>
+                <input type="file" id="board-image-input" accept="image/*" style="display:none;" onchange="loadBoardImage(this)">
+            </div>
         </div>
 
         <div class="score-container" bis_skin_checked="1">
@@ -627,6 +678,88 @@
             [-20, -50, -2, -2, -2, -2, -50, -20],
             [100, -20, 10,  5,  5, 10, -20, 100]
         ];
+
+
+        // ===== 盤の色の切り替え =====
+        const BOARD_THEMES = {
+            green:  ['#2e7d32', '#1b5e20'],
+            blue:   ['#1565c0', '#0d47a1'],
+            red:    ['#b71c1c', '#7f0000'],
+            purple: ['#6a1b9a', '#4a148c'],
+            brown:  ['#8d6e63', '#5d4037'],
+            gray:   ['#546e7a', '#37474f'],
+            rainbow:['#2e7d32', '#1b1b1b']
+        };
+        function setBoardTheme(name) {
+            document.documentElement.classList.toggle('rainbow-board', name === 'rainbow');
+            document.documentElement.classList.remove('image-board');
+            const t = BOARD_THEMES[name] || BOARD_THEMES.green;
+            const root = document.documentElement.style;
+            root.setProperty('--board-color', t[0]);
+            root.setProperty('--cell-border', t[1]);
+            document.querySelectorAll('.board-theme-btn').forEach(b => b.classList.toggle('active', b.dataset.theme === name));
+            const pk = document.getElementById('board-color-picker');
+            if (pk) pk.value = t[0];
+            try { localStorage.setItem('othello-board-theme', name); } catch (e) {}
+        }
+        // カラーピッカーで好きな色を選ぶ（枠線は自動で少し暗くする）
+        function setBoardColorCustom(hex, noSave) {
+            if (!/^#[0-9a-fA-F]{6}$/.test(hex)) return;
+            document.documentElement.classList.remove('rainbow-board');
+            document.documentElement.classList.remove('image-board');
+            const dark = '#' + [1, 3, 5].map(i => Math.round(parseInt(hex.substr(i, 2), 16) * 0.65).toString(16).padStart(2, '0')).join('');
+            const root = document.documentElement.style;
+            root.setProperty('--board-color', hex);
+            root.setProperty('--cell-border', dark);
+            document.querySelectorAll('.board-theme-btn').forEach(b => b.classList.remove('active'));
+            const pk = document.getElementById('board-color-picker');
+            if (pk) pk.value = hex;
+            if (!noSave) { try { localStorage.setItem('othello-board-theme', 'custom:' + hex); } catch (e) {} }
+        }
+        // 画像を盤の背景にする（読み込み時に縮小して保存。盤に合わせて全面表示）
+        function applyBoardImage(dataUrl) {
+            const root = document.documentElement;
+            root.classList.remove('rainbow-board');
+            root.classList.add('image-board');
+            root.style.setProperty('--board-image', 'url("' + dataUrl + '")');
+            root.style.setProperty('--cell-border', '#1b1b1b');
+            document.querySelectorAll('.board-theme-btn').forEach(b => b.classList.toggle('active', b.dataset.theme === 'image'));
+        }
+        function loadBoardImage(input) {
+            const file = input.files && input.files[0];
+            input.value = '';
+            if (!file) return;
+            const url = URL.createObjectURL(file);
+            const img = new Image();
+            img.onload = () => {
+                const MAX = 1024;
+                const sc = Math.min(1, MAX / Math.max(img.naturalWidth, img.naturalHeight));
+                const cv = document.createElement('canvas');
+                cv.width = Math.max(1, Math.round(img.naturalWidth * sc));
+                cv.height = Math.max(1, Math.round(img.naturalHeight * sc));
+                cv.getContext('2d').drawImage(img, 0, 0, cv.width, cv.height);
+                URL.revokeObjectURL(url);
+                const dataUrl = cv.toDataURL('image/jpeg', 0.85);
+                applyBoardImage(dataUrl);
+                try {
+                    localStorage.setItem('othello-board-image', dataUrl);
+                    localStorage.setItem('othello-board-theme', 'image');
+                } catch (e) {}
+            };
+            img.onerror = () => { URL.revokeObjectURL(url); alert('画像を読み込めませんでした。'); };
+            img.src = url;
+        }
+        (function () {
+            let saved = 'green';
+            try { saved = localStorage.getItem('othello-board-theme') || 'green'; } catch (e) {}
+            if (saved.indexOf('custom:') === 0) setBoardColorCustom(saved.slice(7), true);
+            else if (saved === 'image') {
+                let img = null;
+                try { img = localStorage.getItem('othello-board-image'); } catch (e) {}
+                if (img) applyBoardImage(img); else setBoardTheme('green');
+            }
+            else setBoardTheme(saved === 'rainbow' ? 'rainbow' : 'green');
+        })();
 
         function enforceFullscreen() {
             if (difficulty === 'pvp') {
