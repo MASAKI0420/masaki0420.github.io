@@ -496,7 +496,8 @@ async function loadOsuInput(){
         if(/\.osu$/i.test(n)){const tx=await e.async('string');O.osus.push({name:n,o:parseOsu(tx),ref:osuRefs(tx)});}else if(/\.(mp3|ogg|wav)$/i.test(n))O.osz.set(n,await e.async('arraybuffer'));else if(/\.(mp4|webm|avi|flv)$/i.test(n))O.vid.set(n,await e.async('arraybuffer'));else if(/\.(jpe?g|png)$/i.test(n)&&!e.name.includes('/'))O.img.set(n,await e.async('arraybuffer'));}
     }else{const tx=new TextDecoder().decode(new Uint8Array(f.data));O.osus.push({name:f.name,o:parseOsu(tx),ref:osuRefs(tx)});}
     if(!O.osus.length)throw new Error('.osu が見つかりません');
-    const taiko=O.osus.filter(p=>p.o.general.Mode==='1');if(taiko.length)O.osus=taiko;
+    O.osus=O.osus.filter(p=>p.o.general.Mode==='1');
+    if(!O.osus.length)throw new Error('osu!taiko の譜面ではありません（Mode が 1 の譜面だけ読み込めます）');
     const sel=$('o-diff');sel.textContent='';
     O.osus.forEach((p,i)=>{const op=document.createElement('option');op.value=i;op.textContent=p.o.metadata.Version||p.name;sel.appendChild(op);});
     $('o-diff-wrap').hidden=O.osus.length<2;
