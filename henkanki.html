@@ -56,6 +56,10 @@ select,input[type=text],input[type=number]{font:inherit;font-size:14px;color:var
 .editor-head select{width:auto;padding:4px 8px;font-size:13px}
 textarea{display:block;width:100%;height:350px;resize:none;background:var(--editor);color:var(--editor-ink);border:1px solid #444;border-radius:4px;padding:10px 12px;font-family:var(--f-mono);font-size:13px;line-height:1.5;white-space:pre;overflow:auto;tab-size:4}
 textarea.err{color:#ff8fa8;white-space:pre-wrap}
+.editchk{display:flex;align-items:center;gap:5px;font-size:13px;font-weight:400;cursor:pointer;white-space:nowrap}
+.editchk input{width:auto;margin:0;accent-color:var(--pink-deep)}
+/* 編集なし(チェックなし)：プレビューは固定。黒い画面に触れてもページがスクロールする */
+@media (max-width:899px){textarea.locked{overflow:hidden;resize:none;-webkit-user-select:none;user-select:none;touch-action:pan-y;caret-color:transparent}}
 textarea::placeholder{color:#8a8a8a}
 .msgs{list-style:none;margin:8px 0 0;padding:0;font-size:12.5px;display:flex;flex-direction:column;gap:2px}
 .msgs li{color:var(--warn)} .msgs li.ok{color:var(--ok)} .msgs li.err{color:var(--pink-deep)}
@@ -100,12 +104,12 @@ textarea::placeholder{color:#8a8a8a}
         <div class="drop" data-slot="ovideo" data-accept=".mp4,.webm,.avi,.flv"><button type="button" class="pick">ファイルを選択</button><div class="or">またはここにドロップ</div><div class="name">なし</div></div></div>
     </div>
     <div class="field" id="o-diff-wrap" hidden style="margin-bottom:22px"><span>変換する難易度（.osz 内）</span><select id="o-diff"></select></div>
-    <div class="editor-head"><span class="lblrow"><span class="lbl">TJA プレビュー・編集</span></span></div>
+    <div class="editor-head"><span class="lblrow"><span class="lbl">TJA プレビュー・編集</span><label class="editchk"><input type="checkbox" id="o-edit">編集可能</label></span></div>
     <textarea id="o-out" spellcheck="false" placeholder="osu!ファイルを読み込むとここに変換結果が表示されます..."></textarea>
     <ul class="msgs" id="o-msgs"></ul>
     <div class="save">
       <label class="field"><span>保存するファイル名 (.zip)</span><input type="text" id="o-name" placeholder="ファイル名 (自動入力)"></label>
-      <div class="opts"><label>文字コード <select id="o-enc"><option value="sjis">Shift_JIS（太鼓さん次郎）</option><option value="utf8">UTF-8（TJAPlayer）</option></select></label><label id="o-vid-wrap" hidden>動画 <select id="o-vid"><option value="yes">あり（ZIPに入れる）</option><option value="no">なし（入れない）</option></select></label></div>
+      <div class="opts"><label>文字コード <select id="o-enc"><option value="sjis">Shift_JIS（太鼓さん次郎）</option><option value="utf8">UTF-8（TJAPlayer）</option></select></label><label id="o-img-wrap" hidden>画像 <select id="o-img"><option value="yes">あり（ZIPに入れる）</option><option value="no">なし（入れない）</option></select></label><label id="o-vid-wrap" hidden>動画 <select id="o-vid"><option value="yes">あり（ZIPに入れる）</option><option value="no">なし（入れない）</option></select></label></div>
       <button type="button" class="dl" id="o-dl" disabled>ZIPをダウンロード</button>
       <div class="foot"><span id="o-hint"></span></div>
     </div>
@@ -124,7 +128,7 @@ textarea::placeholder{color:#8a8a8a}
     </div>
     <div class="field" id="t-file-wrap" hidden style="margin-bottom:22px"><span>変換するTJA（zip 内）</span><select id="t-file"></select></div>
     <div class="editor-head">
-      <span class="lblrow"><span class="lbl">osu! プレビュー・編集</span></span>
+      <span class="lblrow"><span class="lbl">osu! プレビュー・編集</span><label class="editchk"><input type="checkbox" id="t-edit">編集可能</label></span>
       <span style="display:flex;gap:8px;flex-wrap:wrap">
         <select id="t-branch" hidden aria-label="譜面分岐"><option value="M">達人譜面</option><option value="E">玄人譜面</option><option value="N">普通譜面</option></select>
         <select id="t-diff" hidden aria-label="表示する難易度"></select>
@@ -456,6 +460,10 @@ const safe=s=>(s||'untitled').replace(/[\\/:*?"<>|]/g,'_').trim()||'untitled';
 function msgs(id,list){const ul=$(id);ul.textContent='';for(const m of list){const li=document.createElement('li');if(typeof m==='string')li.textContent=m;else{li.textContent=m.t;li.className=m.c;}ul.appendChild(li);}}
 function decodeTJA(buf){const u=new Uint8Array(buf);try{return new TextDecoder('utf-8',{fatal:true}).decode(u);}catch(e){return new TextDecoder('shift_jis').decode(u);}}
 
+/* ---------- 編集可能チェックボックス ---------- */
+function applyEdit(pre){const on=$(pre+'-edit').checked,ta=$(pre+'-out');ta.readOnly=!on;ta.classList.toggle('locked',!on);if(!on)ta.blur();}
+['o','t'].forEach(p=>{$(p+'-edit').onchange=()=>applyEdit(p);applyEdit(p);});
+
 /* ---------- タブ ---------- */
 function showTab(which){const o=which==='o2t';$('tab-o2t').setAttribute('aria-selected',o);$('tab-t2o').setAttribute('aria-selected',!o);$('pane-o2t').hidden=!o;$('pane-t2o').hidden=o;}
 $('tab-o2t').onclick=()=>showTab('o2t');$('tab-t2o').onclick=()=>showTab('t2o');
@@ -463,7 +471,10 @@ $('tab-o2t').onclick=()=>showTab('o2t');$('tab-t2o').onclick=()=>showTab('t2o');
 /* ---------- ファイル投入欄 ---------- */
 let pickSlot=null;
 document.querySelectorAll('.drop').forEach(z=>{
-  z.addEventListener('click',()=>{pickSlot=z.dataset.slot;$('picker').accept=z.dataset.accept;$('picker').click();}); // 点線の内側ならどこをタッチしても選択できる（ボタンのクリックもここに伝わる）
+  z.addEventListener('click',()=>{pickSlot=z.dataset.slot;
+    // スマホでは画像/動画の accept を外し、写真ライブラリではなく「ファイルから選択」で開く
+    const media=['oimage','ovideo','bg'].includes(pickSlot)&&(navigator.maxTouchPoints>0||'ontouchstart' in window||matchMedia('(pointer:coarse)').matches);
+    $('picker').accept=media?z.dataset.accept+',.zip':z.dataset.accept;$('picker').click();}); // 点線の内側ならどこをタッチしても選択できる（ボタンのクリックもここに伝わる）
   ['dragenter','dragover'].forEach(e=>z.addEventListener(e,ev=>{ev.preventDefault();z.classList.add('over');}));
   ['dragleave','drop'].forEach(e=>z.addEventListener(e,ev=>{ev.preventDefault();z.classList.remove('over');}));
   z.addEventListener('drop',ev=>{const f=ev.dataTransfer.files[0];if(f)takeFile(z.dataset.slot,f);});
@@ -473,6 +484,8 @@ $('picker').onchange=e=>{const f=e.target.files[0];if(f&&pickSlot)takeFile(pickS
 function setZone(slot,label){const z=document.querySelector(`.drop[data-slot="${slot}"]`);z.querySelector('.name').textContent=label;z.classList.toggle('has',!!F[slot]);}
 
 async function takeFile(slot,file){
+  const acc=document.querySelector(`.drop[data-slot="${slot}"]`).dataset.accept.split(',');
+  if(!acc.some(x=>file.name.toLowerCase().endsWith(x))){setZone(slot,'対応していない形式です（'+acc.join(' ')+'）');return;}
   const data=await file.arrayBuffer();F[slot]={name:file.name,data};setZone(slot,file.name);
   if(slot==='osu')await loadOsuInput();
   else if(slot==='oaudio'||slot==='ovideo'||slot==='oimage')convertO2T(true);
@@ -521,7 +534,8 @@ function oVideoAll(){ // .osz 内の動画を優先（選択中の譜面が指�
     for(const [n,d] of O.vid)if(n.toLowerCase()===want)return{name:n,data:d};
     const first=O.vid.entries().next().value;return{name:first[0],data:first[1]};}
   return F.ovideo||null;}
-function oImage(){if(F.oimage)return F.oimage;let best=null;for(const [n,d] of O.img)if(!best||d.byteLength>best.data.byteLength)best={name:n,data:d};return best;}
+function oImage(){return $('o-img').value==='no'?null:oImageAll();} // 「画像 なし」を選んでいるときは使わない
+function oImageAll(){if(F.oimage)return F.oimage;let best=null;for(const [n,d] of O.img)if(!best||d.byteLength>best.data.byteLength)best={name:n,data:d};return best;}
 function convertO2T(force){
   const p=O.osus[$('o-diff').value||0];if(!p){refreshButtons();return;}
   if(O.edited&&!force)return;
@@ -533,7 +547,8 @@ function convertO2T(force){
     const auInOsz=O.osz.size>0;setZone('oaudio',auInOsz&&au?au.name+'（.osz内を使用）':(F.oaudio?F.oaudio.name:'なし (TJAのみ)'));
     const va=oVideoAll(),vd=oVideo(),vdInOsz=O.vid.size>0,no=va&&!vd?'（使わない）':'';
     $('o-vid-wrap').hidden=!va;setZone('ovideo',vdInOsz?va.name+'（.osz内）'+no:(F.ovideo?F.ovideo.name+no:'なし'));
-    const im=oImage();if(!F.oimage)setZone('oimage',im?im.name+'（.osz内）':'なし');
+    const ia=oImageAll(),im=oImage(),noI=ia&&!im?'（使わない）':'';
+    $('o-img-wrap').hidden=!ia;setZone('oimage',F.oimage?F.oimage.name+noI:(ia?ia.name+'（.osz内）'+noI:'なし'));
     const extra=(im?'\r\nBGIMAGE:'+im.name:'')+(vd?'\r\nBGMOVIE:'+vd.name:'');
     $('o-out').value=extra?text.replace(/^(WAVE:.*)$/m,'$1'+extra):text;O.edited=false;
     if(im)list.push('画像を BGIMAGE: に設定して ZIP に同梱します。');
@@ -548,7 +563,7 @@ function convertO2T(force){
   msgs('o-msgs',list);refreshButtons();
 }
 $('o-diff').onchange=()=>pickDiff(+$('o-diff').value);
-$('o-vid').onchange=()=>convertO2T(true);
+$('o-vid').onchange=$('o-img').onchange=()=>convertO2T(true);
 $('o-course').onchange=()=>{$('o-level').value=DEF_LEVEL[$('o-course').value];convertO2T(true);};
 $('o-level').oninput=()=>{const ta=$('o-out');ta.value=ta.value.replace(/^LEVEL:.*$/m,'LEVEL:'+(parseInt($('o-level').value)||1));};
 $('o-out').oninput=()=>{O.edited=true;};
@@ -656,7 +671,7 @@ $('o-reload').onclick=()=>{
   for(const k of ['osu','oaudio','oimage','ovideo'])F[k]=null;
   O.osus=[];O.osz=new Map();O.vid=new Map();O.img=new Map();O.edited=false;
   setZone('osu','未選択');setZone('oaudio','なし (TJAのみ)');setZone('oimage','なし');setZone('ovideo','なし');
-  $('o-diff').textContent='';$('o-diff-wrap').hidden=true;$('o-vid').value='yes';$('o-vid-wrap').hidden=true;
+  $('o-diff').textContent='';$('o-diff-wrap').hidden=true;$('o-vid').value='yes';$('o-vid-wrap').hidden=true;$('o-img').value='yes';$('o-img-wrap').hidden=true;
   $('o-course').value='Oni';$('o-level').value=DEF_LEVEL.Oni;$('o-name').value='';$('o-out').value='';$('o-hint').textContent='';
   clearErr('o');msgs('o-msgs',[]);refreshButtons();
 };
@@ -698,6 +713,7 @@ window.addEventListener('resize',queueFit);
 ['tab-o2t','tab-t2o'].forEach(id=>$(id).addEventListener('click',queueFit));
 new MutationObserver(queueFit).observe(CARD,{childList:true,subtree:true,attributes:true,attributeFilter:['hidden']});
 if(document.fonts)document.fonts.ready.then(queueFit);
-fit(); </script>
-</body>
-</html>
+fit();
+</script>
+
+</body></html>
