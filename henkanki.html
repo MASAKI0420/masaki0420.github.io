@@ -1,863 +1,700 @@
-<!-- START OF FILE ai_studio_code (8)OSU_SystemFilePicker.html -->
-<!DOCTYPE html>
-<html lang="ja">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Rhythm Game Chart Converter Suite</title>
-    
-    <!-- 外部ライブラリ (CDN) -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/encoding-japanese/2.0.0/encoding.min.js"></script>
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>osu!taiko ⇄ TJA 譜面変換</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<style>
+/* Layout: 白いカード1枚にタブ2つ。各タブ = 設定行 → ファイル投入欄 → 編集できる結果 → 保存欄 */
+:root{
+  --page:#f2f2f7; --card:#ffffff; --ink:#333333; --muted:#666666; --line:#dddddd; --dash:#cccccc;
+  --zone:#fafafa; --editor:#2d2d2d; --editor-ink:#e8e8e8; --pink:#ff6699; --pink-deep:#e91e63; --off:#cccccc; --warn:#b26a00; --ok:#2e7d32;
+  --f-body:"Segoe UI","Hiragino Kaku Gothic ProN","Yu Gothic UI","Meiryo",system-ui,sans-serif;
+  --f-mono:Consolas,"SFMono-Regular",Menlo,ui-monospace,monospace;
+  color-scheme:light;
+}
+*{box-sizing:border-box}
+html,body{overscroll-behavior-y:none}/* スマホで下に引っ張ってもページが再読み込みされない */
+textarea{overscroll-behavior:contain}
+[hidden]{display:none!important}
+body{background:var(--page);color:var(--ink);font-family:var(--f-body);font-size:14px;line-height:1.5;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:20px 32px}
+.card{max-width:960px;margin:0 auto;background:var(--card);border-radius:10px;box-shadow:0 2px 12px rgba(0,0,0,.06);padding:20px 30px 30px}
+@media (max-width:600px){.card{padding:14px 16px 20px}}
+@media (min-width:900px){
+  html,body{height:100%;overflow:hidden}
+  .card{position:fixed;top:50%;left:50%;width:820px;max-width:calc(100vw - 32px);margin:0;transform:translate(-50%,-50%) scale(var(--s,1));transform-origin:center}
+  textarea{height:300px}
+}
 
-    <style>
-        body {
-            font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
-            background-color: #f4f4f9;
-            color: #333;
-            margin: 0;
-            padding: 20px;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-        }
-        .container {
-            background: white;
-            padding: 20px 30px 30px;
-            border-radius: 8px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
-            width: 100%;
-            max-width: 900px;
-        }
+.tabs{display:flex;border-bottom:2px solid var(--line);margin-bottom:24px}
+.tab{flex:1;font:inherit;font-weight:700;font-size:16px;color:var(--muted);background:none;border:none;border-bottom:3px solid transparent;margin-bottom:-2px;padding:14px 8px;cursor:pointer}
+.tab:hover{color:var(--ink)}
+.tab[aria-selected="true"]{color:var(--pink-deep);border-bottom-color:var(--pink)}
+.tab:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:2px solid var(--pink);outline-offset:2px}
 
-        /* Tabs */
-        .tabs {
-            display: flex;
-            border-bottom: 2px solid #ddd;
-            margin-bottom: 20px;
-        }
-        .tab-btn {
-            padding: 15px 20px;
-            cursor: pointer;
-            font-weight: bold;
-            color: #666;
-            border: none;
-            background: none;
-            font-size: 16px;
-            transition: all 0.2s;
-            border-bottom: 3px solid transparent;
-            margin-bottom: -2px;
-        }
-        .tab-btn:hover { background-color: #f9f9f9; color: #333; }
-        .tab-btn.active {
-            color: #333;
-            border-bottom: 3px solid;
-        }
-        /* Tab Colors */
-        .tab-btn[data-target="o2t"].active { color: #ff66aa; border-color: #ff66aa; }
-        .tab-btn[data-target="t2o"].active { color: #e91e63; border-color: #e91e63; }
+h2{color:var(--pink);font-size:19px;margin:0 0 18px;display:flex;align-items:center;flex-wrap:wrap;gap:6px 14px}
+.reload{font:inherit;font-size:13px;font-weight:400;color:var(--ink);background:#efefef;border:1px solid #c8c8c8;border-radius:3px;padding:3px 12px;cursor:pointer}
+.reload:hover{background:#e4e4e4}
+.grid{display:grid;gap:20px;margin-bottom:22px}
+.g2{grid-template-columns:repeat(2,minmax(0,1fr))}
+.g3{grid-template-columns:repeat(3,minmax(0,1fr))}
+.g4{grid-template-columns:repeat(4,minmax(0,1fr));gap:14px}
+@media (max-width:900px){.g4{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (max-width:720px){.g2,.g3,.g4{grid-template-columns:minmax(0,1fr)}}
+.field{display:flex;flex-direction:column;gap:6px;min-width:0}
+.field>span,.lbl{font-weight:700;font-size:13px}
+select,input[type=text],input[type=number]{font:inherit;font-size:14px;color:var(--ink);background:#fff;border:1px solid var(--dash);border-radius:4px;padding:8px 10px;width:100%;min-width:0}
 
-        /* Sections */
-        .converter-section { display: none; }
-        .converter-section.active { display: block; animation: fadeIn 0.3s; }
-        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+.drop{border:2px dashed var(--dash);border-radius:6px;background:var(--zone);padding:16px 10px;text-align:center;display:flex;flex-direction:column;align-items:center;gap:6px;transition:border-color .15s,background .15s;min-width:0}
+.drop{cursor:pointer;-webkit-tap-highlight-color:transparent}
+.drop.over{border-color:var(--pink);background:#fff0f5}
+.drop .pick{font:inherit;font-size:13px;background:#efefef;border:1px solid #c8c8c8;border-radius:3px;padding:4px 14px;cursor:pointer;color:var(--ink)}
+.drop .pick:hover{background:#e4e4e4}
+.drop .or{color:var(--muted);font-size:13px}
+.drop .name{font-weight:700;font-size:12.5px;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.drop.has{border-color:var(--pink)}
 
-        h2 { margin-top: 0; font-size: 20px; }
-        .o2t-color { color: #ff66aa; }
-        .t2o-color { color: #e91e63; }
+.editor-head{display:flex;justify-content:space-between;align-items:flex-end;gap:10px;flex-wrap:wrap;margin-bottom:6px}
+.editor-head select{width:auto;padding:4px 8px;font-size:13px}
+textarea{display:block;width:100%;height:350px;resize:none;background:var(--editor);color:var(--editor-ink);border:1px solid #444;border-radius:4px;padding:10px 12px;font-family:var(--f-mono);font-size:13px;line-height:1.5;white-space:pre;overflow:auto;tab-size:4}
+textarea::placeholder{color:#8a8a8a}
+.msgs{list-style:none;margin:8px 0 0;padding:0;font-size:12.5px;display:flex;flex-direction:column;gap:2px}
+.msgs li{color:var(--warn)} .msgs li.ok{color:var(--ok)} .msgs li.err{color:var(--pink-deep)}
+.msgs:empty{display:none}
 
-        .row { display: flex; gap: 20px; margin-bottom: 20px; flex-wrap: wrap; }
-        .col { flex: 1; min-width: 220px; }
-        
-        label { display: block; margin-bottom: 5px; font-weight: bold; font-size: 14px; }
-        
-        input[type="text"], input[type="number"], select {
-            width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box;
-        }
+.save{margin-top:24px;background:var(--zone);border:1px solid #eeeeee;border-radius:6px;padding:16px;display:flex;flex-direction:column;gap:8px}
+.save .opts{display:flex;flex-wrap:wrap;gap:14px;font-size:13px;color:var(--muted);align-items:center}
+.save .opts select{width:auto;padding:4px 8px;font-size:13px}
+.dl{font:inherit;font-weight:700;font-size:17px;color:#fff;background:var(--pink);border:none;border-radius:4px;padding:15px;margin-top:4px;cursor:pointer;transition:filter .15s}
+.dl:hover:not(:disabled){filter:brightness(1.06)}
+.dl:disabled{background:var(--off);cursor:not-allowed}
+.foot{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;font-size:12.5px;color:#888}
+.foot button{font:inherit;font-size:12.5px;background:none;border:none;color:var(--pink-deep);cursor:pointer;padding:0;text-decoration:underline}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
 
-        /* Drop Zone */
-        .drop-zone {
-            border: 2px dashed #ccc;
-            border-radius: 6px;
-            padding: 15px;
-            text-align: center;
-            background: #fafafa;
-            cursor: pointer;
-            transition: all 0.2s;
-            margin-bottom: 10px;
-            position: relative;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            min-height: 80px;
-        }
-        .active-o2t .drop-zone:hover { background: #fff0f5; border-color: #ff66aa; }
-        .active-t2o .drop-zone:hover { background: #fff0f5; border-color: #e91e63; }
-        .drop-zone.active { background: #e6ffea; border-color: #4CAF50 !important; }
-        
-        .drop-zone p { margin: 0; font-size: 13px; color: #666; pointer-events: none; margin-bottom: 5px; }
-        .drop-zone .file-name { font-weight: bold; color: #333; font-size: 12px; display: block; word-break: break-all; margin-top: 5px;}
-        
-        /* 擬似ボタン */
-        .fake-btn {
-            background-color: #eee;
-            border: 1px solid #ccc;
-            padding: 4px 12px;
-            border-radius: 4px;
-            font-size: 12px;
-            color: #333;
-            pointer-events: none;
-            margin-bottom: 4px;
-        }
+<div class="card">
+  <div class="tabs" role="tablist">
+    <button class="tab" role="tab" id="tab-o2t" aria-selected="true" aria-controls="pane-o2t">osu! to TJA</button>
+    <button class="tab" role="tab" id="tab-t2o" aria-selected="false" aria-controls="pane-t2o">TJA to osu!</button>
+  </div>
 
-        textarea {
-            width: 100%; height: 350px;
-            font-family: "Consolas", "Monaco", monospace;
-            font-size: 13px; line-height: 1.4;
-            padding: 10px; box-sizing: border-box;
-            border: 1px solid #ccc; border-radius: 4px;
-            background-color: #2d2d2d; color: #f8f8f2;
-            resize: vertical;
-        }
-
-        .filename-group {
-            margin-top: 20px;
-            background: #f9f9f9;
-            padding: 15px;
-            border-radius: 6px;
-            border: 1px solid #eee;
-        }
-
-        button {
-            color: white; border: none;
-            padding: 15px 30px; border-radius: 4px;
-            cursor: pointer; font-size: 18px;
-            width: 100%; margin-top: 10px; font-weight: bold;
-            transition: background 0.2s;
-        }
-        button:disabled { background-color: #ccc !important; cursor: not-allowed; }
-
-        #o2t-download-btn { background-color: #ff66aa; }
-        #o2t-download-btn:hover { background-color: #e65c99; }
-        
-        #t2o-download-btn { background-color: #e91e63; }
-        #t2o-download-btn:hover { background-color: #c2185b; }
-
-        .external-link-container {
-            margin-top: 15px;
-            text-align: right;
-        }
-        .external-link {
-            color: #888;
-            text-decoration: none;
-            font-size: 14px;
-            transition: color 0.2s;
-        }
-        .external-link:hover {
-            color: #ff66aa;
-            text-decoration: underline;
-        }
-
-        .footer { margin-top: 30px; font-size: 12px; color: #888; text-align: center; }
-    </style>
-</head>
-<body>
-
-<div class="container">
-    <div class="tabs">
-        <button class="tab-btn active" data-target="o2t">osu! to TJA</button>
-        <button class="tab-btn" data-target="t2o">TJA to osu!</button>
+  <!-- ========== osu! → TJA ========== -->
+  <section id="pane-o2t" role="tabpanel" aria-labelledby="tab-o2t">
+    <h2>osu! to TJA Converter (Output: .zip) <button type="button" class="reload" id="o-reload">新規作成</button></h2>
+    <div class="grid g2">
+      <label class="field"><span>COURSE (難易度)</span>
+        <select id="o-course">
+          <option value="Easy">Easy (かんたん)</option><option value="Normal">Normal (ふつう)</option><option value="Hard">Hard (むずかしい)</option>
+          <option value="Oni" selected>Oni (おに)</option><option value="Edit">Edit (おに・裏)</option>
+        </select></label>
+      <label class="field"><span>LEVEL (★の数)</span><input type="number" id="o-level" min="1" max="10" value="8"></label>
     </div>
-
-    <!-- ========================================== -->
-    <!-- SECTION: osu! to TJA -->
-    <!-- ========================================== -->
-    <div id="o2t-section" class="converter-section active active-o2t">
-        <h2 class="o2t-color">osu! to TJA Converter (Output: .zip)</h2>
-        
-        <div class="row">
-            <div class="col">
-                <label>COURSE (難易度)</label>
-                <select id="o2t-course">
-                    <option value="Oni">Oni (おに)</option>
-                    <option value="Hard">Hard (むずかしい)</option>
-                    <option value="Normal">Normal (ふつう)</option>
-                    <option value="Easy">Easy (かんたん)</option>
-                    <option value="Edit">Edit (エディット)</option>
-                </select>
-            </div>
-            <div class="col">
-                <label>LEVEL (★の数)</label>
-                <input type="number" id="o2t-level" value="8" min="1" max="10">
-            </div>
-        </div>
-
-        <div class="row">
-            <div class="col">
-                <label>1. osu!ファイル (.osu)</label>
-                <div class="drop-zone" id="o2t-zone-osu">
-                    <div class="fake-btn">ファイルを選択</div>
-                    <p>またはここにドロップ</p>
-                    <span class="file-name" id="o2t-name-osu">未選択</span>
-                    <input type="file" id="o2t-input-osu" accept=".osu" style="display:none">
-                </div>
-            </div>
-            <div class="col">
-                <label>2. 音楽ファイル (.mp3/.ogg)</label>
-                <div class="drop-zone" id="o2t-zone-audio">
-                    <div class="fake-btn">ファイルを選択</div>
-                    <p>またはここにドロップ</p>
-                    <span class="file-name" id="o2t-name-audio">なし (TJAのみ)</span>
-                    <input type="file" id="o2t-input-audio" accept="audio/*" style="display:none">
-                </div>
-            </div>
-        </div>
-
-        <div class="editor-area">
-            <label>TJA プレビュー・編集</label>
-            <textarea id="o2t-editor" placeholder="osu!ファイルを読み込むとここに変換結果が表示されます..."></textarea>
-        </div>
-
-        <div class="filename-group">
-            <label>保存するファイル名 (.zip)</label>
-            <input type="text" id="o2t-filename" placeholder="ファイル名 (自動入力)">
-            <button id="o2t-download-btn" disabled>ZIPをダウンロード</button>
-            
-            <div class="external-link-container">
-                <a href="https://masaki0420.github.io/osu2zip.html" class="external-link" target="_blank" rel="noopener noreferrer">OSU2zip</a>
-            </div>
-        </div>
+    <div class="grid g4">
+      <div class="field"><span class="lbl">1. osu!ファイル (.osu / .osz)</span>
+        <div class="drop" data-slot="osu" data-accept=".osu,.osz,.zip"><button type="button" class="pick">ファイルを選択</button><div class="or">またはここにドロップ</div><div class="name">未選択</div></div></div>
+      <div class="field"><span class="lbl">2. 音楽ファイル (.mp3/.ogg)</span>
+        <div class="drop" data-slot="oaudio" data-accept=".mp3,.ogg,.wav"><button type="button" class="pick">ファイルを選択</button><div class="or">またはここにドロップ</div><div class="name">なし (TJAのみ)</div></div></div>
+      <div class="field"><span class="lbl">3. 画像 (.jpg/.png)</span>
+        <div class="drop" data-slot="oimage" data-accept=".jpg,.jpeg,.png"><button type="button" class="pick">ファイルを選択</button><div class="or">またはここにドロップ</div><div class="name">なし</div></div></div>
+      <div class="field"><span class="lbl">4. 動画 (.mp4)</span>
+        <div class="drop" data-slot="ovideo" data-accept=".mp4,.webm,.avi,.flv"><button type="button" class="pick">ファイルを選択</button><div class="or">またはここにドロップ</div><div class="name">なし</div></div></div>
     </div>
-
-    <!-- ========================================== -->
-    <!-- SECTION: TJA to osu! -->
-    <!-- ========================================== -->
-    <div id="t2o-section" class="converter-section active-t2o">
-        <h2 class="t2o-color">TJA to osu! Converter (Output: .osz)</h2>
-
-        <div class="row">
-            <div class="col">
-                <label>1. TJAファイル (.tja)</label>
-                <div class="drop-zone" id="t2o-zone-tja">
-                    <div class="fake-btn">ファイルを選択</div>
-                    <p>またはここにドロップ</p>
-                    <span class="file-name" id="t2o-name-tja">未選択</span>
-                    <input type="file" id="t2o-input-tja" accept=".tja,.txt" style="display:none">
-                </div>
-            </div>
-            <div class="col">
-                <label>2. 音楽ファイル</label>
-                <div class="drop-zone" id="t2o-zone-audio">
-                    <div class="fake-btn">ファイルを選択</div>
-                    <p>またはここにドロップ</p>
-                    <span class="file-name" id="t2o-name-audio">なし</span>
-                    <input type="file" id="t2o-input-audio" accept="audio/*" style="display:none">
-                </div>
-            </div>
-            <!-- 背景画像/動画選択 (制限解除版) -->
-            <div class="col">
-                <label>3. 背景画像/動画</label>
-                <div class="drop-zone" id="t2o-zone-bg">
-                    <div class="fake-btn">ファイルを選択</div>
-                    <p>またはここにドロップ</p>
-                    <span class="file-name" id="t2o-name-bg">なし</span>
-                    <input type="file" id="t2o-input-bg" style="display:none">
-                </div>
-            </div>
-        </div>
-
-        <div class="editor-area">
-            <label>osu! プレビュー・編集</label>
-            <textarea id="t2o-editor" placeholder="TJAファイルを読み込むとここに変換結果が表示されます..."></textarea>
-        </div>
-
-        <div class="filename-group">
-            <label>保存するファイル名 (.osz)</label>
-            <input type="text" id="t2o-filename" placeholder="ファイル名 (自動入力)">
-            <button id="t2o-download-btn" disabled>.osz をダウンロード</button>
-        </div>
+    <div class="field" id="o-diff-wrap" hidden style="margin-bottom:22px"><span>変換する難易度（.osz 内）</span><select id="o-diff"></select></div>
+    <div class="editor-head"><span class="lbl">TJA プレビュー・編集</span></div>
+    <textarea id="o-out" spellcheck="false" placeholder="osu!ファイルを読み込むとここに変換結果が表示されます..."></textarea>
+    <ul class="msgs" id="o-msgs"></ul>
+    <div class="save">
+      <label class="field"><span>保存するファイル名 (.zip)</span><input type="text" id="o-name" placeholder="ファイル名 (自動入力)"></label>
+      <div class="opts"><label>文字コード <select id="o-enc"><option value="sjis">Shift_JIS（太鼓さん次郎）</option><option value="utf8">UTF-8（TJAPlayer）</option></select></label><label id="o-vid-wrap" hidden>動画 <select id="o-vid"><option value="yes">あり（ZIPに入れる）</option><option value="no">なし（入れない）</option></select></label></div>
+      <button type="button" class="dl" id="o-dl" disabled>ZIPをダウンロード</button>
+      <div class="foot"><span id="o-hint"></span></div>
     </div>
+  </section>
 
+  <!-- ========== TJA → osu! ========== -->
+  <section id="pane-t2o" role="tabpanel" aria-labelledby="tab-t2o" hidden>
+    <h2>TJA to osu! Converter (Output: .osz) <button type="button" class="reload" id="t-reload">新規作成</button></h2>
+    <div class="grid g3">
+      <div class="field"><span class="lbl">1. TJAファイル (.tja / .zip)</span>
+        <div class="drop" data-slot="tja" data-accept=".tja,.zip"><button type="button" class="pick">ファイルを選択</button><div class="or">またはここにドロップ</div><div class="name">未選択</div></div></div>
+      <div class="field"><span class="lbl">2. 音楽ファイル</span>
+        <div class="drop" data-slot="taudio" data-accept=".mp3,.ogg,.wav"><button type="button" class="pick">ファイルを選択</button><div class="or">またはここにドロップ</div><div class="name">なし</div></div></div>
+      <div class="field"><span class="lbl">3. 背景画像/動画</span>
+        <div class="drop" data-slot="bg" data-accept=".jpg,.jpeg,.png,.mp4,.avi,.flv,.webm"><button type="button" class="pick">ファイルを選択</button><div class="or">またはここにドロップ</div><div class="name">なし</div></div></div>
+    </div>
+    <div class="field" id="t-file-wrap" hidden style="margin-bottom:22px"><span>変換するTJA（zip 内）</span><select id="t-file"></select></div>
+    <div class="editor-head">
+      <span class="lbl">osu! プレビュー・編集</span>
+      <span style="display:flex;gap:8px;flex-wrap:wrap">
+        <select id="t-branch" hidden aria-label="譜面分岐"><option value="M">達人譜面</option><option value="E">玄人譜面</option><option value="N">普通譜面</option></select>
+        <select id="t-diff" hidden aria-label="表示する難易度"></select>
+      </span>
+    </div>
+    <textarea id="t-out" spellcheck="false" placeholder="TJAファイルを読み込むとここに変換結果が表示されます..."></textarea>
+    <ul class="msgs" id="t-msgs"></ul>
+    <div class="save">
+      <label class="field"><span>保存するファイル名 (.osz)</span><input type="text" id="t-name" placeholder="ファイル名 (自動入力)"></label>
+      <div class="opts" id="t-vid-wrap" hidden><label>動画 <select id="t-vid"><option value="yes">あり（.oszに入れる）</option><option value="no">なし（入れない）</option></select></label></div>
+      <button type="button" class="dl" id="t-dl" disabled>.osz をダウンロード</button>
+      <div class="foot"><span id="t-hint"></span></div>
+    </div>
+  </section>
+  <input type="file" id="picker" hidden>
 </div>
 
-<div class="footer">
-    Requires Internet Connection for JSZip & Encoding.js.
-</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/encoding-japanese@2.0.0/encoding.min.js"></script>
+<script id="core">
+/* ===================== 変換コア ===================== */
+const COURSES=['Easy','Normal','Hard','Oni','Edit'];
+const COURSE_JA={Easy:'かんたん',Normal:'ふつう',Hard:'むずかしい',Oni:'おに',Edit:'おに（裏）'};
+const OSU_VER={Easy:'Kantan',Normal:'Futsuu',Hard:'Muzukashii',Oni:'Oni',Edit:'Inner Oni'};
+const DEF_LEVEL={Easy:3,Normal:5,Hard:7,Oni:9,Edit:10};
+const DEF_OD={Easy:3,Normal:4,Hard:5,Oni:5.5,Edit:6};
 
-<script>
-    // --- SHARED UTILITIES ---
-    function gcd(a, b) { return b === 0 ? a : gcd(b, a % b); }
-    function gcdOfList(list) { return list.length === 0 ? 1 : list.reduce((a, b) => gcd(a, b)); }
-    function round2(num) { return Math.round(num * 100) / 100; }
+function fmt(n,d=6){const v=+(+n).toFixed(d);return Object.is(v,-0)?'0':String(v);}
+function clamp(v,a,b){return Math.min(b,Math.max(a,v));}
+function gcd(a,b){return b?gcd(b,a%b):a;}
+function normCourse(v){v=String(v??'').trim().toLowerCase();
+  if(['0','easy','kantan'].includes(v))return'Easy';if(['1','normal','futsuu'].includes(v))return'Normal';
+  if(['2','hard','muzukashii'].includes(v))return'Hard';if(['4','edit','ura','inner'].includes(v))return'Edit';return'Oni';}
+function guessCourse(ver){const v=String(ver).toLowerCase();
+  if(/inner|ura|裏|edit|extra/.test(v))return'Edit';if(/oni|insane|鬼|おに/.test(v))return'Oni';
+  if(/muzu|hard|むずかしい/.test(v))return'Hard';if(/futsu|normal|ふつう/.test(v))return'Normal';
+  if(/kantan|easy|かんたん|beginner/.test(v))return'Easy';return'Oni';}
 
-    function setupDropZone(zone, input, callback) {
-        zone.addEventListener('dragover', (e) => { e.preventDefault(); zone.classList.add('active'); });
-        zone.addEventListener('dragleave', () => zone.classList.remove('active'));
-        zone.addEventListener('drop', (e) => {
-            e.preventDefault(); zone.classList.remove('active');
-            if(e.dataTransfer.files.length) callback(e.dataTransfer.files[0]);
-        });
-        zone.addEventListener('click', () => input.click());
-        input.addEventListener('change', () => { if(input.files.length) callback(input.files[0]); });
+/* ---------- osu! 読み込み ---------- */
+function parseOsu(text){
+  const o={general:{},metadata:{},difficulty:{},timing:[],objects:[]};let sec='';
+  for(const raw of text.replace(/^﻿/,'').split(/\r?\n/)){
+    const line=raw.trim();if(!line||line.startsWith('//'))continue;
+    const m=line.match(/^\[(.+)\]$/);if(m){sec=m[1];continue;}
+    if(sec==='General'||sec==='Metadata'||sec==='Difficulty'){const i=line.indexOf(':');if(i>0)o[sec.toLowerCase()][line.slice(0,i).trim()]=line.slice(i+1).trim();}
+    else if(sec==='TimingPoints'){const p=line.split(',');if(p.length<2)continue;
+      o.timing.push({time:+p[0],bl:+p[1],meter:(+p[2])||4,uninh:p[6]===undefined?true:p[6].trim()==='1',fx:+(p[7]||0)});}
+    else if(sec==='HitObjects'){const p=line.split(',');if(p.length<5)continue;
+      const ob={t:+p[2],type:+p[3],hs:+p[4]};if(ob.type&2){ob.slides=+p[6]||1;ob.len=+p[7]||0;}if(ob.type&8)ob.end=+p[5];o.objects.push(ob);}
+  }
+  o.timing.sort((a,b)=>a.time-b.time||(b.uninh-a.uninh));
+  o.objects.sort((a,b)=>a.t-b.t);
+  return o;
+}
+function osuHelpers(o){
+  const pts=o.timing,reds=pts.filter(p=>p.uninh&&p.bl>0);
+  const redAt=t=>{let r=reds[0];for(const p of reds){if(p.time<=t+0.5)r=p;else break;}return r;};
+  const svOf=(p,cur)=>p.uninh?1:(p.bl<0?clamp(-100/p.bl,0.1,10):cur);
+  const svAt=t=>{let sv=1;for(const p of pts){if(p.time>t+0.5)break;sv=svOf(p,sv);}return sv;};
+  // 状態変化（SV/Kiai）を時刻ごとにまとめる
+  const changes=[];let sv=1,kiai=false;
+  for(let i=0;i<pts.length;){const t=pts[i].time;let nsv=sv,nk=kiai;
+    while(i<pts.length&&Math.abs(pts[i].time-t)<0.5){nsv=svOf(pts[i],nsv);nk=!!(pts[i].fx&1);i++;}
+    if(Math.abs(nsv-sv)>1e-9||nk!==kiai)changes.push({t,sv:nsv,kiai:nk,svCh:Math.abs(nsv-sv)>1e-9,kiaiCh:nk!==kiai});
+    sv=nsv;kiai=nk;}
+  return{reds,redAt,svAt,changes};
+}
+function osuNotes(o,h){
+  const SM=parseFloat(o.difficulty.SliderMultiplier)||1.4,od=parseFloat(o.difficulty.OverallDifficulty);
+  const odv=isNaN(od)?5:od;const range=odv>5?5+2.5*(odv-5)/5:5-2*(5-odv)/5;const hitMul=range*1.65;
+  const notes=[];
+  for(const ob of o.objects){const big=!!(ob.hs&4),ka=!!(ob.hs&10);
+    if(ob.type&1)notes.push({t:ob.t,kind:big?(ka?'bigka':'bigdon'):(ka?'ka':'don')});
+    else if(ob.type&2){const r=h.redAt(ob.t);const dur=ob.len/(SM*100*h.svAt(ob.t))*r.bl*ob.slides;notes.push({t:ob.t,end:ob.t+dur,kind:big?'bigroll':'roll'});}
+    else if(ob.type&8){const end=Math.max(ob.end,ob.t+1);notes.push({t:ob.t,end,kind:'balloon',count:Math.max(1,Math.floor((end-ob.t)/1000*hitMul))});}
+  }
+  return notes;
+}
+const KIND_CH={don:'1',ka:'2',bigdon:'3',bigka:'4',roll:'5',bigroll:'6',balloon:'7'};
+
+/* ---------- osu! → TJA（1難易度ぶん） ---------- */
+function osuCourseToTja(o){
+  const h=osuHelpers(o);if(!h.reds.length)throw new Error('BPM（赤線）が見つかりません');
+  const notes=osuNotes(o,h);const hard=[],balloons=[];
+  for(const n of notes){hard.push({t:n.t,ch:KIND_CH[n.kind]});if(n.end!=null)hard.push({t:n.end,ch:'8'});if(n.count)balloons.push(n.count);}
+  hard.sort((a,b)=>a.t-b.t);
+  const r0=h.reds[0];const firstT=hard.length?hard[0].t:r0.time;const lastT=hard.length?hard[hard.length-1].t:r0.time;
+  const meas=[];let leadDelay=0;
+  const ml0=r0.meter*r0.bl;const preK=firstT<r0.time-1?Math.ceil((r0.time-firstT+1)/ml0):0;
+  for(let k=preK;k>0;k--)meas.push({start:r0.time-k*ml0,len:ml0,bl:r0.bl,num:r0.meter,den:4,delay:0});
+  for(let i=0;i<h.reds.length;i++){const r=h.reds[i];const end=i+1<h.reds.length?h.reds[i+1].time:Infinity;
+    if(i>0&&r.time>lastT+0.5)break;
+    let t=r.time;const full=r.meter*r.bl;
+    while(t<end-0.5){
+      if(end===Infinity&&t>lastT+0.5)break;
+      if(t+full<=end+0.5){meas.push({start:t,len:full,bl:r.bl,num:r.meter,den:4,delay:0});t+=full;continue;}
+      const len=end-t,beats=len/r.bl;let best=null;
+      for(let b=1;b<=192;b++){const a=Math.round(beats*b/4);if(a>0&&Math.abs(a*4/b*r.bl-len)<0.5){best={a,b};break;}}
+      if(best){const g=gcd(best.a,best.b);meas.push({start:t,len:best.a*4/best.b*r.bl,bl:r.bl,num:best.a/g,den:best.b/g,delay:len-best.a*4/best.b*r.bl});}
+      else{const a=Math.floor(beats*48);
+        if(a>0){const l=a/48*r.bl,g=gcd(a,192);meas.push({start:t,len:l,bl:r.bl,num:a/g,den:192/g,delay:len-l});}
+        else if(meas.length)meas[meas.length-1].delay+=len;else leadDelay+=len;}
+      t=end;
     }
+  }
+  if(!meas.length)meas.push({start:r0.time,len:ml0,bl:r0.bl,num:r0.meter,den:4,delay:0});
+  meas.forEach(m=>{m.hard=[];m.soft=[];});
+  const findM=t=>{let lo=0,hi=meas.length-1,ans=0;while(lo<=hi){const mid=(lo+hi)>>1;if(meas[mid].start<=t+2){ans=mid;lo=mid+1;}else hi=mid-1;}return meas[ans];};
+  for(const e of hard)findM(e.t).hard.push(e);
+  const gridEnd=meas[meas.length-1].start+meas[meas.length-1].len;
+  for(const c of h.changes){if(c.t>gridEnd)continue;const m=c.t<meas[0].start?meas[0]:findM(c.t);
+    if(c.svCh)m.soft.push({t:Math.max(c.t,m.start),cmd:'#SCROLL '+fmt(c.sv,4)});
+    if(c.kiaiCh)m.soft.push({t:Math.max(c.t,m.start),cmd:c.kiai?'#GOGOSTART':'#GOGOEND'});}
+  let offgrid=0,prevM=null;
+  for(const m of meas){
+    let N=1,ok=m.hard.length===0;
+    if(!ok)for(N=1;N<=192;N++){const sl=m.len/N,tol=Math.min(2,sl/3),used=new Set();let good=true;
+      for(const e of m.hard){const x=(e.t-m.start)/sl,s=Math.max(0,Math.round(x));if(Math.abs(x-s)*sl>tol||s>=N||(e.ch!=='8'&&used.has(s))){good=false;break;}if(e.ch!=='8')used.add(s);}
+      if(good){ok=true;break;}}
+    if(!ok){N=192;offgrid++;}
+    const chars=Array(N).fill('0'),sl=m.len/N;
+    const ends=[];
+    for(const e of m.hard){let s=clamp(Math.round((e.t-m.start)/sl),0,N-1);if(e.ch==='8'){ends.push(s);continue;}while(s<N-1&&chars[s]!=='0')s++;if(chars[s]==='0')chars[s]=e.ch;}
+    for(let s of ends){ // 連打の終わりが次のノーツと重なったら1つ手前に置く
+      if(chars[s]==='0'){chars[s]='8';continue;}
+      if(s>0&&chars[s-1]==='0'){chars[s-1]='8';continue;}
+      if(s===0&&prevM&&prevM.chars[prevM.N-1]==='0'){prevM.chars[prevM.N-1]='8';continue;}
+      while(s<N-1&&chars[s]!=='0')s++;if(chars[s]==='0')chars[s]='8';}
+    m.N=N;m.chars=chars;prevM=m;
+    m.cmds={};for(const c of m.soft){const s=clamp(Math.round((c.t-m.start)/sl),0,N-1);(m.cmds[s]=m.cmds[s]||[]).push(c.cmd);}
+  }
+  const gridStart=meas[0].start-leadDelay;
+  return{
+    notes,balloons,gridStart,firstBpm:60000/meas[0].bl,offgrid,bars:meas.map(m=>m.start),
+    emit(headerBpm,courseDelay){
+      const out=[];let curBpm=+fmt(headerBpm),curMeas='4/4';
+      if(courseDelay>0.5)out.push('#DELAY '+fmt(courseDelay/1000,4));
+      if(leadDelay>0.5)out.push('#DELAY '+fmt(leadDelay/1000,4));
+      for(const m of meas){const bpm=+fmt(60000/m.bl);
+        if(bpm!==curBpm){out.push('#BPMCHANGE '+bpm);curBpm=bpm;}
+        const ms=m.num+'/'+m.den;if(ms!==curMeas){out.push('#MEASURE '+ms);curMeas=ms;}
+        let buf='';for(let k=0;k<m.N;k++){if(m.cmds[k]){if(buf){out.push(buf);buf='';}out.push(...m.cmds[k]);}buf+=m.chars[k];}
+        out.push(buf+',');
+        if(m.delay>0.5)out.push('#DELAY '+fmt(m.delay/1000,4));
+      }
+      return out;
+    }
+  };
+}
+function buildTja(meta,courses){ // courses: [{course,level,osu}]
+  const built=courses.map(c=>({...c,b:osuCourseToTja(c.osu)}));
+  built.sort((a,b)=>COURSES.indexOf(b.course)-COURSES.indexOf(a.course));
+  const gStart=Math.min(...built.map(c=>c.b.gridStart));const headerBpm=built[0].b.firstBpm;
+  const L=['TITLE:'+meta.title,'SUBTITLE:--'+meta.artist,'BPM:'+fmt(headerBpm),'WAVE:'+meta.audio,'OFFSET:'+fmt(-gStart/1000,4)];
+  if(meta.preview>=0)L.push('DEMOSTART:'+fmt(meta.preview/1000,3));
+  L.push('SONGVOL:100','SEVOL:100','');
+  for(const c of built){
+    L.push('COURSE:'+c.course,'LEVEL:'+c.level,'BALLOON:'+c.b.balloons.join(','),'SCOREINIT:','SCOREDIFF:','','#START');
+    L.push(...c.b.emit(headerBpm,c.b.gridStart-gStart));L.push('#END','');
+  }
+  return{text:L.join('\r\n'),built};
+}
 
-    // --- TAB SWITCHING ---
-    const tabs = document.querySelectorAll('.tab-btn');
-    const sections = {
-        'o2t': document.getElementById('o2t-section'),
-        't2o': document.getElementById('t2o-section')
-    };
+/* ---------- TJA 読み込み ---------- */
+function parseTJA(text){
+  const hdr={},charts=[];let inChart=false,body=null,arg='';
+  for(const raw of text.replace(/^﻿/,'').split(/\r?\n/)){
+    let line=raw.trim();
+    if(!inChart){if(!line||line.startsWith('//'))continue;
+      if(/^#START/i.test(line)){inChart=true;body=[];arg=line.slice(6).trim().toUpperCase();continue;}
+      const m=line.match(/^([A-Za-z0-9]+)\s*:(.*)$/);if(m)hdr[m[1].toUpperCase()]=m[2].trim();continue;}
+    const ci=line.indexOf('//');if(ci>=0)line=line.slice(0,ci).trim();if(!line)continue;
+    if(/^#END/i.test(line)){inChart=false;if(arg!=='P2')charts.push({hdr:{...hdr},lines:body});
+      for(const k of ['BALLOON','BALLOONNOR','BALLOONEXP','BALLOONMAS'])delete hdr[k];continue;}
+    body.push(line);
+  }
+  if(inChart&&body.length)charts.push({hdr:{...hdr},lines:body});
+  charts.forEach(c=>{c.course=normCourse(c.hdr.COURSE);c.level=parseInt(c.hdr.LEVEL)||DEF_LEVEL[c.course];c.branched=c.lines.some(l=>/^#BRANCHSTART/i.test(l));});
+  return{hdr,charts};
+}
+function flattenBranches(lines,pref){
+  const out=[];let blk=null;
+  const flush=()=>{if(!blk)return;for(const k of [pref,'M','E','N'])if(blk[k].length){out.push(...blk[k]);break;}blk=null;};
+  for(const l of lines){const u=l.toUpperCase();
+    if(u.startsWith('#BRANCHSTART')){flush();blk={N:[],E:[],M:[],cur:null};continue;}
+    if(u.startsWith('#BRANCHEND')){flush();continue;}
+    if(blk&&/^#[NEM]$/.test(u)){blk.cur=u[1];continue;}
+    if(blk&&blk.cur)blk[blk.cur].push(l);else out.push(l);}
+  flush();return out;
+}
+function tjaTimeline(chart,pref){
+  const h=chart.hdr;let bpm=parseFloat(h.BPM)||120,t=-(parseFloat(h.OFFSET)||0)*1000,num=4,den=4,scroll=parseFloat(h.HEADSCROLL)||1,gogo=false,delayed=false;
+  const bl=(h['BALLOON'+{M:'MAS',E:'EXP',N:'NOR'}[pref]]||h.BALLOON||'').split(',').map(s=>parseInt(s)).filter(n=>!isNaN(n));
+  const lines=flattenBranches(chart.lines,pref);const measures=[];let cur=[];
+  for(const l of lines){if(l.startsWith('#')){cur.push({cmd:l});continue;}
+    for(const c of l){if(c===','){measures.push(cur);cur=[];}else if(/[0-9A-Za-z]/.test(c))cur.push({ch:c.toUpperCase()});}}
+  if(cur.some(x=>x.ch))measures.push(cur);
+  const notes=[],events=[];let roll=null,bi=0;
+  const closeRoll=()=>{if(roll){roll.end=Math.max(t,roll.t+1);notes.push(roll);roll=null;}};
+  const apply=c=>{const m=c.match(/^#([A-Z]+)\s*(.*)$/i);if(!m)return;const k=m[1].toUpperCase(),v=m[2].trim();
+    if(k==='BPMCHANGE'){const b=parseFloat(v);if(b>0){bpm=b;events.push({t,type:'bpm',bpm});}}
+    else if(k==='MEASURE'){const p=v.split('/');const a=parseFloat(p[0]),b=parseFloat(p[1]||4);if(a>0&&b>0){num=a;den=b;}}
+    else if(k==='SCROLL'){const s=parseFloat(v);if(!isNaN(s)){scroll=s;events.push({t,type:'scroll',scroll});}}
+    else if(k==='GOGOSTART'){gogo=true;events.push({t,type:'gogo',gogo});}
+    else if(k==='GOGOEND'){gogo=false;events.push({t,type:'gogo',gogo});}
+    else if(k==='DELAY'){const d=parseFloat(v);if(!isNaN(d)){t+=d*1000;delayed=true;}}};
+  const MAP={'1':'don','2':'ka','3':'bigdon','4':'bigka','A':'bigdon','B':'bigka'};
+  for(const m of measures){const n=m.filter(x=>x.ch).length;let i=0;
+    while(i<m.length&&m[i].cmd){apply(m[i].cmd);i++;}
+    events.push({t,type:'measure',bpm,num,den,delayed});delayed=false;
+    if(n===0){for(;i<m.length;i++)apply(m[i].cmd);t+=60000/bpm*4*num/den;continue;}
+    for(;i<m.length;i++){const x=m[i];if(x.cmd){apply(x.cmd);continue;}const c=x.ch;
+      if(c==='8')closeRoll();
+      else if('5679'.includes(c)){closeRoll();roll={t,kind:c==='5'?'roll':c==='6'?'bigroll':'balloon',bpm,scroll};if(c==='7'||c==='9')roll.count=bl[bi++];}
+      else if(MAP[c]){closeRoll();notes.push({t,kind:MAP[c],bpm,scroll});}
+      t+=60000/bpm*4*num/den/n;}
+  }
+  closeRoll();
+  notes.sort((a,b)=>a.t-b.t);
+  return{notes,events,end:t,bars:events.filter(e=>e.type==='measure').map(e=>e.t)};
+}
 
-    tabs.forEach(tab => {
-        tab.addEventListener('click', () => {
-            tabs.forEach(t => t.classList.remove('active'));
-            tab.classList.add('active');
-            Object.values(sections).forEach(s => s.classList.remove('active'));
-            sections[tab.dataset.target].classList.add('active');
-        });
-    });
+/* ---------- TJA → osu!（1難易度ぶん） ---------- */
+function buildOsu(meta,tl,opt){
+  const SM=1.4,key=t=>Math.round(t*100)/100,svC=s=>clamp(Math.abs(s)||1,0.1,10);
+  const reds=new Map(),greens=new Set(),stateAt=new Map();
+  let st={bpm:null,scroll:1,gogo:false},last=null,irregular=false;
+  for(const e of tl.events){const k=key(e.t);
+    if(e.type==='bpm'){st.bpm=e.bpm;reds.set(k,{t:e.t,bpm:e.bpm,meter:last?last.meter:4});}
+    else if(e.type==='scroll'){st.scroll=e.scroll;greens.add(k);}
+    else if(e.type==='gogo'){st.gogo=e.gogo;greens.add(k);}
+    else if(e.type==='measure'){st.bpm=e.bpm;const mv=e.num*4/e.den,meter=Math.max(1,Math.round(mv));
+      if(!last||last.bpm!==e.bpm||last.mv!==mv||irregular||e.delayed){reds.set(k,{t:e.t,bpm:e.bpm,meter});last={bpm:e.bpm,mv,meter};}
+      else if(reds.has(k))reds.get(k).meter=meter;
+      irregular=Math.abs(mv-Math.round(mv))>1e-6;}
+    if(e.type==='bpm'&&last)last={...last,bpm:e.bpm};
+    stateAt.set(k,{...st});}
+  const keys=[...new Set([...reds.keys(),...greens])].sort((a,b)=>a-b);
+  const tp=[];let curSv=1,curK=false;
+  for(const k of keys){const s=stateAt.get(k)||{scroll:1,gogo:false};const kiai=s.gogo?1:0;
+    if(reds.has(k)){const r=reds.get(k);tp.push(`${fmt(r.t,3)},${fmt(60000/r.bpm,12)},${r.meter},1,0,100,1,${kiai}`);curSv=1;curK=s.gogo;
+      if(svC(s.scroll)!==1){tp.push(`${fmt(r.t,3)},${fmt(-100/svC(s.scroll),12)},${r.meter},1,0,100,0,${kiai}`);curSv=svC(s.scroll);}}
+    else{const sv=svC(s.scroll);if(sv!==curSv||s.gogo!==curK){tp.push(`${fmt(k,3)},${fmt(-100/sv,12)},4,1,0,100,0,${kiai}`);curSv=sv;curK=s.gogo;}}}
+  const HS={don:0,ka:8,bigdon:4,bigka:12};const ho=[];
+  for(const n of tl.notes){const t=Math.round(n.t);
+    if(HS[n.kind]!=null)ho.push(`256,192,${t},1,${HS[n.kind]},0:0:0:0:`);
+    else if(n.kind==='balloon')ho.push(`256,192,${t},12,0,${Math.max(t+1,Math.round(n.end))},0:0:0:0:`);
+    else{const len=(n.end-n.t)*SM*100*svC(n.scroll)/(60000/n.bpm);ho.push(`256,192,${t},2,${n.kind==='bigroll'?4:0},L|${Math.round(256+len)}:192,1,${fmt(len,4)}`);}}
+  const L=['osu file format v14','','[General]','AudioFilename: '+meta.audio,'AudioLeadIn: 0','PreviewTime: '+(meta.preview>=0?Math.round(meta.preview):-1),'Countdown: 0','SampleSet: Normal','StackLeniency: 0.7','Mode: 1','LetterboxInBreaks: 0','WidescreenStoryboard: 0','',
+    '[Editor]','DistanceSpacing: 0.8','BeatDivisor: 4','GridSize: 32','TimelineZoom: 1','',
+    '[Metadata]','Title:'+(meta.titleR||meta.title),'TitleUnicode:'+meta.title,'Artist:'+(meta.artistR||meta.artist),'ArtistUnicode:'+meta.artist,'Creator:'+meta.creator,'Version:'+opt.version,'Source:','Tags:tja taiko','BeatmapID:0','BeatmapSetID:-1','',
+    '[Difficulty]','HPDrainRate:'+opt.hp,'CircleSize:5','OverallDifficulty:'+opt.od,'ApproachRate:5','SliderMultiplier:1.4','SliderTickRate:4','',
+    '[Events]','//Background and Video events','//Break Periods','//Storyboard Layer 0 (Background)','//Storyboard Layer 1 (Fail)','//Storyboard Layer 2 (Pass)','//Storyboard Layer 3 (Foreground)','//Storyboard Sound Samples','',
+    '[TimingPoints]',...tp,'','','[HitObjects]',...ho,''];
+  return L.join('\r\n');
+}
+if(typeof module!=='undefined')module.exports={parseOsu,osuCourseToTja,buildTja,parseTJA,tjaTimeline,buildOsu,osuHelpers,osuNotes};
+</script>
+<script>
+const $=id=>document.getElementById(id);
+const SAMPLE_TJA=`TITLE:サンプル・ドンカッカ
+SUBTITLE:--変換テスト
+BPM:150
+WAVE:sample.ogg
+OFFSET:-1.6
+DEMOSTART:12.0
 
-    // ==========================================
-    // LOGIC: osu! to TJA
-    // ==========================================
-    (function() {
-        const T_MINUTE = 60000;
-        const WATER_MARK = "//Auto generated by osu2tja (Web)";
-        const MEASURE_TABLE = [[0.25,"1/16"],[1,"1/4"],[1.25,"5/16"],[1.5,"3/8"],[2,"2/4"],[2.25,"9/16"],[2.5,"5/8"],[3,"3/4"],[3.75,"15/16"],[4,"4/4"],[4.5,"9/8"],[5,"5/4"],[6,"6/4"],[7,"7/4"],[8,"8/4"],[9,"9/4"]];
+COURSE:Oni
+LEVEL:8
+BALLOON:12
+SCOREINIT:
+SCOREDIFF:
 
-        class OsuToTjaConverter {
-            constructor(fileContent, course, level, audioFilename) {
-                this.lines = fileContent.split(/\r?\n/);
-                this.course = course; this.level = level;
-                this.audioFilename = audioFilename || "";
-                this.timingpoints = []; this.hitobjects = []; this.balloons = [];
-                this.sliderVelocity = 1.4; this.taikoMode = false;
-                this.commandsWithin = []; this.tailFix = false;
-                this.title = ""; this.subtitle = ""; this.creator = ""; this.artist = "";
-                this.preview = 0; this.audioFromOsu = "";
-                this.tjaHeads = []; this.tjaContents = []; this.comboCnt = 0;
-            }
+#START
+1011,
+2022,
+10201120,
+1000200010002000,
+#GOGOSTART
+1120112011201120,
+3000400030004000,
+#GOGOEND
+#SCROLL 1.5
+1212121212121212,
+#MEASURE 3/4
+100200,
+#MEASURE 4/4
+#BPMCHANGE 180
+#SCROLL 1
+5000000000000008,
+7000000000000800,
+1010220010102200,
+30304000,
+#END
 
-            getBaseTimingPoint(t, redlineOnly = false) {
-                let pool = redlineOnly ? this.timingpoints.filter(tp => tp.redline) : this.timingpoints;
-                if (pool.length === 0) return null;
-                if (t < pool[0].offset) return {...pool[0]};
-                let base = pool[0];
-                for (let tp of pool) { if (tp.offset > t) break; base = tp; }
-                return {...base};
-            }
-            getRealOffset(intOffset) {
-                const tm = this.getBaseTimingPoint(intOffset, true);
-                if(!tm) return intOffset;
-                const intDelta = Math.abs(intOffset - tm.offset);
-                const sign = (intOffset - tm.offset > 0) ? 1 : -1;
-                const tUnitCnt = Math.round(intDelta * tm.bpm * 24 / T_MINUTE);
-                return tm.offset + (tUnitCnt / 24.0) * T_MINUTE * sign / tm.bpm;
-            }
-            getRealBeatCnt(tm, beatCnt) { return Math.round(beatCnt * 24) / 24; }
-            getSliderTime(l, tm) { return (l * (T_MINUTE / tm.bpm)) / (100 * this.sliderVelocity * tm.scroll); }
-            getSliderBeatCnt(l, tm) { return this.getRealBeatCnt(tm, l / (100 * this.sliderVelocity * tm.scroll)); }
-            getDonKatsu(sound) {
-                if (sound === 0) return '1';
-                if (sound & 8 || sound & 2) return '2';
-                if (sound === 4) return '3';
-                if ((sound & 4) && (sound & 8 || sound & 2)) return '4';
-                return '1';
-            }
+COURSE:Normal
+LEVEL:4
+BALLOON:6
 
-            parse() {
-                let currSec = "";
-                for (let line of this.lines) {
-                    line = line.trim();
-                    if (!line) continue;
-                    if (line.startsWith('[') && line.endsWith(']')) { currSec = line.slice(1, -1); continue; }
-                    let vname = "", vval = "";
-                    const idx = line.indexOf(':');
-                    if (idx !== -1) { vname = line.substring(0, idx).trim(); vval = line.substring(idx + 1).trim(); }
+#START
+1010,
+2020,
+10201020,
+1000200010002000,
+#GOGOSTART
+1110,
+3030,
+#GOGOEND
+1010,
+#MEASURE 3/4
+102,
+#MEASURE 4/4
+#BPMCHANGE 180
+5008,
+7008,
+1020,
+3000,
+#END
+`;
+const F={osu:null,oaudio:null,oimage:null,ovideo:null,tja:null,taudio:null,bg:null}; // {name,data(ArrayBuffer)}
+const O={osus:[],osz:new Map(),vid:new Map(),img:new Map(),edited:false};
+const T={parsed:null,outs:[],cur:0,tjas:[],za:new Map(),zv:new Map(),zi:new Map()};
+let DL=null;const inViewer=!!(window.claude&&window.claude.use);
+if(inViewer)window.claude.use('downloads').then(d=>{DL=d;refreshButtons();}).catch(()=>{});
+const extOf=n=>(n.split('.').pop()||'').toLowerCase(),baseOf=n=>n.split('/').pop();
+const safe=s=>(s||'untitled').replace(/[\\/:*?"<>|]/g,'_').trim()||'untitled';
+function msgs(id,list){const ul=$(id);ul.textContent='';for(const m of list){const li=document.createElement('li');if(typeof m==='string')li.textContent=m;else{li.textContent=m.t;li.className=m.c;}ul.appendChild(li);}}
+function decodeTJA(buf){const u=new Uint8Array(buf);try{return new TextDecoder('utf-8',{fatal:true}).decode(u);}catch(e){return new TextDecoder('shift_jis').decode(u);}}
 
-                    if (currSec === "General") {
-                        if (vname === "AudioFilename") this.audioFromOsu = vval;
-                        else if (vname === "PreviewTime") this.preview = parseInt(vval);
-                        else if (vname === "Mode") this.taikoMode = (parseInt(vval) === 1);
-                    } else if (currSec === "Metadata") {
-                        if (vname === "Title" || vname === "TitleUnicode") this.title = vval || this.title;
-                        else if (vname === "Creator") this.creator = vval;
-                        else if (vname === "Source") this.subtitle = vval;
-                        else if (vname === "Artist" || vname === "ArtistUnicode") this.artist = vval || this.artist;
-                    } else if (currSec === "Difficulty") {
-                        if (vname === "SliderMultiplier") this.sliderVelocity = parseFloat(vval);
-                    } else if (currSec === "TimingPoints") {
-                        const p = line.split(',');
-                        if (p.length >= 2) {
-                            const offset = parseInt(p[0]); const rawbpm = parseFloat(p[1]);
-                            const beats = p.length > 2 ? parseInt(p[2]) : 4;
-                            const isGGT = p.length > 7 ? (p[7] !== '0') : false;
-                            let tp = { offset, beats, GGT: isGGT, redline: true, scroll: 1.0, bpm: 0 };
-                            if (rawbpm > 0) { tp.bpm = 60000 / rawbpm; } 
-                            else {
-                                const prev = this.timingpoints.length ? this.timingpoints[this.timingpoints.length-1] : {bpm:120};
-                                tp.bpm = prev.bpm; tp.scroll = Math.max(0.1, -100.0 / rawbpm);
-                                tp.redline = false; tp.offset = this.getRealOffset(offset);
-                            }
-                            this.timingpoints.push(tp);
-                        }
-                    } else if (currSec === "HitObjects") { this.parseHitObject(line); }
-                }
-                if (!this.audioFilename && this.audioFromOsu) this.audioFilename = this.audioFromOsu;
-                this.processObjects();
-                return this.generateString();
-            }
+/* ---------- タブ ---------- */
+function showTab(which){const o=which==='o2t';$('tab-o2t').setAttribute('aria-selected',o);$('tab-t2o').setAttribute('aria-selected',!o);$('pane-o2t').hidden=!o;$('pane-t2o').hidden=o;}
+$('tab-o2t').onclick=()=>showTab('o2t');$('tab-t2o').onclick=()=>showTab('t2o');
 
-            parseHitObject(line) {
-                const p = line.split(','); if (p.length < 5) return;
-                const time = parseInt(p[2]); let type = parseInt(p[3]); const sound = parseInt(p[4]);
-                const offset = this.getRealOffset(time); type &= (~4);
-                if (type === 1) {
-                    this.hitobjects.push({ note: this.getDonKatsu(sound), offset });
-                } else if (type === 2) {
-                    const slides = parseInt(p[6]); const len = parseFloat(p[7]);
-                    const tm = this.getBaseTimingPoint(this.timingpoints, offset);
-                    const beatCnt = this.getSliderBeatCnt(len, tm);
-                    let edgeSounds = [];
-                    if (p.length > 8) edgeSounds = p[8].split('|').map(Number);
-                    else edgeSounds = Array(slides+1).fill(parseInt(p[4]));
-                    
-                    if ((this.taikoMode && beatCnt < 1.0) || (!this.taikoMode && beatCnt * slides < 2.0)) {
-                        for(let i=0; i<=slides; i++) {
-                            if (i < edgeSounds.length) {
-                                const pOffset = this.getRealOffset(offset + this.getSliderTime(len*i, tm));
-                                this.hitobjects.push({ note: this.getDonKatsu(edgeSounds[i]), offset: pOffset });
-                            }
-                        }
-                    } else {
-                        const note = (sound === 0) ? '5' : '6';
-                        const dur = this.getSliderTime(len, tm) * slides;
-                        this.hitobjects.push({ note, offset });
-                        this.hitobjects.push({ note: '8', offset: offset + dur });
-                    }
-                } else if (type === 8) {
-                    const endT = parseInt(p[5]);
-                    this.hitobjects.push({ note: '7', offset });
-                    const rEnd = this.getRealOffset(endT);
-                    this.hitobjects.push({ note: '8', offset: rEnd });
-                    this.balloons.push(Math.max(1, Math.floor((rEnd - offset) / 60)));
-                }
-            }
+/* ---------- ファイル投入欄 ---------- */
+let pickSlot=null;
+document.querySelectorAll('.drop').forEach(z=>{
+  z.addEventListener('click',()=>{pickSlot=z.dataset.slot;$('picker').accept=z.dataset.accept;$('picker').click();}); // 点線の内側ならどこをタッチしても選択できる（ボタンのクリックもここに伝わる）
+  ['dragenter','dragover'].forEach(e=>z.addEventListener(e,ev=>{ev.preventDefault();z.classList.add('over');}));
+  ['dragleave','drop'].forEach(e=>z.addEventListener(e,ev=>{ev.preventDefault();z.classList.remove('over');}));
+  z.addEventListener('drop',ev=>{const f=ev.dataTransfer.files[0];if(f)takeFile(z.dataset.slot,f);});
+});
+document.addEventListener('dragover',e=>e.preventDefault());document.addEventListener('drop',e=>e.preventDefault());
+$('picker').onchange=e=>{const f=e.target.files[0];if(f&&pickSlot)takeFile(pickSlot,f);e.target.value='';};
+function setZone(slot,label){const z=document.querySelector(`.drop[data-slot="${slot}"]`);z.querySelector('.name').textContent=label;z.classList.toggle('has',!!F[slot]);}
 
-            writeBar(tm, data, begin, end) {
-                const tUnit = (T_MINUTE / tm.bpm) / 24;
-                let offsets = [begin, ...data.map(d=>d.offset), end];
-                let deltas = [];
-                for(let i=0; i<offsets.length-1; i++) deltas.push(Math.round((offsets[i+1]-offsets[i])/tUnit));
-                if(deltas.length && Math.abs(deltas[deltas.length-1]) < 1) {
-                    this.tailFix = true; if(data.length) this.writeBar(tm, data.slice(0,-1), begin, end); return;
-                }
-                let s = ""; const g = gcdOfList(deltas); if(g <= 0) return;
-                s += "0".repeat(Math.floor(deltas[0]/g));
-                for(let i=0; i<deltas.length-1; i++) {
-                    const note = data[i];
-                    while(this.commandsWithin.length && note.offset >= this.commandsWithin[0].offset) {
-                        this.tjaContents.push(this.commandsWithin.shift().val);
-                    }
-                    s += note.note; s += "0".repeat(Math.floor(deltas[i+1]/g) - 1);
-                    if(['1','2','3','4'].includes(note.note)) this.comboCnt++;
-                }
-                this.tjaContents.push(s + ",");
-            }
+async function takeFile(slot,file){
+  const data=await file.arrayBuffer();F[slot]={name:file.name,data};setZone(slot,file.name);
+  if(slot==='osu')await loadOsuInput();
+  else if(slot==='oaudio'||slot==='ovideo'||slot==='oimage')convertO2T(true);
+  else if(slot==='tja')await loadTjaInput();
+  else convertT2O();
+}
 
-            writeIncomplete(tm, data, begin, end) {
-                if(!data.length && Math.abs(begin-end)<1) return;
-                if(!data.length) {
-                    const d = (end-begin)/1000.0;
-                    if(d > 0.001) this.tjaContents.push(`#DELAY ${d.toFixed(3)}`);
-                    return;
-                }
-                const lastOff = data[data.length-1].offset;
-                const minBeats = this.getRealBeatCnt(tm, tm.bpm*(lastOff-begin)/T_MINUTE) + 1.0/24;
-                for(let m of MEASURE_TABLE) {
-                    const dur = m[0] * T_MINUTE / tm.bpm;
-                    if(m[0] >= minBeats && (begin+dur) <= end+1) {
-                        this.tjaContents.push("#MEASURE " + m[1]);
-                        const mEnd = begin+dur; this.writeBar(tm, data, begin, mEnd);
-                        const delay = end - mEnd;
-                        if(delay >= 1) this.tjaContents.push(`#DELAY ${(delay/1000.0).toFixed(3)}`);
-                        return;
-                    }
-                }
-                this.tjaContents.push("// Irregular Measure");
-                this.writeBar(tm, data, begin, end);
-            }
+/* ---------- osu! → TJA ---------- */
+function osuRefs(text){ // [Events] の Video 行から動画ファイル名を取り出す
+  let inEv=false,vid='';
+  for(const raw of text.split(/\r?\n/)){const l=raw.trim(),m=l.match(/^\[(.+)\]$/);
+    if(m){inEv=m[1]==='Events';continue;}
+    if(!inEv||vid)continue;
+    const v=l.match(/^(?:Video|1)\s*,\s*-?\d+\s*,\s*"([^"]+)"/i);if(v)vid=baseOf(v[1].replace(/\\/g,'/'));}
+  return{vid};
+}
+async function loadOsuInput(){
+  O.osus=[];O.osz=new Map();O.vid=new Map();O.img=new Map();const f=F.osu;
+  try{
+    if(/\.(osz|zip)$/i.test(f.name)){
+      if(!window.JSZip)throw new Error('.osz を開くライブラリが読み込めませんでした。.osu を直接入れてください');
+      const z=await JSZip.loadAsync(f.data);
+      for(const e of Object.values(z.files)){if(e.dir)continue;const n=baseOf(e.name);
+        if(/\.osu$/i.test(n)){const tx=await e.async('string');O.osus.push({name:n,o:parseOsu(tx),ref:osuRefs(tx)});}else if(/\.(mp3|ogg|wav)$/i.test(n))O.osz.set(n,await e.async('arraybuffer'));else if(/\.(mp4|webm|avi|flv)$/i.test(n))O.vid.set(n,await e.async('arraybuffer'));else if(/\.(jpe?g|png)$/i.test(n)&&!e.name.includes('/'))O.img.set(n,await e.async('arraybuffer'));}
+    }else{const tx=new TextDecoder().decode(new Uint8Array(f.data));O.osus.push({name:f.name,o:parseOsu(tx),ref:osuRefs(tx)});}
+    if(!O.osus.length)throw new Error('.osu が見つかりません');
+    const taiko=O.osus.filter(p=>p.o.general.Mode==='1');if(taiko.length)O.osus=taiko;
+    const sel=$('o-diff');sel.textContent='';
+    O.osus.forEach((p,i)=>{const op=document.createElement('option');op.value=i;op.textContent=p.o.metadata.Version||p.name;sel.appendChild(op);});
+    $('o-diff-wrap').hidden=O.osus.length<2;
+    pickDiff(0);
+  }catch(e){O.osus=[];$('o-out').value='';msgs('o-msgs',[{t:'読み込めませんでした：'+e.message,c:'err'}]);refreshButtons();}
+}
+function pickDiff(i){const p=O.osus[i];if(!p)return;
+  const c=guessCourse(p.o.metadata.Version||'');$('o-course').value=c;$('o-level').value=DEF_LEVEL[c];
+  const m=p.o.metadata;$('o-name').value=safe(m.TitleUnicode||m.Title||p.name.replace(/\.osu$/i,''));
+  convertO2T(true);}
+function oAudio(){ // .osz 内の音楽を優先（選択中の譜面の AudioFilename → 無ければ最初の音楽）。無ければ外部から読み込んだ音楽
+  if(O.osz.size){const want=(O.osus[$('o-diff').value||0]?.o.general.AudioFilename||'').toLowerCase();
+    for(const [n,d] of O.osz)if(n.toLowerCase()===want)return{name:n,data:d};const first=O.osz.entries().next().value;return{name:first[0],data:first[1]};}
+  return F.oaudio||null;}
+function oVideo(){return $('o-vid').value==='no'?null:oVideoAll();} // 「動画 なし」を選んでいるときは使わない
+function oVideoAll(){ // .osz 内の動画を優先（選択中の譜面が指定している動画 → 無ければ最初の動画）。無ければ外部から読み込んだ動画
+  if(O.vid.size){const want=(O.osus[$('o-diff').value||0]?.ref?.vid||'').toLowerCase();
+    for(const [n,d] of O.vid)if(n.toLowerCase()===want)return{name:n,data:d};
+    const first=O.vid.entries().next().value;return{name:first[0],data:first[1]};}
+  return F.ovideo||null;}
+function oImage(){if(F.oimage)return F.oimage;let best=null;for(const [n,d] of O.img)if(!best||d.byteLength>best.data.byteLength)best={name:n,data:d};return best;}
+function convertO2T(force){
+  const p=O.osus[$('o-diff').value||0];if(!p){refreshButtons();return;}
+  if(O.edited&&!force)return;
+  const m=p.o.metadata,au=oAudio(),pv=parseFloat(p.o.general.PreviewTime);
+  const list=[];
+  try{
+    const {text,built}=buildTja({title:m.TitleUnicode||m.Title||'',artist:m.ArtistUnicode||m.Artist||'',audio:au?au.name:(p.o.general.AudioFilename||''),preview:isNaN(pv)?-1:pv},
+      [{course:$('o-course').value,level:parseInt($('o-level').value)||1,osu:p.o}]);
+    const auInOsz=O.osz.size>0;setZone('oaudio',auInOsz&&au?au.name+'（.osz内を使用）':(F.oaudio?F.oaudio.name:'なし (TJAのみ)'));
+    const va=oVideoAll(),vd=oVideo(),vdInOsz=O.vid.size>0,no=va&&!vd?'（使わない）':'';
+    $('o-vid-wrap').hidden=!va;setZone('ovideo',vdInOsz?va.name+'（.osz内）'+no:(F.ovideo?F.ovideo.name+no:'なし'));
+    const im=oImage();if(!F.oimage)setZone('oimage',im?im.name+'（.osz内）':'なし');
+    const extra=(im?'\r\nBGIMAGE:'+im.name:'')+(vd?'\r\nBGMOVIE:'+vd.name:'');
+    $('o-out').value=extra?text.replace(/^(WAVE:.*)$/m,'$1'+extra):text;O.edited=false;
+    if(im)list.push('画像を BGIMAGE: に設定して ZIP に同梱します。');
+    if(vd)list.push((vdInOsz?'.osz 内の動画':'外部から読み込んだ動画')+'を BGMOVIE: に設定して ZIP に同梱します。'+(vdInOsz&&F.ovideo?'（4 で指定した動画は、.osz 内に動画があるため使いません）':'')+'再生されるのは BGMOVIE に対応したプレイヤー（TJAPlayer3 など）です。');
+    const b=built[0].b,hits=b.notes.filter(n=>!n.end).length;
+    list.push({t:`変換しました：${hits} ノーツ、連打/風船 ${b.notes.length-hits}`,c:'ok'});
+    if(p.o.general.Mode!=='1')list.push('osu!standard の譜面です。円は全てドン扱いになります。');
+    if(b.offgrid)list.push(`${b.offgrid} 小節で拍にきれいに乗らないノーツがあり、近い位置に置きました。`);
+    if(auInOsz&&F.oaudio)list.push('.osz 内に音楽があるため、2 で指定した音楽は使いません。');
+    if(!au)list.push('音楽ファイルが無いので、ZIP には TJA だけが入ります。');
+  }catch(e){$('o-out').value='';list.push({t:'変換に失敗しました：'+e.message,c:'err'});}
+  msgs('o-msgs',list);refreshButtons();
+}
+$('o-diff').onchange=()=>pickDiff(+$('o-diff').value);
+$('o-vid').onchange=()=>convertO2T(true);
+$('o-course').onchange=()=>{$('o-level').value=DEF_LEVEL[$('o-course').value];convertO2T(true);};
+$('o-level').oninput=()=>{const ta=$('o-out');ta.value=ta.value.replace(/^LEVEL:.*$/m,'LEVEL:'+(parseInt($('o-level').value)||1));};
+$('o-out').oninput=()=>{O.edited=true;};
+function tjaBytes(text){
+  if($('o-enc').value==='sjis'&&window.Encoding)return new Uint8Array(Encoding.convert(Encoding.stringToCode(text),{to:'SJIS',from:'UNICODE'}));
+  return new TextEncoder().encode(text);
+}
+$('o-dl').onclick=async()=>{
+  const name=safe($('o-name').value),au=oAudio(),hint=$('o-hint');
+  try{
+    if(!window.JSZip)throw{code:'nozip'};
+    const z=new JSZip();z.file(name+'/'+name+'.tja',tjaBytes($('o-out').value.replace(/\r?\n/g,'\r\n')));if(au)z.file(name+'/'+au.name,au.data);const vd=oVideo();if(vd)z.file(name+'/'+vd.name,vd.data);const im=oImage();if(im)z.file(name+'/'+im.name,im.data);
+    await save(name+'.zip',await z.generateAsync({type:'blob',compression:'DEFLATE'}),hint);
+  }catch(e){hint.textContent=errText(e);}
+};
 
-            processObjects() {
-                if(!this.hitobjects.length || !this.timingpoints.length) return;
-                this.hitobjects.sort((a,b)=>a.offset-b.offset); this.timingpoints.sort((a,b)=>a.offset-b.offset);
-                if(this.hitobjects[0].offset < this.timingpoints[0].offset) {
-                    let n = {...this.timingpoints[0], offset: this.hitobjects[0].offset}; this.timingpoints.unshift(n);
-                }
-                let cScroll=1.0, cGgt=false;
-                for(let tp of this.timingpoints) {
-                    if(tp.scroll !== cScroll) this.commandsWithin.push({offset:tp.offset, val:`#SCROLL ${tp.scroll}`});
-                    if(tp.GGT !== cGgt) this.commandsWithin.push({offset:tp.offset, val:tp.GGT ? '#GOGOSTART' : '#GOGOEND'});
-                    cScroll=tp.scroll; cGgt=tp.GGT;
-                }
-                let tmIdx=0, objIdx=0; let meas = this.timingpoints[0].beats; let cBpm = this.timingpoints[0].bpm;
-                let barBegin = this.timingpoints[0].offset; let barMax = meas * T_MINUTE / cBpm; let barData = [];
-                
-                this.tjaHeads.push(`TITLE:${this.title}`);
-                this.tjaHeads.push(`SUBTITLE:${this.subtitle || this.artist}`);
-                this.tjaHeads.push(`WAVE:${this.audioFilename}`);
-                this.tjaHeads.push(`BPM:${round2(this.timingpoints[0].bpm)}`);
-                this.tjaHeads.push(`OFFSET:${-(this.timingpoints[0].offset/1000.0).toFixed(3)}`);
-                this.tjaHeads.push(`DEMOSTART:${(this.preview/1000.0).toFixed(3)}`);
-                this.tjaHeads.push(`COURSE:${this.course}`);
-                this.tjaHeads.push(`LEVEL:${this.level}`);
-                this.tjaHeads.push(`BALLOON:${this.balloons.join(',')}`);
-                this.tjaHeads.push(""); this.tjaHeads.push("#START");
+/* ---------- TJA → osu! ---------- */
+async function loadTjaInput(){
+  T.tjas=[];T.za=new Map();T.zv=new Map();T.zi=new Map();const f=F.tja;
+  try{
+    if(/\.zip$/i.test(f.name)){
+      if(!window.JSZip)throw new Error('zip を開くライブラリが読み込めませんでした。.tja を直接入れてください');
+      const z=await JSZip.loadAsync(f.data);
+      for(const e of Object.values(z.files)){if(e.dir)continue;const n=baseOf(e.name);if(n.startsWith('.')||e.name.includes('__MACOSX'))continue;
+        if(/\.tja$/i.test(n))T.tjas.push({name:n,data:await e.async('arraybuffer')});
+        else if(/\.(mp3|ogg|wav)$/i.test(n))T.za.set(n,await e.async('arraybuffer'));
+        else if(/\.(mp4|webm|avi|flv)$/i.test(n))T.zv.set(n,await e.async('arraybuffer'));
+        else if(/\.(jpe?g|png)$/i.test(n))T.zi.set(n,await e.async('arraybuffer'));}
+    }else T.tjas.push({name:f.name,data:f.data});
+    if(!T.tjas.length)throw new Error('.tja が見つかりません');
+    const sel=$('t-file');sel.textContent='';
+    T.tjas.forEach((x,i)=>{const op=document.createElement('option');op.value=i;op.textContent=x.name;sel.appendChild(op);});
+    $('t-file-wrap').hidden=T.tjas.length<2;
+    loadTja(T.tjas[0]);
+  }catch(e){T.tjas=[];T.parsed=null;T.outs=[];$('t-out').value='';msgs('t-msgs',[{t:'読み込めませんでした：'+e.message,c:'err'}]);refreshButtons();}
+}
+$('t-file').onchange=()=>loadTja(T.tjas[+$('t-file').value]);
+function tAudio(){ // zip 内の音楽を優先（WAVE に合うもの → 最初の音楽）。無ければ外部の音楽
+  if(T.za.size){const want=((T.parsed&&T.parsed.hdr.WAVE)||'').toLowerCase();
+    for(const [n,d] of T.za)if(n.toLowerCase()===want)return{name:n,data:d};const f=T.za.entries().next().value;return{name:f[0],data:f[1]};}
+  return F.taudio||null;}
+const isVid=b=>/\.(mp4|avi|flv|webm)$/i.test(b.name);
+function tBg(){ // 「動画 なし」を選んでいるときは動画を除く
+  const all=tBgAll();return $('t-vid').value==='no'?all.filter(b=>!isVid(b)):all;}
+function tBgAll(){ // zip 内の動画・画像を優先。無ければ外部の背景
+  const h=T.parsed?T.parsed.hdr:{},out=[];
+  const pick=(m,w)=>{w=(w||'').toLowerCase();for(const [n,d] of m)if(n.toLowerCase()===w)return{name:n,data:d};return null;};
+  if(T.zv.size){const f=T.zv.entries().next().value;out.push(pick(T.zv,h.BGMOVIE)||{name:f[0],data:f[1]});}
+  if(T.zi.size){let im=pick(T.zi,h.BGIMAGE);if(!im)for(const [n,d] of T.zi)if(!im||d.byteLength>im.data.byteLength)im={name:n,data:d};out.push(im);}
+  return out.length?out:(F.bg?[F.bg]:[]);}
+function loadTja(it){
+  try{
+    const p=parseTJA(decodeTJA(it.data));if(!p.charts.length)throw new Error('#START 〜 #END の譜面が見つかりません');
+    T.parsed=p;T.cur=0;
+    $('t-branch').hidden=!p.charts.some(c=>c.branched);
+    const h=p.hdr;$('t-name').value=safe(`${(h.SUBTITLE||'').replace(/^(--|\+\+)/,'')||'Unknown'} - ${h.TITLE||it.name.replace(/\.tja$/i,'')}`);
+    convertT2O();
+  }catch(e){T.parsed=null;T.outs=[];$('t-out').value='';msgs('t-msgs',[{t:'読み込めませんでした：'+e.message,c:'err'}]);refreshButtons();}
+}
+function convertT2O(){
+  const p=T.parsed;if(!p){refreshButtons();return;}
+  const h=p.hdr,list=[];const title=h.TITLE||'',artist=(h.SUBTITLE||'').replace(/^(--|\+\+)/,'');const ascii=s=>/^[\x20-\x7e]*$/.test(s);
+  const meta={title,artist,titleR:ascii(title)?title:'',artistR:ascii(artist)?artist:'',creator:h.MAKER||'TJA',
+    audio:tAudio()?tAudio().name:(h.WAVE||''),preview:isNaN(parseFloat(h.DEMOSTART))?-1:parseFloat(h.DEMOSTART)*1000};
+  $('t-vid-wrap').hidden=!tBgAll().some(isVid);
+  const bgs=tBg(),bgLines=bgs.map(b=>isVid(b)?`Video,0,"${b.name}"`:`0,0,"${b.name}",0,0`);
+  const au=tAudio(),zipAu=T.za.size>0,zipBg=T.zv.size>0||T.zi.size>0;
+  setZone('taudio',zipAu?au.name+'（zip内を使用）':(F.taudio?F.taudio.name:'なし'));
+  setZone('bg',zipBg?(bgs.length?bgs.map(b=>b.name).join(' / ')+'（zip内を使用）':'なし（動画なしを選択中）'):(F.bg?F.bg.name:'なし'));
+  const seen={};T.outs=[];
+  try{
+    for(const c of p.charts){const n=(seen[c.course]=(seen[c.course]||0)+1);const version=OSU_VER[c.course]+(n>1?' '+n:'');
+      const tl=tjaTimeline(c,$('t-branch').value);
+      let text=buildOsu(meta,tl,{version,od:DEF_OD[c.course],hp:c.course==='Easy'?4:c.course==='Normal'?5:6});
+      if(bgLines.length)text=text.replace('//Background and Video events',()=>'//Background and Video events\r\n'+bgLines.join('\r\n'));
+      T.outs.push({name:safe(`${meta.artistR||meta.artist} - ${meta.titleR||meta.title} (${meta.creator}) [${version}]`)+'.osu',label:`${version}（★${c.level}）`,text});}
+  }catch(e){list.push({t:'変換に失敗しました：'+e.message,c:'err'});}
+  const sel=$('t-diff');sel.textContent='';T.outs.forEach((o,i)=>{const op=document.createElement('option');op.value=i;op.textContent=o.label;sel.appendChild(op);});
+  sel.hidden=T.outs.length<2;if(T.cur>=T.outs.length)T.cur=0;sel.value=T.cur;
+  $('t-out').value=T.outs[T.cur]?T.outs[T.cur].text:'';
+  if(T.outs.length)list.unshift({t:`変換しました：${T.outs.length} 難易度（${T.outs.map(o=>o.label).join('、')}）`,c:'ok'});
+  if(p.charts.some(c=>/[79]/.test(c.lines.join(''))))list.push('風船の打数は osu! 側でスピナーの長さと OD から決まるため、元の BALLOON の値とは変わります。');
+  if(zipAu&&F.taudio)list.push('zip 内に音楽があるため、2 で指定した音楽は使いません。');
+  if(zipBg&&F.bg)list.push('zip 内に動画・画像があるため、3 で指定した背景は使いません。');
+  if(!au)list.push(h.WAVE?`音楽ファイル「${h.WAVE}」を 2 に入れると .osz に同梱します。`:'音楽ファイルを 2 に入れてください。');
+  msgs('t-msgs',list);refreshButtons();
+}
+$('t-diff').onchange=()=>{T.cur=+$('t-diff').value;$('t-out').value=T.outs[T.cur].text;};
+$('t-branch').onchange=convertT2O;$('t-vid').onchange=convertT2O;
+$('t-out').oninput=()=>{if(T.outs[T.cur])T.outs[T.cur].text=$('t-out').value;};
+$('t-dl').onclick=async()=>{
+  const name=safe($('t-name').value),hint=$('t-hint');
+  try{
+    if(!window.JSZip)throw{code:'nozip'};
+    const z=new JSZip();for(const o of T.outs)z.file(o.name,o.text.replace(/\r?\n/g,'\r\n'));
+    const tau=tAudio();if(tau)z.file(tau.name,tau.data);for(const b of tBg())z.file(b.name,b.data);
+    const blob=await z.generateAsync({type:'blob',compression:'DEFLATE'});
+    await save(inViewer?name+'.osz.zip':name+'.osz',blob,hint);
+  }catch(e){hint.textContent=errText(e);}
+};
 
-                const isNew = (tp) => tp.bpm !== cBpm || tp.beats !== meas || tp.redline;
-                while(objIdx < this.hitobjects.length) {
-                    const obj = this.hitobjects[objIdx];
-                    let nextM = (tmIdx < this.timingpoints.length) ? this.timingpoints[tmIdx].offset : barBegin+barMax+1;
-                    if(tmIdx < this.timingpoints.length && !isNew(this.timingpoints[tmIdx])) { tmIdx++; continue; }
-                    const tpb = T_MINUTE / cBpm; const end = Math.min(barBegin+barMax, nextM);
-                    if(obj.offset + tpb/24 >= end) {
-                        if(Math.abs(end - (barBegin+barMax)) < 1) {
-                            this.writeBar(this.getBaseTimingPoint(barBegin), barData, barBegin, end);
-                            barData = []; barBegin = this.getRealOffset(end); barMax = meas * T_MINUTE / cBpm;
-                        } else {
-                            this.writeIncomplete(this.getBaseTimingPoint(barBegin), barData, barBegin, end);
-                            barData = []; const nTp = this.timingpoints[tmIdx]; meas = nTp.beats;
-                            if(nTp.redline) { cBpm = nTp.bpm; barBegin = nextM; this.tjaContents.push(`#BPMCHANGE ${cBpm}`); } 
-                            else { barBegin = end; }
-                            barMax = meas * T_MINUTE / cBpm;
-                            if(this.tailFix) { this.tailFix = false; objIdx--; this.hitobjects[objIdx].offset = barBegin; }
-                            this.tjaContents.push(`#MEASURE ${meas}/4`); tmIdx++;
-                        }
-                    } else {
-                        if(obj.offset < barBegin) barData.push({...obj, offset:barBegin}); else barData.push(obj);
-                        objIdx++;
-                    }
-                }
-                if(barData.length) this.writeBar(this.getBaseTimingPoint(barBegin), barData, barBegin, barBegin+barMax);
-                this.tjaContents.push("#END"); this.tjaContents.push(WATER_MARK);
-            }
-            generateString() { return this.tjaHeads.concat(this.tjaContents).join('\r\n'); }
-        }
 
-        let currentOsuFile = null, currentAudioFile = null;
-        const els = {
-            zoneOsu: document.getElementById('o2t-zone-osu'), inputOsu: document.getElementById('o2t-input-osu'), nameOsu: document.getElementById('o2t-name-osu'),
-            zoneAudio: document.getElementById('o2t-zone-audio'), inputAudio: document.getElementById('o2t-input-audio'), nameAudio: document.getElementById('o2t-name-audio'),
-            editor: document.getElementById('o2t-editor'), downloadBtn: document.getElementById('o2t-download-btn'),
-            course: document.getElementById('o2t-course'), level: document.getElementById('o2t-level'), filename: document.getElementById('o2t-filename')
-        };
+/* ---------- リロード（そのタブを最初の状態に戻す） ---------- */
+$('o-reload').onclick=()=>{
+  for(const k of ['osu','oaudio','oimage','ovideo'])F[k]=null;
+  O.osus=[];O.osz=new Map();O.vid=new Map();O.img=new Map();O.edited=false;
+  setZone('osu','未選択');setZone('oaudio','なし (TJAのみ)');setZone('oimage','なし');setZone('ovideo','なし');
+  $('o-diff').textContent='';$('o-diff-wrap').hidden=true;$('o-vid').value='yes';$('o-vid-wrap').hidden=true;
+  $('o-course').value='Oni';$('o-level').value=DEF_LEVEL.Oni;$('o-name').value='';$('o-out').value='';$('o-hint').textContent='';
+  msgs('o-msgs',[]);refreshButtons();
+};
+$('t-reload').onclick=()=>{
+  for(const k of ['tja','taudio','bg'])F[k]=null;
+  T.parsed=null;T.outs=[];T.cur=0;T.tjas=[];T.za=new Map();T.zv=new Map();T.zi=new Map();
+  setZone('tja','未選択');setZone('taudio','なし');setZone('bg','なし');
+  $('t-file').textContent='';$('t-file-wrap').hidden=true;$('t-vid').value='yes';$('t-vid-wrap').hidden=true;
+  $('t-diff').textContent='';$('t-diff').hidden=true;$('t-branch').value='M';$('t-branch').hidden=true;
+  $('t-name').value='';$('t-out').value='';$('t-hint').textContent='';
+  msgs('t-msgs',[]);refreshButtons();
+};
 
-        setupDropZone(els.zoneOsu, els.inputOsu, file => {
-            if (!file.name.toLowerCase().endsWith('.osu')) return alert("osuファイルを選択してください");
-            currentOsuFile = file;
-            els.filename.value = file.name.replace(/\.osu$/i, "");
-            els.nameOsu.textContent = file.name; els.nameOsu.style.color = "#ff66aa";
-            runConversion();
-        });
-        setupDropZone(els.zoneAudio, els.inputAudio, file => {
-            currentAudioFile = file;
-            els.nameAudio.textContent = file.name; els.nameAudio.style.color = "#4CAF50";
-            let text = els.editor.value;
-            if (text && /^(WAVE:).*$/m.test(text)) els.editor.value = text.replace(/^(WAVE:).*$/m, `WAVE:${file.name}`);
-        });
-
-        const runConversion = () => {
-            if (!currentOsuFile) return;
-            const reader = new FileReader();
-            reader.onload = e => {
-                try {
-                    const conv = new OsuToTjaConverter(e.target.result, els.course.value, parseInt(els.level.value), currentAudioFile?.name);
-                    els.editor.value = conv.parse(); els.downloadBtn.disabled = false;
-                } catch(err) { els.editor.value = "Error:\n" + err.message; }
-            };
-            reader.readAsText(currentOsuFile, "UTF-8");
-        };
-        els.course.addEventListener('change', () => currentOsuFile && runConversion());
-        els.level.addEventListener('change', () => currentOsuFile && runConversion());
-
-        els.downloadBtn.addEventListener('click', async () => {
-            const text = els.editor.value; if (!text) return;
-            let fname = els.filename.value.trim() || "converted";
-            try {
-                els.downloadBtn.disabled = true; els.downloadBtn.textContent = "ZIP作成中...";
-                const zip = new JSZip();
-                const buffer = Encoding.convert(text, { to: 'SJIS', from: 'UNICODE', type: 'arraybuffer' });
-                zip.file(`${fname}.tja`, new Uint8Array(buffer));
-                if (currentAudioFile) zip.file(currentAudioFile.name, currentAudioFile);
-                const content = await zip.generateAsync({type: "blob"});
-                const a = document.createElement("a"); a.href = URL.createObjectURL(content);
-                a.download = `${fname}.zip`; document.body.appendChild(a); a.click(); document.body.removeChild(a);
-            } catch(e) { alert("Error: " + e.message); } 
-            finally { els.downloadBtn.disabled = false; els.downloadBtn.textContent = "ZIPをダウンロード"; }
-        });
-    })();
-
-    // ==========================================
-    // LOGIC: TJA to osu! (FIXED)
-    // ==========================================
-    (function() {
-        class TjaToOsuConverter {
-            constructor(tjaContent, audioFilename, bgFilename) {
-                this.lines = tjaContent.split(/\r?\n/);
-                this.audioFilename = audioFilename || "";
-                this.bgFilename = bgFilename || "";
-                this.TITLE = "NO TITLE"; this.SUBTITLE = ""; this.BPM = 120.0; this.WAVE = "audio.mp3";
-                this.OFFSET = 0.0; this.DEMOSTART = 0.0; this.COURSE = "Oni";
-                this.SliderMultiplier = 1.4; this.SampleSet = "Normal";
-                this.timingPoints = []; this.hitObjects = []; this.barData = [];
-                this.currentTime = 0.0; this.hasStarted = false; this.lastingNote = null;
-                this.parseMetadata(); this.parseBody();
-            }
-
-            parseMetadata() {
-                for (let line of this.lines) {
-                    line = line.trim(); if (line.startsWith("//") || line === "") continue;
-                    const p = line.split(":");
-                    if (p.length >= 2) {
-                        const key = p[0].trim().toUpperCase(); const val = p.slice(1).join(":").trim();
-                        if (key === "TITLE") this.TITLE = val;
-                        else if (key === "SUBTITLE") this.SUBTITLE = val;
-                        else if (key === "BPM") this.BPM = parseFloat(val);
-                        else if (key === "WAVE") this.WAVE = val;
-                        else if (key === "OFFSET") this.OFFSET = parseFloat(val);
-                        else if (key === "DEMOSTART") this.DEMOSTART = parseFloat(val);
-                        else if (key === "COURSE") this.COURSE = val;
-                    }
-                    if (line.startsWith("#START")) break;
-                }
-                if (this.audioFilename) this.WAVE = this.audioFilename;
-            }
-
-            addDefaultTimingPoint() {
-                this.currentTime = -this.OFFSET * 1000.0;
-                this.timingPoints.push({ offset: this.currentTime, bpm: this.BPM, beatLength: 60000.0 / this.BPM, meter: 4, redline: true, scroll: 1.0, ggt: false });
-            }
-
-            parseBody() {
-                this.addDefaultTimingPoint();
-                for (let line of this.lines) {
-                    line = line.trim(); const cIdx = line.indexOf("//"); if (cIdx !== -1) line = line.substring(0, cIdx).trim();
-                    if (!line) continue;
-                    if (line.startsWith("#START")) { this.hasStarted = true; continue; }
-                    if (line.startsWith("#END")) break;
-                    if (!this.hasStarted) continue;
-                    if (line.startsWith("#")) this.handleCommand(line); else this.handleNote(line);
-                }
-            }
-
-            handleCommand(line) { if (this.barData.length > 0) this.barData.push(line); else this.executeCommand(line); }
-            handleNote(line) { for (let char of line) { if (char.match(/[0-9]/)) this.barData.push(char); else if (char === ',') this.processBar(); } }
-
-            executeCommand(cmdStr) {
-                const parts = cmdStr.split(/[ \t]+/); const cmd = parts[0].toUpperCase(); const val = parts.length > 1 ? parseFloat(parts[1]) : 0;
-                if (cmd === "#DELAY") { this.currentTime += val * 1000; return; }
-                const lastTp = this.getLastTimingPoint();
-                let newTp = { ...lastTp, offset: this.currentTime, redline: false }; let changed = false;
-                
-                if (cmd === "#BPMCHANGE") { newTp.bpm = val; newTp.beatLength = 60000.0 / val; newTp.redline = true; changed = true; }
-                else if (cmd === "#MEASURE") { const frac = parts[1].split('/'); if(frac.length===2) { newTp.meter = (parseFloat(frac[0])/parseFloat(frac[1]))*4; newTp.redline = true; changed = true; } }
-                else if (cmd === "#SCROLL") { newTp.scroll = val; newTp.redline = false; changed = true; }
-                else if (cmd === "#GOGOSTART") { newTp.ggt = true; newTp.redline = false; changed = true; }
-                else if (cmd === "#GOGOEND") { newTp.ggt = false; newTp.redline = false; changed = true; }
-
-                if (changed) {
-                    const existingIdx = this.timingPoints.findIndex(tp => Math.abs(tp.offset - this.currentTime) < 1);
-                    if (existingIdx !== -1) {
-                        const ex = this.timingPoints[existingIdx];
-                        if (cmd === "#BPMCHANGE") { ex.bpm = newTp.bpm; ex.beatLength = newTp.beatLength; ex.redline = true; }
-                        else if (cmd === "#MEASURE") { ex.meter = newTp.meter; ex.redline = true; }
-                        else if (cmd === "#SCROLL") { ex.scroll = newTp.scroll; }
-                        else if (cmd.includes("GOGO")) { ex.ggt = newTp.ggt; }
-                    } else {
-                        this.timingPoints.push(newTp);
-                    }
-                }
-            }
-
-            processBar() {
-                if (this.barData.length === 0) {
-                    const lastTp = this.getLastTimingPoint();
-                    const measureTime = (60000.0 / lastTp.bpm) * lastTp.meter;
-                    this.currentTime += measureTime;
-                    return;
-                }
-
-                const notes = this.barData.filter(d => d.length === 1 && d.match(/[0-9]/));
-                const totalHits = notes.length;
-
-                if (totalHits === 0) {
-                    const lastTp = this.getLastTimingPoint();
-                    const measureTime = (60000.0 / lastTp.bpm) * lastTp.meter;
-                    for (let data of this.barData) { if (data.startsWith("#")) this.executeCommand(data); }
-                    this.currentTime += measureTime;
-                    this.barData = [];
-                    return;
-                }
-
-                for (let data of this.barData) {
-                    if (data.startsWith("#")) {
-                        this.executeCommand(data);
-                    } else {
-                        const lastTp = this.getLastTimingPoint();
-                        const measureTime = (60000.0 / lastTp.bpm) * lastTp.meter;
-                        const timePerUnit = measureTime / totalHits;
-                        const char = data;
-                        if (char !== '0' && !(this.lastingNote && char !== '8')) this.addNote(char, this.currentTime);
-                        this.currentTime += timePerUnit;
-                    }
-                }
-                this.barData = [];
-            }
-
-            addNote(char, time) {
-                const type = parseInt(char); const offset = Math.round(time);
-                let hitType = 1, sound = 0;
-                if (type === 1) sound = 0; else if (type === 2) sound = 8; else if (type === 3) sound = 4; else if (type === 4) sound = 12;
-                else if (type === 5 || type === 6) { this.lastingNote = { type: 'slider', startTime: time, sound: (type===6?4:0) }; return; }
-                else if (type === 7 || type === 9) { this.lastingNote = { type: 'spinner', startTime: time, sound: 0 }; return; }
-                else if (type === 8) { if (this.lastingNote) { this.endLastingNote(time); this.lastingNote = null; } return; }
-                else return;
-                this.hitObjects.push({ x: 256, y: 192, time: offset, type: hitType, hitSound: sound, extras: "0:0:0:0:" });
-            }
-
-            endLastingNote(endTime) {
-                const ln = this.lastingNote; const startOffset = Math.round(ln.startTime);
-                if (ln.type === 'slider') {
-                    const dur = endTime - ln.startTime;
-                    const tp = this.getTimingPointAt(ln.startTime);
-                    const length = (this.SliderMultiplier * 100 * tp.scroll) * (dur / (60000.0 / tp.bpm));
-                    this.hitObjects.push({ x: 256, y: 192, time: startOffset, type: 2, hitSound: ln.sound, extras: `L|${Math.round(256+length)}:192,1,${length.toFixed(2)}` });
-                } else if (ln.type === 'spinner') {
-                    this.hitObjects.push({ x: 256, y: 192, time: startOffset, type: 8, hitSound: ln.sound, extras: Math.round(endTime) });
-                }
-            }
-
-            getLastTimingPoint() { return this.timingPoints.length > 0 ? this.timingPoints[this.timingPoints.length - 1] : {bpm: 120, meter: 4, scroll: 1}; }
-            getTimingPointAt(time) {
-                let best = this.timingPoints[0];
-                for (let tp of this.timingPoints) { if (tp.offset <= time + 1) best = tp; else break; }
-                return best;
-            }
-
-            generateOsu() {
-                let s = "osu file format v14\n\n[General]\n";
-                s += `AudioFilename: ${this.WAVE}\nAudioLeadIn: 0\nPreviewTime: ${Math.round(this.DEMOSTART * 1000)}\n`;
-                s += `Countdown: 0\nSampleSet: ${this.SampleSet}\nStackLeniency: 0.7\nMode: 1\nLetterboxInBreaks: 0\n\n[Metadata]\n`;
-                s += `Title:${this.TITLE}\nTitleUnicode:${this.TITLE}\nArtist:Unknown\nArtistUnicode:Unknown\nCreator:TJA2OSU\nVersion:${this.COURSE}\nSource:${this.SUBTITLE}\nTags:Taiko Jiro Convert\n\n`;
-                s += `[Difficulty]\nHPDrainRate:5\nCircleSize:5\nOverallDifficulty:5\nApproachRate:9\nSliderMultiplier:${this.SliderMultiplier}\nSliderTickRate:1\n\n`;
-                
-                s += `[Events]\n//Background and Video events\n`;
-                if(this.bgFilename) {
-                    const isVideo = /\.(mp4|avi|flv|mkv|wmv|mpg)$/i.test(this.bgFilename);
-                    if (isVideo) {
-                        s += `Video,0,"${this.bgFilename}"\n`;
-                    } else {
-                        s += `0,0,"${this.bgFilename}",0,0\n`;
-                    }
-                }
-                s += `//Break Periods\n//Storyboard Layer 0 (Background)\n//Storyboard Layer 1 (Fail)\n//Storyboard Layer 2 (Pass)\n//Storyboard Layer 3 (Foreground)\n//Storyboard Sound Samples\n\n`;
-                
-                s += `[TimingPoints]\n`;
-                
-                for (let tp of this.timingPoints) {
-                    const offset = Math.round(tp.offset);
-                    const meter = Math.round(tp.meter);
-                    const ggt = tp.ggt ? 1 : 0;
-                    
-                    if (tp.redline) {
-                        s += `${offset},${tp.beatLength.toFixed(6)},${meter},1,0,100,1,${ggt}\n`;
-                        if (tp.scroll !== 1.0) {
-                             const sv = -100.0 / Math.max(0.1, tp.scroll);
-                             s += `${offset},${sv.toFixed(6)},${meter},1,0,100,0,${ggt}\n`;
-                        }
-                    } else {
-                        const sv = -100.0 / Math.max(0.1, tp.scroll);
-                        s += `${offset},${sv.toFixed(6)},${meter},1,0,100,0,${ggt}\n`;
-                    }
-                }
-                
-                s += "\n[HitObjects]\n";
-                for (let ho of this.hitObjects) {
-                    if (ho.type === 8) s += `${ho.x},${ho.y},${ho.time},${ho.type},${ho.hitSound},${ho.extras},0:0:0:0:\n`;
-                    else s += `${ho.x},${ho.y},${ho.time},${ho.type},${ho.hitSound},${ho.extras}\n`;
-                }
-                return s;
-            }
-        }
-
-        // --- UI Interactions (t2o) ---
-        let currentTjaFile = null, currentAudioFile = null, currentBgFile = null;
-        const els = {
-            zoneTja: document.getElementById('t2o-zone-tja'), inputTja: document.getElementById('t2o-input-tja'), nameTja: document.getElementById('t2o-name-tja'),
-            zoneAudio: document.getElementById('t2o-zone-audio'), inputAudio: document.getElementById('t2o-input-audio'), nameAudio: document.getElementById('t2o-name-audio'),
-            zoneBg: document.getElementById('t2o-zone-bg'), inputBg: document.getElementById('t2o-input-bg'), nameBg: document.getElementById('t2o-name-bg'),
-            editor: document.getElementById('t2o-editor'), downloadBtn: document.getElementById('t2o-download-btn'), filename: document.getElementById('t2o-filename')
-        };
-
-        const runTjaConversion = () => {
-             if (!currentTjaFile) return;
-             const reader = new FileReader();
-             reader.onload = e => {
-                const buffer = e.target.result;
-                const detected = Encoding.detect(new Uint8Array(buffer));
-                const text = Encoding.codeToString(Encoding.convert(new Uint8Array(buffer), { to: 'UNICODE', from: detected }));
-                try {
-                    const conv = new TjaToOsuConverter(text, currentAudioFile?.name, currentBgFile?.name);
-                    els.editor.value = conv.generateOsu(); els.downloadBtn.disabled = false;
-                } catch(err) { els.editor.value = "Error:\n" + err.message; }
-            };
-            reader.readAsArrayBuffer(currentTjaFile);
-        };
-
-        setupDropZone(els.zoneTja, els.inputTja, file => {
-            if (!file.name.match(/\.(tja|txt)$/i)) return alert("TJAファイルを選択してください");
-            currentTjaFile = file;
-            els.filename.value = file.name.replace(/\.(tja|txt)$/i, "");
-            els.nameTja.textContent = file.name; els.nameTja.style.color = "#e91e63";
-            runTjaConversion();
-        });
-
-        setupDropZone(els.zoneAudio, els.inputAudio, file => {
-            currentAudioFile = file;
-            els.nameAudio.textContent = file.name; els.nameAudio.style.color = "#4CAF50";
-            runTjaConversion(); 
-        });
-
-        setupDropZone(els.zoneBg, els.inputBg, file => {
-            currentBgFile = file;
-            els.nameBg.textContent = file.name; els.nameBg.style.color = "#2196F3";
-            runTjaConversion(); 
-        });
-
-        els.downloadBtn.addEventListener('click', async () => {
-            const text = els.editor.value; if (!text) return;
-            let fname = els.filename.value.trim() || "converted";
-            try {
-                els.downloadBtn.disabled = true; els.downloadBtn.textContent = ".osz 作成中...";
-                const zip = new JSZip();
-                zip.file(`${fname}.osu`, text);
-                if (currentAudioFile) zip.file(currentAudioFile.name, currentAudioFile);
-                if (currentBgFile) zip.file(currentBgFile.name, currentBgFile);
-                
-                // MIMEタイプを octet-stream に指定してブラウザによる .zip の付与を防ぐ
-                const content = await zip.generateAsync({
-                    type: "blob", 
-                    mimeType: "application/octet-stream"
-                });
-                
-                const a = document.createElement("a"); a.href = URL.createObjectURL(content);
-                a.download = `${fname}.osz`; document.body.appendChild(a); a.click(); document.body.removeChild(a);
-            } catch(e) { alert("Error: " + e.message); } 
-            finally { els.downloadBtn.disabled = false; els.downloadBtn.textContent = ".osz をダウンロード"; }
-        });
-    })();
+/* ---------- 保存 ---------- */
+async function save(filename,blob,hint){
+  if(inViewer){if(!DL)throw{code:'unavailable'};const r=await DL.save({filename,data:blob});
+    hint.textContent=r.status==='saved'?(filename.endsWith('.osz.zip')?'保存しました。末尾の .zip を消すと osu! で読み込めます。':'保存しました。'):'';}
+  else{const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=filename;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},2000);hint.textContent='保存しました。';}
+}
+function errText(e){const c=e&&e.code;return c==='declined'?'保存をキャンセルしました。':c==='rate_limited'?'保存の確認が開いています。少し待ってから押してください。':c==='nozip'?'ZIP ライブラリが読み込めませんでした。結果欄の中身をコピーして使ってください。':c==='host_unavailable'?'このアプリでは保存できません。ブラウザかパソコンで開いてください。':'保存できませんでした。結果欄の中身をコピーして使ってください。';}
+function refreshButtons(){
+  const blocked=inViewer&&!DL;
+  $('o-dl').disabled=blocked||!$('o-out').value.trim();$('t-dl').disabled=blocked||!T.outs.length;
+  if(blocked){$('o-hint').textContent=$('t-hint').textContent='この表示では保存できません。結果欄の中身をコピーしてください。';}
+  else if(inViewer&&T.outs.length&&!$('t-hint').textContent)$('t-hint').textContent='保存されるのは .osz.zip です。末尾の .zip を消してください。';
+}
+refreshButtons();
+/* パソコン幅ではカードを画面の真ん中に固定。入りきらないときは結果欄を縮め、それでも足りなければ全体を縮小 */
+const CARD=document.querySelector('.card');let fitRaf=0;
+function fit(){
+  const tas=[...document.querySelectorAll('textarea')];tas.forEach(t=>t.style.height='');CARD.style.setProperty('--s',1);
+  if(innerWidth<900)return;
+  const avail=innerHeight-32,over=CARD.offsetHeight-avail;
+  if(over>0){const ta=tas.find(t=>t.offsetParent);if(ta)ta.style.height=Math.max(160,ta.offsetHeight-over)+'px';}
+  CARD.style.setProperty('--s',Math.min(1,avail/CARD.offsetHeight));
+}
+const queueFit=()=>{cancelAnimationFrame(fitRaf);fitRaf=requestAnimationFrame(fit);};
+window.addEventListener('resize',queueFit);
+['tab-o2t','tab-t2o'].forEach(id=>$(id).addEventListener('click',queueFit));
+new MutationObserver(queueFit).observe(CARD,{childList:true,subtree:true,attributes:true,attributeFilter:['hidden']});
+if(document.fonts)document.fonts.ready.then(queueFit);
+fit();
 </script>
 
-</body>
-</html>
+</body></html>
