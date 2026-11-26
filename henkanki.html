@@ -12,7 +12,6 @@
 }
 *{box-sizing:border-box}
 html,body{overscroll-behavior-y:none}/* スマホで下に引っ張ってもページが再読み込みされない */
-textarea{overscroll-behavior:contain}
 [hidden]{display:none!important}
 body{background:var(--page);color:var(--ink);font-family:var(--f-body);font-size:14px;line-height:1.5;
   padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:20px 32px}
@@ -53,6 +52,7 @@ select,input[type=text],input[type=number]{font:inherit;font-size:14px;color:var
 .drop.has{border-color:var(--pink)}
 
 .editor-head{display:flex;justify-content:space-between;align-items:flex-end;gap:10px;flex-wrap:wrap;margin-bottom:6px}
+.lblrow{display:flex;align-items:center;gap:12px}
 .editor-head select{width:auto;padding:4px 8px;font-size:13px}
 textarea{display:block;width:100%;height:350px;resize:none;background:var(--editor);color:var(--editor-ink);border:1px solid #444;border-radius:4px;padding:10px 12px;font-family:var(--f-mono);font-size:13px;line-height:1.5;white-space:pre;overflow:auto;tab-size:4}
 textarea::placeholder{color:#8a8a8a}
@@ -99,7 +99,7 @@ textarea::placeholder{color:#8a8a8a}
         <div class="drop" data-slot="ovideo" data-accept=".mp4,.webm,.avi,.flv"><button type="button" class="pick">ファイルを選択</button><div class="or">またはここにドロップ</div><div class="name">なし</div></div></div>
     </div>
     <div class="field" id="o-diff-wrap" hidden style="margin-bottom:22px"><span>変換する難易度（.osz 内）</span><select id="o-diff"></select></div>
-    <div class="editor-head"><span class="lbl">TJA プレビュー・編集</span></div>
+    <div class="editor-head"><span class="lblrow"><span class="lbl">TJA プレビュー・編集</span></span></div>
     <textarea id="o-out" spellcheck="false" placeholder="osu!ファイルを読み込むとここに変換結果が表示されます..."></textarea>
     <ul class="msgs" id="o-msgs"></ul>
     <div class="save">
@@ -123,7 +123,7 @@ textarea::placeholder{color:#8a8a8a}
     </div>
     <div class="field" id="t-file-wrap" hidden style="margin-bottom:22px"><span>変換するTJA（zip 内）</span><select id="t-file"></select></div>
     <div class="editor-head">
-      <span class="lbl">osu! プレビュー・編集</span>
+      <span class="lblrow"><span class="lbl">osu! プレビュー・編集</span></span>
       <span style="display:flex;gap:8px;flex-wrap:wrap">
         <select id="t-branch" hidden aria-label="譜面分岐"><option value="M">達人譜面</option><option value="E">玄人譜面</option><option value="N">普通譜面</option></select>
         <select id="t-diff" hidden aria-label="表示する難易度"></select>
@@ -697,5 +697,4 @@ new MutationObserver(queueFit).observe(CARD,{childList:true,subtree:true,attribu
 if(document.fonts)document.fonts.ready.then(queueFit);
 fit();
 </script>
-
 </body></html>
