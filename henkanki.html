@@ -55,6 +55,7 @@ select,input[type=text],input[type=number]{font:inherit;font-size:14px;color:var
 .lblrow{display:flex;align-items:center;gap:12px}
 .editor-head select{width:auto;padding:4px 8px;font-size:13px}
 textarea{display:block;width:100%;height:350px;resize:none;background:var(--editor);color:var(--editor-ink);border:1px solid #444;border-radius:4px;padding:10px 12px;font-family:var(--f-mono);font-size:13px;line-height:1.5;white-space:pre;overflow:auto;tab-size:4}
+textarea.err{color:#ff8fa8;white-space:pre-wrap}
 textarea::placeholder{color:#8a8a8a}
 .msgs{list-style:none;margin:8px 0 0;padding:0;font-size:12.5px;display:flex;flex-direction:column;gap:2px}
 .msgs li{color:var(--warn)} .msgs li.ok{color:var(--ok)} .msgs li.err{color:var(--pink-deep)}
@@ -384,6 +385,8 @@ if(typeof module!=='undefined')module.exports={parseOsu,osuCourseToTja,buildTja,
 </script>
 <script>
 const $=id=>document.getElementById(id);
+function showErr(pre,text){const ta=$(pre+'-out');ta.value=text;ta.classList.add('err');} // エラー文字をプレビュー欄に出す
+function clearErr(pre){$(pre+'-out').classList.remove('err');}
 const SAMPLE_TJA=`TITLE:サンプル・ドンカッカ
 SUBTITLE:--変換テスト
 BPM:150
@@ -487,7 +490,7 @@ function osuRefs(text){ // [Events] の Video 行から動画ファイル名を�
   return{vid};
 }
 async function loadOsuInput(){
-  O.osus=[];O.osz=new Map();O.vid=new Map();O.img=new Map();const f=F.osu;
+  clearErr('o');O.osus=[];O.osz=new Map();O.vid=new Map();O.img=new Map();const f=F.osu;
   try{
     if(/\.(osz|zip)$/i.test(f.name)){
       if(!window.JSZip)throw new Error('.osz を開くライブラリが読み込めませんでした。.osu を直接入れてください');
@@ -502,7 +505,7 @@ async function loadOsuInput(){
     O.osus.forEach((p,i)=>{const op=document.createElement('option');op.value=i;op.textContent=p.o.metadata.Version||p.name;sel.appendChild(op);});
     $('o-diff-wrap').hidden=O.osus.length<2;
     pickDiff(0);
-  }catch(e){O.osus=[];$('o-out').value='';msgs('o-msgs',[{t:'読み込めませんでした：'+e.message,c:'err'}]);refreshButtons();}
+  }catch(e){O.osus=[];showErr('o','読み込めませんでした：'+e.message);msgs('o-msgs',[]);refreshButtons();}
 }
 function pickDiff(i){const p=O.osus[i];if(!p)return;
   const c=guessCourse(p.o.metadata.Version||'');$('o-course').value=c;$('o-level').value=DEF_LEVEL[c];
@@ -523,7 +526,7 @@ function convertO2T(force){
   const p=O.osus[$('o-diff').value||0];if(!p){refreshButtons();return;}
   if(O.edited&&!force)return;
   const m=p.o.metadata,au=oAudio(),pv=parseFloat(p.o.general.PreviewTime);
-  const list=[];
+  const list=[];clearErr('o');
   try{
     const {text,built}=buildTja({title:m.TitleUnicode||m.Title||'',artist:m.ArtistUnicode||m.Artist||'',audio:au?au.name:(p.o.general.AudioFilename||''),preview:isNaN(pv)?-1:pv},
       [{course:$('o-course').value,level:parseInt($('o-level').value)||1,osu:p.o}]);
@@ -541,7 +544,7 @@ function convertO2T(force){
     if(b.offgrid)list.push(`${b.offgrid} 小節で拍にきれいに乗らないノーツがあり、近い位置に置きました。`);
     if(auInOsz&&F.oaudio)list.push('.osz 内に音楽があるため、2 で指定した音楽は使いません。');
     if(!au)list.push('音楽ファイルが無いので、ZIP には TJA だけが入ります。');
-  }catch(e){$('o-out').value='';list.push({t:'変換に失敗しました：'+e.message,c:'err'});}
+  }catch(e){showErr('o','変換に失敗しました：'+e.message);}
   msgs('o-msgs',list);refreshButtons();
 }
 $('o-diff').onchange=()=>pickDiff(+$('o-diff').value);
@@ -564,7 +567,7 @@ $('o-dl').onclick=async()=>{
 
 /* ---------- TJA → osu! ---------- */
 async function loadTjaInput(){
-  T.tjas=[];T.za=new Map();T.zv=new Map();T.zi=new Map();const f=F.tja;
+  clearErr('t');T.tjas=[];T.za=new Map();T.zv=new Map();T.zi=new Map();const f=F.tja;
   try{
     if(/\.zip$/i.test(f.name)){
       if(!window.JSZip)throw new Error('zip を開くライブラリが読み込めませんでした。.tja を直接入れてください');
@@ -580,7 +583,7 @@ async function loadTjaInput(){
     T.tjas.forEach((x,i)=>{const op=document.createElement('option');op.value=i;op.textContent=x.name;sel.appendChild(op);});
     $('t-file-wrap').hidden=T.tjas.length<2;
     loadTja(T.tjas[0]);
-  }catch(e){T.tjas=[];T.parsed=null;T.outs=[];$('t-out').value='';msgs('t-msgs',[{t:'読み込めませんでした：'+e.message,c:'err'}]);refreshButtons();}
+  }catch(e){T.tjas=[];T.parsed=null;T.outs=[];showErr('t','読み込めませんでした：'+e.message);msgs('t-msgs',[]);refreshButtons();}
 }
 $('t-file').onchange=()=>loadTja(T.tjas[+$('t-file').value]);
 function tAudio(){ // zip 内の音楽を優先（WAVE に合うもの → 最初の音楽）。無ければ外部の音楽
@@ -597,13 +600,13 @@ function tBgAll(){ // zip 内の動画・画像を優先。無ければ外部の
   if(T.zi.size){let im=pick(T.zi,h.BGIMAGE);if(!im)for(const [n,d] of T.zi)if(!im||d.byteLength>im.data.byteLength)im={name:n,data:d};out.push(im);}
   return out.length?out:(F.bg?[F.bg]:[]);}
 function loadTja(it){
-  try{
+  clearErr('t');try{
     const p=parseTJA(decodeTJA(it.data));if(!p.charts.length)throw new Error('#START 〜 #END の譜面が見つかりません');
     T.parsed=p;T.cur=0;
     $('t-branch').hidden=!p.charts.some(c=>c.branched);
     const h=p.hdr;$('t-name').value=safe(`${(h.SUBTITLE||'').replace(/^(--|\+\+)/,'')||'Unknown'} - ${h.TITLE||it.name.replace(/\.tja$/i,'')}`);
     convertT2O();
-  }catch(e){T.parsed=null;T.outs=[];$('t-out').value='';msgs('t-msgs',[{t:'読み込めませんでした：'+e.message,c:'err'}]);refreshButtons();}
+  }catch(e){T.parsed=null;T.outs=[];showErr('t','読み込めませんでした：'+e.message);msgs('t-msgs',[]);refreshButtons();}
 }
 function convertT2O(){
   const p=T.parsed;if(!p){refreshButtons();return;}
@@ -615,17 +618,17 @@ function convertT2O(){
   const au=tAudio(),zipAu=T.za.size>0,zipBg=T.zv.size>0||T.zi.size>0;
   setZone('taudio',zipAu?au.name+'（zip内を使用）':(F.taudio?F.taudio.name:'なし'));
   setZone('bg',zipBg?(bgs.length?bgs.map(b=>b.name).join(' / ')+'（zip内を使用）':'なし（動画なしを選択中）'):(F.bg?F.bg.name:'なし'));
-  const seen={};T.outs=[];
+  const seen={};T.outs=[];let errT='';
   try{
     for(const c of p.charts){const n=(seen[c.course]=(seen[c.course]||0)+1);const version=OSU_VER[c.course]+(n>1?' '+n:'');
       const tl=tjaTimeline(c,$('t-branch').value);
       let text=buildOsu(meta,tl,{version,od:DEF_OD[c.course],hp:c.course==='Easy'?4:c.course==='Normal'?5:6});
       if(bgLines.length)text=text.replace('//Background and Video events',()=>'//Background and Video events\r\n'+bgLines.join('\r\n'));
       T.outs.push({name:safe(`${meta.artistR||meta.artist} - ${meta.titleR||meta.title} (${meta.creator}) [${version}]`)+'.osu',label:`${version}（★${c.level}）`,text});}
-  }catch(e){list.push({t:'変換に失敗しました：'+e.message,c:'err'});}
+  }catch(e){errT='変換に失敗しました：'+e.message;}
   const sel=$('t-diff');sel.textContent='';T.outs.forEach((o,i)=>{const op=document.createElement('option');op.value=i;op.textContent=o.label;sel.appendChild(op);});
   sel.hidden=T.outs.length<2;if(T.cur>=T.outs.length)T.cur=0;sel.value=T.cur;
-  $('t-out').value=T.outs[T.cur]?T.outs[T.cur].text:'';
+  clearErr('t');$('t-out').value=T.outs[T.cur]?T.outs[T.cur].text:'';if(errT)showErr('t',errT);
   if(T.outs.length)list.unshift({t:`変換しました：${T.outs.length} 難易度（${T.outs.map(o=>o.label).join('、')}）`,c:'ok'});
   if(p.charts.some(c=>/[79]/.test(c.lines.join(''))))list.push('風船の打数は osu! 側でスピナーの長さと OD から決まるため、元の BALLOON の値とは変わります。');
   if(zipAu&&F.taudio)list.push('zip 内に音楽があるため、2 で指定した音楽は使いません。');
@@ -655,7 +658,7 @@ $('o-reload').onclick=()=>{
   setZone('osu','未選択');setZone('oaudio','なし (TJAのみ)');setZone('oimage','なし');setZone('ovideo','なし');
   $('o-diff').textContent='';$('o-diff-wrap').hidden=true;$('o-vid').value='yes';$('o-vid-wrap').hidden=true;
   $('o-course').value='Oni';$('o-level').value=DEF_LEVEL.Oni;$('o-name').value='';$('o-out').value='';$('o-hint').textContent='';
-  msgs('o-msgs',[]);refreshButtons();
+  clearErr('o');msgs('o-msgs',[]);refreshButtons();
 };
 $('t-reload').onclick=()=>{
   for(const k of ['tja','taudio','bg'])F[k]=null;
@@ -664,7 +667,7 @@ $('t-reload').onclick=()=>{
   $('t-file').textContent='';$('t-file-wrap').hidden=true;$('t-vid').value='yes';$('t-vid-wrap').hidden=true;
   $('t-diff').textContent='';$('t-diff').hidden=true;$('t-branch').value='M';$('t-branch').hidden=true;
   $('t-name').value='';$('t-out').value='';$('t-hint').textContent='';
-  msgs('t-msgs',[]);refreshButtons();
+  clearErr('t');msgs('t-msgs',[]);refreshButtons();
 };
 
 /* ---------- 保存 ---------- */
@@ -676,7 +679,7 @@ async function save(filename,blob,hint){
 function errText(e){const c=e&&e.code;return c==='declined'?'保存をキャンセルしました。':c==='rate_limited'?'保存の確認が開いています。少し待ってから押してください。':c==='nozip'?'ZIP ライブラリが読み込めませんでした。結果欄の中身をコピーして使ってください。':c==='host_unavailable'?'このアプリでは保存できません。ブラウザかパソコンで開いてください。':'保存できませんでした。結果欄の中身をコピーして使ってください。';}
 function refreshButtons(){
   const blocked=inViewer&&!DL;
-  $('o-dl').disabled=blocked||!$('o-out').value.trim();$('t-dl').disabled=blocked||!T.outs.length;
+  $('o-dl').disabled=blocked||!$('o-out').value.trim()||$('o-out').classList.contains('err');$('t-dl').disabled=blocked||!T.outs.length;
   if(blocked){$('o-hint').textContent=$('t-hint').textContent='この表示では保存できません。結果欄の中身をコピーしてください。';}
   else if(inViewer&&T.outs.length&&!$('t-hint').textContent)$('t-hint').textContent='保存されるのは .osz.zip です。末尾の .zip を消してください。';
 }
@@ -695,6 +698,6 @@ window.addEventListener('resize',queueFit);
 ['tab-o2t','tab-t2o'].forEach(id=>$(id).addEventListener('click',queueFit));
 new MutationObserver(queueFit).observe(CARD,{childList:true,subtree:true,attributes:true,attributeFilter:['hidden']});
 if(document.fonts)document.fonts.ready.then(queueFit);
-fit();
-</script>
-</body></html>
+fit(); </script>
+</body>
+</html>
